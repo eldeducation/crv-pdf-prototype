@@ -1,0 +1,36 @@
+@page { size: A4; margin: 0; }
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { color: #192925; background: #e9eeeb; font-family: "Noto Sans JP", "BIZ UDPGothic", "Yu Gothic", Meiryo, sans-serif; font-size: 10pt; line-height: 1.7; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.page { background: white; width: 210mm; height: 297mm; padding: 14mm 15mm 0; position: relative; break-after: page; margin: 6mm auto; }
+.page:last-child { break-after: auto; }
+.page-content { width: 180mm; height: 258mm; display: flow-root; }
+.page-foot { position: absolute; bottom: 9mm; left: 15mm; right: 15mm; border-top: .25mm solid #dae4df; padding-top: 2mm; display: flex; gap: 5mm; justify-content: space-between; font-size: 8pt; color: #62786d; }
+.page-foot span:first-child { max-width: 160mm; overflow-wrap: anywhere; }
+.source-ref { font-size: 8pt; font-weight: normal; line-height: 1.5; color: #426e5d; white-space: nowrap; margin-left: 1mm; }
+.source-ref a { color: #235f49; text-decoration: underline; }
+h1 { font-size: 27pt; line-height: 1.3; margin: 0 0 6mm; color: var(--heading-color, #164c3b); }
+h2 { font-size: 19pt; line-height: 1.4; margin: 0 0 5mm; color: var(--heading-color, #164c3b); }
+h3 { font-size: 13pt; line-height: 1.5; margin: 4mm 0 2mm; }
+p { margin: 0 0 3mm; overflow-wrap: anywhere; }
+figure { margin: 0 0 4mm; min-width: 0; }
+img { display: block; max-width: 100%; width: 100%; height: auto; object-fit: contain; }
+figcaption, .caption { font-size: 8pt; line-height: 1.55; color: #5c7168; margin-top: 1.5mm; }
+ul, ol { margin: 0 0 4mm; padding-left: 6mm; }
+li { margin-bottom: 1.5mm; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 4mm; }
+td, th { border-bottom: .25mm solid #dbe5df; padding: 2mm; text-align: left; vertical-align: top; }
+th { background: var(--accent-soft, #edf5f0); }
+.lead { font-size: 13pt; line-height: 1.65; }
+.muted { color: #63766d; }
+.callout { background: var(--accent-soft, #edf6f0); border-left: 1.3mm solid var(--heading-color, #238461); padding: 4mm 5mm; margin: 4mm 0; }
+.row2, .row3 { display: grid; gap: 4mm; margin-bottom: 3mm; align-items: start; }
+.row2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.row3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.card { padding: 4mm; border: .3mm solid #dce8df; border-radius: 2mm; }
+.stat { color: #238461; font-size: 31pt; line-height: 1.2; font-weight: bold; }
+.flow { display: flex; gap: 3mm; align-items: center; margin: 4mm 0; }
+.flow > * { flex: 1; padding: 3mm; background: #edf6f0; }
+blockquote { border-left: 1mm solid #238461; padding-left: 5mm; margin: 5mm 0; font-size: 14pt; }
+svg { max-width: 100%; height: auto; }
+@media print { body { background: white; } .page { margin: 0; } }

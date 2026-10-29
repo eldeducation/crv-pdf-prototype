@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>動画を資料に</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f5f1;color:#1d3229;font:16px/1.7 "Yu Gothic",Meiryo,sans-serif}main{max-width:920px;margin:52px auto;padding:0 24px}header{margin-bottom:28px}.label{font-size:12px;letter-spacing:.15em;color:#4f7763}h1{font-size:34px;line-height:1.4;margin:10px 0}header p{color:#627268;margin:8px 0}.panel{background:#fff;padding:30px;border:1px solid #dce4dd;border-radius:18px;margin-bottom:20px}h2{font-size:20px;margin:0 0 18px}label{display:block;font-weight:bold;margin:16px 0 7px}input,textarea,select{width:100%;font:inherit;padding:12px 14px;border:1px solid #bccdc1;border-radius:8px;color:inherit;background:white}textarea{min-height:110px;resize:vertical}input[type=file]{padding:20px;background:#f5f9f5;border-style:dashed}input[type=checkbox]{width:auto;margin-right:8px}.small{color:#68796c;font-size:13px}.row{display:flex;gap:18px}.row>*{flex:1}button,.download{display:inline-block;background:#17583c;color:white;border:0;border-radius:9px;padding:13px 24px;font:inherit;font-weight:bold;text-decoration:none;cursor:pointer}button:disabled{opacity:.5;cursor:wait}button.secondary{padding:9px 15px;font-size:14px}summary{cursor:pointer;color:#42634e}.pill{background:#eaf3ed;color:#285d3e;border-radius:20px;padding:4px 12px;font-size:12px;display:inline-block;margin-bottom:15px}.error{color:#a02c26}.progress{height:5px;background:#e9f0e9;margin-top:18px;overflow:hidden;border-radius:5px}.progress.busy:after{content:"";display:block;width:35%;height:100%;background:#3a875b;animation:move 2s infinite}@keyframes move{from{transform:translateX(-100%)}to{transform:translateX(400%)}}#results a{margin:8px 8px 0 0}.outline{background:#e8f0e9;color:#235135}footer{font-size:12px;color:#718073;margin:25px 0 40px}.hidden{display:none}@media(max-width:650px){main{margin:24px auto}.panel{padding:20px}.row{display:block}h1{font-size:28px}}
+.reference-card{border-top:1px solid #dce4dd;margin-top:20px;padding-top:18px}.reference-card h3{margin:0 0 8px}.reference-card button,.source-link{margin:8px 8px 8px 0}.source-link,.pdf-page-link{display:inline-block;color:#17583c;font-weight:bold}.pdf-page-link{margin-left:10px}.reference-images{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:14px}.reference-images figure{margin:0}.reference-images img{width:100%;height:auto;display:block;border-radius:6px}.reference-images figcaption{font-size:12px;color:#627268}.review-warning{display:block;padding:8px 12px;background:#fff4d9;color:#704900;border-radius:6px;font-size:14px}[hidden]{display:none!important}.stage-list{list-style:none;padding:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:18px 0}.stage{padding:10px;border-top:4px solid #dce4dd;background:#f6f8f5;border-radius:5px;min-width:0}.stage strong{display:block;font-size:13px;overflow-wrap:anywhere}.stage span{display:block;font-size:12px;margin-top:6px;color:#68796c}.stage.complete{border-color:#238461;background:#edf6f0}.stage.running{border-color:#4279b1;background:#edf3fa}.stage.stopped,.stage.waiting{border-color:#bd841c;background:#fff5df}.stop-notice{padding:16px;background:#fff5df;color:#654b1f;border-radius:9px;margin:14px 0}.stop-notice p{margin:8px 0}.stop-notice pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.6 monospace;color:#62594c}@media(max-width:650px){.stage-list{grid-template-columns:1fr}.stage{display:flex;justify-content:space-between;gap:12px}.stage span{margin:0;white-space:nowrap}}
+.design-standard{display:flex;align-items:center;gap:13px;margin:25px 0 23px;padding:16px 18px;background:#f2f6f2;border:1px solid #dce7df;border-radius:10px}.standard-spark{font-size:27px;color:#517963}.design-standard strong{font-size:15px}.design-standard p{font-size:13px;color:#607568;margin:3px 0 0}.arrangement-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 7px}.arrangement-heading h3{font-size:16px;margin:0}.optional-label{font-size:12px;color:#6a7c70;white-space:nowrap}.arrangement-intro{margin:0 0 15px}.arrangement-modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.glass-mint{--glass:109,170,142;--glass-ink:#315c4b}.glass-sky{--glass:103,161,193;--glass-ink:#345b72}.glass-lilac{--glass:155,131,187;--glass-ink:#5b4872}.glass-amber{--glass:195,159,92;--glass-ink:#6d552c}.mode-button{width:100%;min-height:84px;display:flex;align-items:center;gap:13px;text-align:left;position:relative;padding:15px 17px;border-radius:5px;border:1px solid rgba(var(--glass),.44);color:var(--glass-ink);background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(255,255,255,.12)),rgba(var(--glass),.14);box-shadow:inset 3px 3px 0 rgba(255,255,255,.65),inset -3px -3px 0 rgba(var(--glass),.1),0 2px 0 rgba(var(--glass),.1);transition:background-color .14s,border-color .14s,box-shadow .14s}.mode-button strong{display:block;font-size:15px;line-height:1.5}.mode-button small{display:block;font-size:12px;line-height:1.6;font-weight:normal;margin-top:3px}.mode-check{width:21px;height:21px;flex:0 0 21px;border:1px solid rgba(var(--glass),.55);background:rgba(255,255,255,.5);display:grid;place-items:center;font:18px/1 Arial,sans-serif}.mode-check:before{content:'+'}.mode-button:hover{background-color:rgba(var(--glass),.24);border-color:rgba(var(--glass),.7)}.mode-button[aria-pressed="true"]{background-color:rgba(var(--glass),.4);border-color:rgba(var(--glass),.9);box-shadow:inset 3px 3px 0 rgba(255,255,255,.62),inset -3px -3px 0 rgba(var(--glass),.2),0 2px 0 rgba(var(--glass),.23)}.mode-button[aria-pressed="true"] .mode-check{background:var(--glass-ink);border-color:var(--glass-ink);color:#fff}.mode-button[aria-pressed="true"] .mode-check:before{content:'✓';font-size:15px}.mode-button:focus-visible{outline:3px solid #276d63;outline-offset:4px}.mode-summary{min-height:23px;margin:11px 0 22px;color:#50695a}#restylePanel{border-top:1px solid #dce4dd;margin-top:22px;padding-top:16px}#prompt{min-height:105px}textarea::placeholder{color:#7a8880;opacity:1}@media(max-width:650px){.arrangement-heading{align-items:flex-start}.arrangement-modes{gap:10px}.mode-button{padding:12px;min-height:92px;gap:9px}.mode-button small{font-size:11px}.design-standard{padding:14px}}@media(max-width:390px){.arrangement-modes{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){.mode-button{transition:none}}
+
+
+
+
+
+/* PIXEL WORLD THEME START */
+/* PIXEL WORLD: original CSS scenery, no external fonts or image requests. */
+:root{--px-ink:#253024;--px-stone:#e4e4d6;--px-grass:#78a747;--px-earth:#74543b;--px-edge:#243125}.pixel-hero h1 span{display:block}html[lang="en"] .pixel-hero h1{font-size:36px;line-height:1.4}.language-tools label{color:#e3edcd}
+html{scroll-behavior:smooth;scroll-padding-top:20px}body{color:var(--px-ink);background-color:#293b2c;background-image:repeating-conic-gradient(#293b2c 0% 25%,#2e402d 0% 50%);background-size:32px 32px;font-size:15px;line-height:1.8}main{max-width:1000px;padding:0 26px;margin:28px auto 50px;display:flex;flex-direction:column;min-width:0}main>*{min-width:0}.language-tools{order:-3;margin-bottom:18px!important;color:#ecf2d6;gap:12px!important}.language-tools label{font:12px/1.6 Consolas,"Yu Gothic",monospace}.language-tools select{font-size:13px;padding:7px 11px;background:#d6ddc9;border:2px solid #172c1c;box-shadow:inset 2px 2px #f6f9e9,inset -2px -2px #8c9b7f;border-radius:0}
+.pixel-hero{order:-2;position:relative;isolation:isolate;overflow:hidden;background:#244b33;border:4px solid #182e21;border-radius:0;box-shadow:inset 3px 3px #5d7a48,inset -3px -3px #142b1d,7px 7px 0 #17291da6;margin:0 0 25px;padding:31px 30px 0;min-height:315px}.pixel-hero .label{position:relative;z-index:2;color:#c9df9b;font:bold 11px/1.5 Consolas,monospace;letter-spacing:.13em}.pixel-hero h1{position:relative;z-index:2;max-width:66%;font-family:"Arial Black","Yu Gothic",Meiryo,sans-serif;font-weight:900;font-size:43px;line-height:1.42;letter-spacing:.035em;color:#f0f0dc;text-shadow:2px 2px 0 #73876a,4px 4px 0 #102a1b;margin:15px 0 14px}.pixel-hero>p{position:relative;z-index:2;color:#e3edd3;max-width:66%;font-size:14px;line-height:1.9;margin:0 0 23px}.hero-caption{position:absolute;right:18px;bottom:77px;z-index:2;font:bold 9px/1.3 Consolas,monospace;letter-spacing:.13em;color:#244735;background:#e7f3cf;padding:5px 8px;box-shadow:3px 3px #27412c}
+.craft-nav{position:relative;z-index:3;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:10px;margin:0 -30px;background:#183123;border-top:4px solid #0e2117}.craft-nav a{display:flex;gap:9px;align-items:center;justify-content:center;color:#ecedda;text-decoration:none;background:#4b5d43;border:2px solid #101f16;box-shadow:inset 2px 2px #7b8c67,inset -2px -2px #2c3a2a;font-size:12px;padding:6px 7px}.craft-nav b{font:bold 16px/1 Consolas,monospace;color:#d4e99e}.craft-nav a:hover{background:#61724d}.craft-nav a:focus-visible{outline:3px solid #e5ce72;outline-offset:2px}
+.panel{position:relative;background-color:var(--px-stone);background-image:linear-gradient(90deg,#ffffff0b 50%,transparent 50%),linear-gradient(#ffffff0c 50%,transparent 50%);background-size:28px 28px;border:3px solid var(--px-edge);border-radius:0;padding:27px 29px;margin-bottom:26px;box-shadow:inset 3px 3px #ffffec,inset -4px -4px #a7ad98,6px 6px 0 #17281dab}.panel:before{content:'';position:absolute;left:-3px;right:-3px;top:-3px;height:7px;background:repeating-linear-gradient(90deg,#7da54c 0 24px,#93b963 24px 40px,#658d3f 40px 56px);border-bottom:2px solid #476831}.panel>h2{font-size:21px;color:#2d402a;padding:0 0 12px;border-bottom:3px solid #a4ad94;box-shadow:0 2px 0 #ffffe4;margin-bottom:18px;letter-spacing:.025em}.panel>h2:before{content:'';display:inline-block;width:12px;height:12px;background:#6f923e;border:2px solid #3a572f;box-shadow:2px 2px #a9bd7b;margin-right:11px}
+main>div.panel:first-child{order:-1;background-color:#73583e;background-image:repeating-linear-gradient(0deg,transparent 0 27px,#3b302642 27px 30px);color:#f8f1d7;border-color:#302b22;box-shadow:inset 3px 3px #a78c60,inset -4px -4px #4b3c2b,6px 6px #15261b99;padding:20px 25px}main>div.panel:first-child:before{background:#d7b97a;border-color:#8b6c43}main>div.panel:first-child>b{font-size:15px;letter-spacing:.08em;color:#fff3c7}main>div.panel:first-child p{font-size:12px;line-height:1.85;margin:7px 0 0;color:#f4ebcf}
+label{font-size:14px;color:#33472f;margin-top:17px}input,textarea,select{background:#faf9e9;border:2px solid #46513e;border-radius:0;color:#243522;box-shadow:inset 3px 3px #c8cdb5,inset -2px -2px #fff;font-size:14px;padding:12px 13px;line-height:1.7}input:focus,textarea:focus,select:focus{outline:3px solid #9bb660;outline-offset:2px;border-color:#304c29}textarea::placeholder,input::placeholder{color:#68745e}input[type=checkbox]{accent-color:#507d36;box-shadow:none;width:17px;height:17px;vertical-align:middle}input[type=file]{padding:21px;background:#ced8b8;border:3px dashed #71825a;box-shadow:inset 3px 3px #b3bf99,inset -3px -3px #e6ecd6}input[type=file]::file-selector-button{background:#657b4e;border:2px solid #354729;color:#fff6de;padding:9px 13px;box-shadow:inset 2px 2px #9bad7c,inset -2px -2px #3d5230;margin-right:14px;font:inherit;cursor:pointer}.small{color:#536349;line-height:1.85}.row{gap:20px}.row>*{min-width:0}
+button,.download{border:3px solid #263e23;border-radius:0;background:#7da54a;color:#132711;text-shadow:0 1px #c9e58b;box-shadow:inset 3px 3px #b4ce78,inset -4px -4px #4e7431,4px 4px #31492a;font-weight:800;padding:13px 22px;transition:background-color .1s,transform .1s}button:hover,.download:hover{background:#91b75b}button:active,.download:active{transform:translate(2px,2px);box-shadow:inset 2px 2px #527938,inset -2px -2px #b6cd84,2px 2px #31492a}button:focus-visible,.download:focus-visible{outline:3px solid #bd8a28;outline-offset:4px}button:disabled{opacity:.55;filter:saturate(.45)}button.secondary,.download.outline{background:#c0c5ad;color:#293a25;text-shadow:0 1px #f2f2dc;border-color:#414d36;box-shadow:inset 3px 3px #eef0d7,inset -3px -3px #8b9775,3px 3px #31402a}button.secondary:hover{background:#d3d7bd}#generate{width:100%;font-size:18px;letter-spacing:.08em;min-height:62px}summary{color:#3f5b32;font-weight:bold;padding:6px 0}details{padding:10px 0;border-top:2px solid #b3bea2}.pill{border:2px solid #526745;border-radius:0;background:#c6d7a3;color:#344d2b;box-shadow:inset 2px 2px #e6edc4;font-weight:bold;margin-top:15px}
+.design-standard{border:2px solid #5a7441;border-radius:0;background:#c4d6a5;box-shadow:inset 3px 3px #e1eac5,inset -3px -3px #91aa6e;margin:25px 0}.standard-spark{color:#4a7238;text-shadow:2px 2px #e1e9be}.design-standard strong{color:#304d27}.design-standard p{color:#4e6243}.arrangement-heading h3{font-size:16px;color:#354b2c}.optional-label{font-size:11px;font-weight:bold;background:#c5cbb4;border:1px solid #9ca88a;color:#4e6040;padding:2px 6px}.arrangement-intro{color:#536349}.arrangement-modes{gap:13px}.mode-button{border:2px solid #52614c;border-radius:0;padding:15px;min-height:91px;text-shadow:none;background:linear-gradient(135deg,#ffffff70 0 13%,transparent 13% 18%,#ffffff30 18% 24%,transparent 24%),rgba(var(--glass),.18);box-shadow:inset 3px 3px #ffffffe0,inset -4px -4px rgba(var(--glass),.3),3px 3px #73806870;color:var(--glass-ink)}.mode-button:hover{background-color:rgba(var(--glass),.32);border-color:#3e5940}.mode-button[aria-pressed="true"]{background-color:rgba(var(--glass),.5);border-color:#2d4a33;box-shadow:inset 3px 3px #ffffffe0,inset -4px -4px rgba(var(--glass),.46),3px 3px #4d654b}.mode-button strong{font-size:15px}.mode-button small{font-size:12px;line-height:1.65}.mode-check{border:2px solid rgba(var(--glass),.9);width:22px;height:22px;flex-basis:22px;box-shadow:inset 2px 2px #ffffffb3}.mode-button[aria-pressed="true"] .mode-check{box-shadow:inset 1px 1px #ffffff40}.mode-summary{background:#d2dbc1;border-left:4px solid #809854;color:#3c5731;padding:6px 10px;font-size:12px}
+.progress{height:13px;border:2px solid #33472c;border-radius:0;background:#b0bda0;box-shadow:inset 2px 2px #7d8d6c}.progress.busy:after{background:repeating-linear-gradient(90deg,#9bc451 0 15px,#bad86e 15px 19px);animation-timing-function:steps(12)}.stage{border:2px solid #6c7d5f;border-top:5px solid #7e8c68;border-radius:0;background:#c8ceba;box-shadow:inset 2px 2px #eef0d8}.stage span{color:#4d6042}.stage.complete{background:#c3d9a3;border-color:#618044}.stage.running{background:#b8d5d4;border-color:#537e82}.stage.waiting,.stage.stopped{background:#e2d4a6;border-color:#a28a4e}.stop-notice{border:2px solid #a48c51;border-radius:0;background:#eee0b1;box-shadow:inset 2px 2px #fff0c1}.error{color:#982e24}.review-warning{border-radius:0;border:2px solid #b3904c;background:#ead59b}.reference-card{border-top:3px solid #afbb9e}.reference-images img{border:3px solid #5c6b4d;border-radius:0;box-shadow:2px 2px #b7c1a5}.reference-images figcaption{color:#536349}.source-link,.pdf-page-link{color:#32582b}#restylePanel{border-top:3px solid #adb89a}footer{color:#d6e3bf;background:#1d3023;border:2px solid #536647;padding:13px 17px;margin-top:6px;box-shadow:inset 2px 2px #304c33;font-size:12px}
+@media(min-width:1100px){.pixel-hero h1{font-size:47px}.pixel-scene{width:34%}.pixel-hero{padding-top:37px}}@media(max-width:700px){main{padding:0 17px;margin-top:17px}.panel{padding:24px 23px}.pixel-hero{padding:25px 23px 0;min-height:294px}.pixel-hero h1{font-size:32px;max-width:66%;line-height:1.5}.pixel-hero>p{font-size:12px;max-width:65%}.pixel-hero .label{font-size:9px;letter-spacing:.04em}.craft-nav{margin:0 -23px}.craft-nav a{font-size:11px;gap:6px}.pixel-tree{right:25px}.hero-caption{right:9px;font-size:8px}.mode-button{padding:13px 11px;gap:9px}.mode-button small{font-size:11px}}@media(max-width:470px){.pixel-hero{padding:22px 17px 0}.pixel-hero h1{font-size:27px;max-width:76%}.pixel-hero>p{max-width:76%;font-size:12px}.pixel-scene{width:23%;opacity:.65}.hero-caption{display:none}.craft-nav{margin:0 -17px;gap:5px;padding:8px 6px}.craft-nav a{font-size:10px;padding:7px 2px}.craft-nav b{font-size:13px}.panel{padding:23px 18px}.panel>h2{font-size:18px}.arrangement-heading{flex-wrap:wrap;gap:5px}.mode-button strong{font-size:14px}.mode-button small{font-size:11px}.pixel-sun{right:12px;width:24px;height:24px}.row{display:block}#generate{font-size:16px}main>div.panel:first-child{padding:18px}.language-tools select{max-width:140px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}button,.download{transition:none}.progress.busy:after{animation:none}}
+
+/* MOTION / PAPER: a projection room meets a print workshop. */
+.pixel-hero{padding-bottom:93px;min-height:312px;display:flex;flex-direction:column;justify-content:center}.pixel-hero .craft-nav{position:absolute;bottom:0;left:0;right:0;margin:0}.pixel-hero>p{margin-bottom:0}
+:root{--px-ink:#2e3440;--px-stone:#f2eee3;--px-edge:#343944;--px-grass:#d99a58;--px-earth:#6c5861}
+body{color:#303641;background-color:#29333f;background-image:linear-gradient(#ffffff05 1px,transparent 1px),linear-gradient(90deg,#ffffff05 1px,transparent 1px);background-size:24px 24px}
+.language-tools{color:#ede6d8}.language-tools label{color:#ede6d8}.language-tools select{background:#eee8dc;border-color:#111e2a;box-shadow:inset 2px 2px #fffaf0,inset -2px -2px #b5afa4;color:#343c48}
+.pixel-hero{background:#34323d;border-color:#161f2b;box-shadow:inset 3px 3px #736371,inset -3px -3px #202331,7px 7px #111e2b99;padding-top:35px;min-height:332px}.pixel-hero .label{color:#efbd8c;letter-spacing:.1em}.pixel-hero h1{color:#fff5e4;text-shadow:2px 2px #a48b77,4px 4px #171d2b;font-size:43px;line-height:1.4;max-width:64%}.pixel-hero>p{color:#e4ded8;max-width:63%;font-size:13px}.pixel-hero:before{content:'';position:absolute;left:0;right:0;top:0;height:10px;background:repeating-linear-gradient(90deg,#dbad76 0 7px,#34323d 7px 22px);border-bottom:3px solid #1d2430}.studio-scene{position:absolute;top:12px;right:0;bottom:60px;width:34%;border-left:3px solid #1b2430;background:#d4c9bb;overflow:hidden}.studio-scene svg{display:block;width:100%;height:100%;image-rendering:pixelated}.craft-nav{background:#1f2632;border-color:#101925;gap:10px;padding:12px 10px}.craft-nav a{color:#f1e6d2;background:#4d4c56;border-color:#111e2b;box-shadow:inset 2px 2px #85808a,inset -2px -2px #303441;letter-spacing:.04em}.craft-nav b{color:#efbd84}.craft-nav a:hover{background:#65616a}.craft-nav a:focus-visible{outline-color:#f2bd72}
+.panel{background-color:#f1ede2;background-image:linear-gradient(90deg,#ffffff1a 50%,transparent 50%),linear-gradient(#ffffff17 50%,transparent 50%);background-size:32px 32px;border-color:#303b46;box-shadow:inset 3px 3px #fffdf3,inset -4px -4px #b9b5aa,6px 6px #15202d99;padding-top:31px}.panel:before{top:-3px;height:12px;border-bottom:3px solid #41434a;background-color:#41434a;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#dfd9cc 13px 20px,transparent 20px 30px)}.panel:after{content:'';position:absolute;bottom:7px;right:7px;width:10px;height:10px;border-right:2px solid #c39f73;border-bottom:2px solid #c39f73;pointer-events:none}.panel>h2{color:#343c48;border-bottom:2px dashed #b6aa98;box-shadow:none;letter-spacing:.02em}.panel>h2:before{background:#d79758;border-color:#8c623f;box-shadow:2px 2px #f4c992}
+main>div.panel:first-child{background:#5d4b53;background-image:linear-gradient(90deg,#ffffff04 50%,transparent 50%);background-size:22px 22px;border-color:#242936;color:#f3e8da;box-shadow:inset 3px 3px #95818a,inset -3px -3px #3d3443,6px 6px #15202d88;padding:20px 25px}main>div.panel:first-child:before{background-color:#2a2d39;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#b6a08e 13px 20px,transparent 20px 30px);border-color:#262b37}main>div.panel:first-child:after{border-color:#c5a988}main>div.panel:first-child>b{color:#f2c593}main>div.panel:first-child p{color:#f0e5dc}
+label{color:#3e4651}input,textarea,select{background:#fffaf0;border-color:#606773;color:#303b47;box-shadow:inset 3px 3px #d1ccbf,inset -2px -2px #fffdf8}input:focus,textarea:focus,select:focus{outline-color:#d8a368;border-color:#77614b}input::placeholder,textarea::placeholder{color:#77776f}input[type=checkbox]{accent-color:#b77541}input[type=file]{background:#e2ddd1;border:3px dashed #969087;box-shadow:inset 3px 3px #c7c1b7,inset -3px -3px #faf5e9}input[type=file]::file-selector-button{background:#666978;border-color:#303b4b;color:#faf1e4;box-shadow:inset 2px 2px #9595a1,inset -2px -2px #414857}.small{color:#686b6e}summary{color:#5c5864}details{border-color:#c5bdb1}.pill{color:#5d5146;background:#e8d3b3;border-color:#a68d6f;box-shadow:inset 2px 2px #fff2d9}
+button,.download{background:#e5a665;border-color:#3b3d48;color:#3b2f28;text-shadow:0 1px #fce0b5;box-shadow:inset 3px 3px #ffd49a,inset -4px -4px #b57b48,4px 4px #202b39}button:hover,.download:hover{background:#eeb97e}button:active,.download:active{box-shadow:inset 2px 2px #b67c4b,inset -2px -2px #ffd59b,2px 2px #202b39}button:focus-visible,.download:focus-visible{outline-color:#a07850}button.secondary,.download.outline{background:#c9c7ca;color:#363d49;text-shadow:0 1px #f7f1e7;border-color:#454954;box-shadow:inset 3px 3px #efe9e6,inset -3px -3px #95939e,3px 3px #29333f}button.secondary:hover{background:#dfd9d7}#generate{background:#e0a263;letter-spacing:.05em;position:relative;border-width:3px 3px 7px}#generate:hover{background:#edb578}
+.design-standard{background:#e9dcc8;border-color:#b59a78;box-shadow:inset 3px 3px #fff0d7,inset -3px -3px #c6ae90}.standard-spark{color:#9b6e43;text-shadow:2px 2px #f8e9d3}.design-standard strong{color:#5b4c3d}.design-standard p{color:#766756}.arrangement-heading h3{color:#414652}.optional-label{background:#ded7ce;border-color:#bdb1a1;color:#736556}.arrangement-intro{color:#6b6b6c}.glass-mint{--glass:126,159,167;--glass-ink:#3f5c65}.glass-sky{--glass:111,149,193;--glass-ink:#3b597b}.glass-lilac{--glass:167,137,180;--glass-ink:#685079}.glass-amber{--glass:211,159,97;--glass-ink:#795734}.mode-button{border-color:#81828a;box-shadow:inset 3px 3px #ffffffd9,inset -4px -4px rgba(var(--glass),.3),3px 3px #6b6d7b55}.mode-button:hover{border-color:#5d626e}.mode-button[aria-pressed="true"]{border-color:#454d5c;box-shadow:inset 3px 3px #ffffffe0,inset -4px -4px rgba(var(--glass),.46),3px 3px #4f5763}.mode-button:focus-visible{outline-color:#a06d43}.mode-summary{background:#e3dccf;border-left-color:#bb9265;color:#6b5d4c}
+.progress{background:#bdb8b1;border-color:#535a65;box-shadow:inset 2px 2px #92949b;height:13px}.progress.busy:after{background:repeating-linear-gradient(90deg,#daa366 0 15px,#edc491 15px 19px)}.stage{background:#e0dad0;border-color:#8b8990;box-shadow:inset 2px 2px #fff5e7}.stage strong{color:#424957}.stage span{color:#6f6c72}.stage.complete{background:#d0dbdd;border-color:#75909a}.stage.running{background:#dae0e9;border-color:#788ba9}.stage.waiting,.stage.stopped{background:#ead5b7;border-color:#b18f64}.stop-notice{background:#f2dfc0;border-color:#b98f59;box-shadow:inset 2px 2px #fff1d5;color:#775434}.reference-card{border-color:#bbb5ad}.reference-images img{border-color:#626b79;box-shadow:2px 2px #c7b9a7}.reference-images figcaption{color:#686b70}.source-link,.pdf-page-link{color:#555d85}#restylePanel{border-color:#bbb2a4}#statusPanel{background-color:#d9d9d6;border-bottom:10px solid #424956}#statusPanel #message{background:#f7f2e6;border-left:4px solid #c8945d;padding:11px 14px}#results a.download{border-radius:0}.review-warning{background:#eddbb9;border-color:#b69565}footer{background:#242c38;border-color:#707080;color:#ddd2c3;box-shadow:inset 2px 2px #424351}
+section.panel:has(#executionMode){background-color:#dcdad6;box-shadow:inset 3px 3px #f9f6ee,inset -4px -4px #adaab0,6px 6px #15202d99}#documentPanel{background-color:#fcf8ef;background-image:linear-gradient(#a89d8c09 1px,transparent 1px);background-size:100% 28px;box-shadow:inset 3px 3px #fffdf8,inset -3px -3px #d0c8bb,6px 6px #b1a99b,10px 10px #15202d77}#documentPanel:before{height:10px;background:#ece3d3;background-image:repeating-linear-gradient(90deg,transparent 0 27px,#bb9063 27px 30px,transparent 30px 55px);border-color:#cdbda5}#documentPanel:after{width:19px;height:19px;bottom:5px;right:5px;border:0;background:linear-gradient(135deg,transparent 0 48%,#d9cfbf 49% 53%,#eee5d6 54% 100%)}#statusPanel:before{left:21px;right:21px;top:-8px;height:13px;background:#293340;border:3px solid #737b86;box-shadow:inset 2px 2px #171f2a}
+@media(min-width:1100px){.pixel-hero h1{font-size:47px}}@media(max-width:700px){.pixel-hero h1{font-size:32px;max-width:64%}.pixel-hero>p{font-size:12px}.studio-scene{width:34%}.pixel-hero{padding-top:29px}.panel{padding-top:29px}}@media(max-width:470px){.pixel-hero h1{font-size:27px;max-width:76%}.pixel-hero>p{max-width:76%}.studio-scene{width:23%;opacity:.7}.panel{padding-top:27px}html[lang="en"] .pixel-hero h1{font-size:26px}}
+
+/* Clean title typography; retain the workshop styling around it. */
+.pixel-hero h1{font-family:"Yu Gothic UI","Yu Gothic","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-weight:700;font-size:clamp(27px,4.8vw,40px);line-height:1.5;letter-spacing:.02em;text-shadow:none;color:#faf4e9;margin:12px 0 15px}
+
+/* Neutral game-menu palette: charcoal surfaces, silver controls, purple action. */
+:root{color-scheme:dark;--px-ink:#ededed;--px-stone:#505b70;--px-edge:#141414;--px-grass:#7544de;--px-earth:#6d7890}
+body{color:#ededed;background-color:#38445b;background-image:linear-gradient(#ffffff03 1px,transparent 1px),linear-gradient(90deg,#ffffff03 1px,transparent 1px)}
+.language-tools,.language-tools label{color:#d3d3d3}.language-tools select{background:#c8ccd7;border-color:#121212;box-shadow:inset 2px 2px #ececec,inset -2px -2px #777;color:#292929}
+.pixel-hero{background:#4b536a;border-color:#111;box-shadow:inset 3px 3px #777,inset -3px -3px #333b50,7px 7px #20273b99}.pixel-hero .label{color:#c8b8ec}.pixel-hero h1{color:#f5f5f5}.pixel-hero>p{color:#ddd}.pixel-hero:before{background:repeating-linear-gradient(90deg,#c4c7d3 0 7px,#414b63 7px 22px);border-color:#181818}.studio-scene{background:#8994ac;border-color:#161616}
+.craft-nav{background:#333b50;border-color:#111}.craft-nav a{background:#6d7890;color:#f3f3f3;border-color:#30364b;box-shadow:inset 2px 2px #999,inset -2px -2px #383838}.craft-nav b{color:#d8c6ff}.craft-nav a:hover{background:#8994ac}.craft-nav a:focus-visible{outline-color:#bb99ff}
+.panel,section.panel:has(#executionMode),#documentPanel,#statusPanel{background-color:#505b70;background-image:none;border-color:#293044;box-shadow:inset 3px 3px #777,inset -4px -4px #394157,6px 6px #20273b99}
+.panel:before,#documentPanel:before{background-color:#38445b;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#aaa 13px 20px,transparent 20px 30px);border-color:#30364b;height:12px}.panel:after{border-color:#909090}#documentPanel:after{background:linear-gradient(135deg,transparent 0 48%,#777 49% 53%,#525252 54% 100%)}
+.panel>h2{color:#f1f1f1;border-bottom-color:#777}.panel>h2:before{background:#aaa;border-color:#5c5c5c;box-shadow:2px 2px #ddd}
+main>div.panel:first-child{background:#63596e;background-image:none;border-color:#30364b;color:#eee;box-shadow:inset 3px 3px #818181,inset -3px -3px #2c2c2c,6px 6px #20273b88}main>div.panel:first-child:before{background-color:#292929;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#aaa 13px 20px,transparent 20px 30px);border-color:#30364b}main>div.panel:first-child:after{border-color:#999}main>div.panel:first-child>b{color:#e1d4ff}main>div.panel:first-child p{color:#e3e3e3}
+label{color:#ededed}input,textarea,select{color-scheme:light;background:#c8ccd7;color:#222;border-color:#30364b;box-shadow:inset 3px 3px #898989,inset -2px -2px #e5e5e5}input::placeholder,textarea::placeholder{color:#515151}input:focus,textarea:focus,select:focus{outline-color:#b899f3;border-color:#352258}input[type=checkbox]{accent-color:#8751e8;color-scheme:dark}input[type=file]{background:#596b7c;color:#eee;border-color:#8c8c8c;box-shadow:inset 3px 3px #414b63,inset -3px -3px #676767}input[type=file]::file-selector-button{background:#c4c7d3;color:#38445b;border-color:#30364b;box-shadow:inset 2px 2px #eee,inset -2px -2px #777}.small{color:#ccc}summary{color:#e0e0e0}details{border-color:#8994ac}.pill{background:#63758b;color:#f0f0f0;border-color:#222;box-shadow:inset 2px 2px #888}
+button,.download,#generate{background:#7541df;color:#fff;text-shadow:none;border-color:#1d122d;box-shadow:inset 3px 3px #ac83f4,inset -4px -4px #4a2597,4px 4px #293044}button:hover,.download:hover,#generate:hover{background:#8654e8}button:active,.download:active{box-shadow:inset 2px 2px #4b2990,inset -2px -2px #b18bf3,2px 2px #293044}button:focus-visible,.download:focus-visible{outline-color:#c1a2ff}button.secondary,.download.outline{background:#c4c7d3;color:#333b50;text-shadow:none;border-color:#30364b;box-shadow:inset 3px 3px #eee,inset -3px -3px #747474,3px 3px #30364b}button.secondary:hover{background:#cecece}
+.design-standard{background:#646580;border-color:#222;box-shadow:inset 3px 3px #828282,inset -3px -3px #343434}.standard-spark{color:#d5bfff;text-shadow:none}.design-standard strong{color:#f4f4f4}.design-standard p{color:#ddd}.arrangement-heading h3{color:#eee}.optional-label{background:#74738d;color:#eee;border-color:#888}.arrangement-intro{color:#ccc}
+.glass-mint{--glass:126,199,174;--glass-ink:#d7f4e6}.glass-sky{--glass:127,177,234;--glass-ink:#deecff}.glass-lilac{--glass:186,146,226;--glass-ink:#f0e1ff}.glass-amber{--glass:221,181,110;--glass-ink:#fff0d2}
+.mode-button{color:var(--glass-ink);border-color:#777;box-shadow:inset 2px 2px #ffffff75,inset -3px -3px rgba(var(--glass),.2),3px 3px #293044;background:linear-gradient(135deg,#ffffff1f 0 13%,transparent 13% 18%,#ffffff0c 18% 24%,transparent 24%),rgba(var(--glass),.13)}.mode-button:hover{border-color:#bbb;background-color:rgba(var(--glass),.24)}.mode-button[aria-pressed="true"]{background-color:rgba(var(--glass),.38);border-color:rgb(var(--glass));box-shadow:inset 3px 3px #ffffff75,inset -3px -3px rgba(var(--glass),.4),3px 3px #293044}.mode-button:focus-visible{outline-color:#d0b4ff}.mode-button[aria-pressed="true"] .mode-check{background:rgb(var(--glass));color:#202020}.mode-summary{background:#646580;color:#e5e5e5;border-left-color:#ad8bdc}
+.progress{background:#38445b;border-color:#777;box-shadow:inset 2px 2px #111}.progress.busy:after{background:repeating-linear-gradient(90deg,#8e5de3 0 15px,#b18be9 15px 19px)}.stage{background:#646580;border-color:#777;box-shadow:inset 2px 2px #888}.stage strong{color:#f3f3f3}.stage span{color:#ddd}.stage.complete{background:#3d5549;border-color:#85ae96}.stage.running{background:#514266;border-color:#b592e6}.stage.waiting,.stage.stopped{background:#5b503d;border-color:#c3a879}.stop-notice,.review-warning{background:#564934;color:#f8e1b9;border-color:#b7a079;box-shadow:inset 2px 2px #877253}.error{color:#ffb6b0}
+.reference-card,#restylePanel{border-color:#888}.reference-images img{border-color:#888;box-shadow:2px 2px #222}.reference-images figcaption{color:#ccc}.source-link,.pdf-page-link{color:#d1b6ff}#statusPanel{border-bottom-color:#38445b}#statusPanel:before{background:#1b1b1b;border-color:#777;box-shadow:inset 2px 2px #090909}#statusPanel #message{background:#596b7c;border-left-color:#b095d7;color:#eee}footer{background:#414b63;color:#ccc;border-color:#777;box-shadow:inset 2px 2px #555}
+
+/* Muted color across the workshop, without a near-black canvas. */
+body{background-image:linear-gradient(#ffffff05 1px,transparent 1px),linear-gradient(90deg,#ffffff05 1px,transparent 1px)}
+.pixel-hero{box-shadow:inset 3px 3px #8c90a7,inset -3px -3px #373f56,7px 7px #26304799}.pixel-hero .label{color:#ddd0fa}.pixel-hero:before{background:repeating-linear-gradient(90deg,#bba9d4 0 7px,#41465f 7px 22px)}
+.craft-nav{background:#3b4359}.craft-nav a:nth-child(1){background:#536f81;box-shadow:inset 2px 2px #91b1bd,inset -2px -2px #3c5268}.craft-nav a:nth-child(2){background:#75648a;box-shadow:inset 2px 2px #ac98be,inset -2px -2px #544660}.craft-nav a:nth-child(3){background:#587b78;box-shadow:inset 2px 2px #92b5a9,inset -2px -2px #3f5958}.craft-nav a:hover{filter:brightness(1.12)}.craft-nav b{color:#f0e4ff}
+.panel,section.panel:has(#executionMode),#documentPanel,#statusPanel{box-shadow:inset 3px 3px #9c9eae,inset -4px -4px #394355,6px 6px #26304799}
+#videoPanel{background-color:#4b6374}#documentPanel{background-color:#5c5c76}#statusPanel{background-color:#4d686c}
+.panel:before,#documentPanel:before{background-color:#384156;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#b7bccc 13px 20px,transparent 20px 30px)}.panel>h2{border-bottom-color:#9aa4b4}.panel>h2:before{background:#bfafd8;border-color:#79668e;box-shadow:2px 2px #ded2ec}#videoPanel>h2:before{background:#a3c5d0;border-color:#637f91}#statusPanel>h2:before{background:#a5cebd;border-color:#627d78}
+main>div.panel:first-child{box-shadow:inset 3px 3px #a29aad,inset -3px -3px #494154,6px 6px #26304788}main>div.panel:first-child:before{background-color:#494156}
+input,textarea,select{box-shadow:inset 3px 3px #929aaa,inset -2px -2px #e1e5ed}.language-tools select{background:#c8ccd7}.small,.arrangement-intro{color:#d9dfe9}details{border-color:#909bad}
+.design-standard{background:#726885;border-color:#434053;box-shadow:inset 3px 3px #a89ab8,inset -3px -3px #51495f}.design-standard p{color:#eee8f4}.standard-spark{color:#e4ceff}.optional-label{background:#81758e;border-color:#aa9db9}
+.glass-mint{--glass:132,224,187;--glass-ink:#e0ffed}.glass-sky{--glass:137,200,255;--glass-ink:#eaf6ff}.glass-lilac{--glass:207,164,245;--glass-ink:#f7eaff}.glass-amber{--glass:244,203,135;--glass-ink:#fff5df}
+.mode-button{background-color:rgba(var(--glass),.2)}.mode-button:hover{background-color:rgba(var(--glass),.3)}.mode-button[aria-pressed="true"]{background-color:rgba(var(--glass),.46)}.mode-summary{background:#716a85;color:#f1edf6}
+#statusPanel #message{background:#607b80;border-left-color:#b9d8cb}footer{background:#434d65;color:#dde3ef;border-color:#8690a6;box-shadow:inset 2px 2px #68758d}
+
+/* Apricot details balance the cool slate and lavender surfaces. */
+.pixel-hero .label{color:#f1c6a3}
+.pixel-hero:before{background:repeating-linear-gradient(90deg,#bba9d4 0 7px,#41465f 7px 22px,#dfae84 22px 29px,#41465f 29px 44px)}
+.craft-nav a:nth-child(3){background:#92705d;box-shadow:inset 2px 2px #c7a18a,inset -2px -2px #654d43}.craft-nav a:nth-child(3) b{color:#ffe0be}
+.panel>h2:before,#documentPanel>h2:before{background:#dfad82;border-color:#a47657;box-shadow:2px 2px #f3cfaa}
+.design-standard{border-color:#b08b77}.standard-spark{color:#ffd1a5}
+.glass-amber{--glass:245,176,118;--glass-ink:#ffebd8}
+main>div.panel:first-child>b{color:#f5c9a6}
+#statusPanel #message{border-left-color:#e7b58c}
+
+/* A brighter daytime pixel world around the cinema and print workshop. */
+body{background-color:#7891b4;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='500' viewBox='0 0 420 500'%3E%3Cg fill='%23d9e6f6' opacity='.28'%3E%3Cpath d='M20 68h12v-8h28v8h16v12H20zM320 234h16v-10h24v10h20v12h-60z'/%3E%3Cpath d='M92 214h4v-5h4v5h4v4h-4v5h-4v-5h-4zM350 58h4v-5h4v5h4v4h-4v5h-4v-5h-4z'/%3E%3C/g%3E%3Cpath fill='%23677fa4' opacity='.3' d='M0 500v-38h26v-16h32v-18h30v-20h36v20h28v18h48v20h56v-18h32v-30h36v-16h32v18h36v26h28v54z'/%3E%3C/svg%3E"),linear-gradient(180deg,#809dc2 0,#7188ae 48%,#687da1 100%);background-size:420px 500px,100% 100%;background-attachment:fixed}
+.language-tools,.language-tools label{color:#f8f5ff}.language-tools select{background:#d6dce8;color:#303c57}
+.pixel-hero{background-color:#596b8e;box-shadow:inset 3px 3px #a8bad6,inset -3px -3px #425575,7px 7px #33476777;border-color:#354663}.pixel-hero .label{color:#ffe0bf}.pixel-hero>p{color:#f0f1f8}.pixel-hero:before{background:repeating-linear-gradient(90deg,#d5c2ec 0 7px,#4b5c7c 7px 22px,#f2bd8c 22px 29px,#4b5c7c 29px 44px)}.studio-scene{background:#9ebbd3;border-color:#3e5270}
+.craft-nav{background:#485b7c;border-color:#354663}.craft-nav a:nth-child(1){background:#648ca0;box-shadow:inset 2px 2px #aad1dd,inset -2px -2px #48677f}.craft-nav a:nth-child(2){background:#8a76a1;box-shadow:inset 2px 2px #c5b0da,inset -2px -2px #655477}.craft-nav a:nth-child(3){background:#a37b61;box-shadow:inset 2px 2px #e1b797,inset -2px -2px #755640}
+.panel,section.panel:has(#executionMode),#documentPanel,#statusPanel{background-color:#647696;border-color:#3d4e6c;box-shadow:inset 3px 3px #b1bfd7,inset -4px -4px #465a79,6px 6px #33476777}
+#videoPanel{background-color:#5b788b}#documentPanel{background-color:#6b6686}#statusPanel{background-color:#5c7c7b}
+.panel:before,#documentPanel:before{background-color:#4a5c7b;border-color:#3a4e6b;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#ccd7e9 13px 20px,transparent 20px 30px)}.panel>h2{color:#faf8ff;border-bottom-color:#b0bcd0}.panel:after{border-color:#d3b092}#documentPanel:after{background:linear-gradient(135deg,transparent 0 48%,#a89cbc 49% 53%,#8b80a3 54% 100%)}
+main>div.panel:first-child{background:#7b708b;border-color:#4e4667;box-shadow:inset 3px 3px #b8aac9,inset -3px -3px #594f6d,6px 6px #33476777}main>div.panel:first-child:before{background-color:#5e5473}main>div.panel:first-child p{color:#f5eef9}
+label,summary{color:#faf6ff}.small,.arrangement-intro{color:#f0edf7}input,textarea,select{background:#d7dce8;color:#283248;box-shadow:inset 3px 3px #a4aec3,inset -2px -2px #f0f3fa;border-color:#3e4c66}input::placeholder,textarea::placeholder{color:#546078}input[type=file]{background:#6b8a9b;color:#fff;border-color:#b8cad7;box-shadow:inset 3px 3px #4b6c80,inset -3px -3px #91b0c0}input[type=file]::file-selector-button{background:#cbd8e4;color:#2f425d;box-shadow:inset 2px 2px #edf6fc,inset -2px -2px #899fb6}
+.pill{background:#768ba6;border-color:#485e7c;box-shadow:inset 2px 2px #aabfd7}.design-standard{background:#837696;border-color:#d2ac8c;box-shadow:inset 3px 3px #bcaccc,inset -3px -3px #63576f}.design-standard p{color:#fff3fa}.optional-label{background:#9284a2;border-color:#c2b3d0}.mode-summary{background:#847995;color:#fff5fa}.mode-button{border-color:#aaa9bd;box-shadow:inset 2px 2px #ffffff85,inset -3px -3px rgba(var(--glass),.25),3px 3px #414661}.mode-button[aria-pressed="true"]{border-color:rgb(var(--glass));box-shadow:inset 3px 3px #ffffff90,inset -3px -3px rgba(var(--glass),.5),3px 3px #414661}
+.source-link,.pdf-page-link{color:#f3d8ff}.reference-images figcaption{color:#f1ecf8}#statusPanel #message{background:#6f9290;color:#fff;border-left-color:#f1c398}.progress{background:#435b6c;border-color:#9ab5c3;box-shadow:inset 2px 2px #354959}#statusPanel:before{background:#364d60;border-color:#9cb2c6;box-shadow:inset 2px 2px #293e53}
+footer{position:relative;background:#576f90;color:#f3f1fc;border-color:#b0c2d9;box-shadow:inset 2px 2px #8da7c5;padding-right:80px}
+footer:after{content:'';position:absolute;right:15px;bottom:9px;width:47px;height:32px;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 47 32' shape-rendering='crispEdges'%3E%3Cpath fill='%2391bc9d' d='M0 29h47v3H0zM9 29V18h3v11zm3-9v-4h6v4zM3 20v-4h6v4z'/%3E%3Cpath fill='%23efb18d' d='M29 13h12v3h4v8H25v-8h4z'/%3E%3Cpath fill='%23ffe8c7' d='M29 17h4v3h-4zm10 0h3v3h-3zm-7 7h6v5h-6z'/%3E%3Cpath fill='%23d8c5f3' d='M8 9V5h4v4h4v4h-4v4H8v-4H4V9z'/%3E%3Cpath fill='%23ffe2a6' d='M8 9h4v4H8z'/%3E%3C/svg%3E") center/contain no-repeat}
+
+/* Raised controls and a clearly latched state for optional arrangements. */
+button,.download,.craft-nav a,select,summary,input[type=file]::file-selector-button{cursor:pointer}
+button:disabled{cursor:not-allowed}
+.arrangement-modes{gap:18px 16px;padding-bottom:6px}
+.glass-mint{--button-face:#c4e9d6;--button-down:#94cdb2;--button-ink:#294d40;--button-edge:#527d6b;--button-shade:#689883}
+.glass-sky{--button-face:#c2def1;--button-down:#8dbde0;--button-ink:#29475f;--button-edge:#516f90;--button-shade:#678ba8}
+.glass-lilac{--button-face:#decbed;--button-down:#c19edc;--button-ink:#4b365f;--button-edge:#7e6098;--button-shade:#977aad}
+.glass-amber{--button-face:#f1d3b4;--button-down:#e6b183;--button-ink:#613f2a;--button-edge:#99704f;--button-shade:#b88b65}
+.mode-button{min-height:98px;padding:15px 17px;gap:14px;color:var(--button-ink);background:linear-gradient(135deg,#ffffff65 0 10%,transparent 10% 14%,#ffffff25 14% 19%,transparent 19%),var(--button-face);border:2px solid var(--button-edge);border-radius:3px;box-shadow:inset 3px 3px #ffffffc9,inset -3px -3px var(--button-shade),0 6px 0 var(--button-edge),0 8px 0 #37415c;transform:translateY(0);transition:transform .12s,box-shadow .12s,filter .12s}
+.mode-button strong{font-size:16px;font-weight:800}.mode-button small{color:var(--button-ink);opacity:.88;font-size:12px;font-weight:500}
+.mode-check{width:26px;height:26px;flex-basis:26px;border:2px solid var(--button-edge);background:#ffffff70;color:var(--button-ink);box-shadow:inset 2px 2px #fff9;font-weight:700}.mode-check:before{content:'+';font-size:22px}
+.mode-button[aria-pressed="true"]{color:var(--button-ink);background:var(--button-down);border:3px solid var(--button-edge);padding:14px 16px;transform:translateY(4px);box-shadow:inset 2px 2px #00000016,inset -2px -2px #ffffff60,0 2px 0 var(--button-edge),0 4px 0 #37415c}
+.mode-button[aria-pressed="true"] .mode-check{color:#fff;background:var(--button-ink);border-color:var(--button-ink);box-shadow:inset 1px 1px #ffffff35}.mode-button[aria-pressed="true"] .mode-check:before{content:'✓';font-size:19px;font-weight:800}
+.mode-button:active{transform:translateY(5px);box-shadow:inset 2px 2px #00000020,0 1px 0 var(--button-edge),0 3px 0 #37415c}
+.mode-button:focus-visible{outline:3px solid #fff0cc;outline-offset:5px}
+button:not(.mode-button),.download{box-shadow:inset 3px 3px #c6a2ff,inset -3px -3px #583299,0 5px 0 #372252,0 7px 0 #34415c;transition:transform .12s,box-shadow .12s,filter .12s}
+button.secondary,.download.outline{box-shadow:inset 3px 3px #eef3ff,inset -3px -3px #8997b4,0 4px 0 #4b5875,0 6px 0 #34415c}
+button:not(.mode-button):not(:disabled):active,.download:active{transform:translateY(4px);box-shadow:inset 2px 2px #0002,0 1px 0 #414967,0 3px 0 #34415c}
+.craft-nav{padding-bottom:16px}.craft-nav a:nth-child(n){border-color:#34455f;box-shadow:inset 2px 2px #ffffff65,inset -2px -2px #0002,0 4px 0 #34455f;transition:transform .12s,filter .12s}.craft-nav a:active{transform:translateY(3px);box-shadow:inset 2px 2px #0002,0 1px 0 #34455f}
+input[type=file]::file-selector-button{border-radius:2px;box-shadow:inset 2px 2px #edf6fc,inset -2px -2px #899fb6,0 3px 0 #3f5874;margin-bottom:3px}
+@media(hover:hover){.mode-button:hover{background-color:var(--button-face);border-color:var(--button-edge);filter:brightness(1.05);transform:translateY(-1px)}.mode-button[aria-pressed="true"]:hover{background-color:var(--button-down);transform:translateY(3px)}button:not(.mode-button):not(:disabled):hover,.download:hover{filter:brightness(1.08)}}
+@media(max-width:470px){.mode-button{padding:13px 11px;gap:9px;min-height:104px}.mode-button[aria-pressed="true"]{padding:12px 10px}.mode-button strong{font-size:14px}.mode-button small{font-size:11px}}
+@media(prefers-reduced-motion:reduce){.mode-button,button:not(.mode-button),.download,.craft-nav a{transition:none}}
+
+/* Clear arcade blues, warm action colors and daytime pixel-world greens. */
+body{background-color:#6099c5;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='500'%3E%3Cg fill='%23e3f4ff' opacity='.3'%3E%3Cpath d='M20 68h12v-8h28v8h16v12H20zM320 234h16v-10h24v10h20v12h-60zM92 214h4v-5h4v5h4v4h-4v5h-4v-5h-4z'/%3E%3C/g%3E%3Cpath fill='%23355f8f' opacity='.5' d='M0 500v-38h26v-16h32v-18h30v-20h36v20h28v18h48v20h56v-18h32v-30h36v-16h32v18h36v26h28v54z'/%3E%3C/svg%3E"),linear-gradient(180deg,#72afd6,#5a8fbd 60%,#4d7aa6);background-size:420px 500px,100% 100%}
+.pixel-hero{background:#365c96;border-color:#234571;box-shadow:inset 3px 3px #8db9e7,inset -3px -3px #274674,7px 7px #25436880}.pixel-hero .label{color:#ffda8e}.pixel-hero>p{color:#f1f4fc}.pixel-hero:before{background:repeating-linear-gradient(90deg,#ffd374 0 7px,#2d4d7b 7px 22px,#f39469 22px 29px,#2d4d7b 29px 44px)}.studio-scene{background:#86bfd3;border-color:#274674}
+.craft-nav{background:#294b79;border-color:#203c63}.craft-nav a:nth-child(1){background:#377d9e}.craft-nav a:nth-child(2){background:#b65c4a}.craft-nav a:nth-child(3){background:#b78030}.craft-nav b,.craft-nav a:nth-child(3) b{color:#ffe29b}
+.panel,section.panel:has(#executionMode),#documentPanel,#statusPanel{background-color:#3e5f8a;border-color:#284c75;box-shadow:inset 3px 3px #93b5da,inset -4px -4px #2d4f78,6px 6px #274c7180}#videoPanel{background-color:#34637a}#documentPanel{background-color:#485f91}#statusPanel{background-color:#346663}
+.panel:before,#documentPanel:before{background-color:#2d4b74;border-color:#244367;background-image:repeating-linear-gradient(90deg,transparent 0 13px,#c5dfee 13px 20px,transparent 20px 30px)}.panel>h2{border-bottom-color:#8cb2d1}.panel>h2:before,#documentPanel>h2:before{background:#ffcd69;border-color:#b27c36;box-shadow:2px 2px #ffe5a5}#videoPanel>h2:before{background:#9ed290;border-color:#577f58}#statusPanel>h2:before{background:#aad7ac;border-color:#56846a}
+main>div.panel:first-child{background:#535c86;border-color:#374d7a;box-shadow:inset 3px 3px #a4afd4,inset -3px -3px #414d75,6px 6px #274c7180}main>div.panel:first-child:before{background-color:#3f527e}main>div.panel:first-child>b{color:#ffdc93}
+input,textarea,select{background:#e1e8ed;color:#263e59;border-color:#2b4a70;box-shadow:inset 3px 3px #a8bacb,inset -2px -2px #f8fcff}.language-tools select{background:#e1e8ed}.pill{background:#476c8c;border-color:#294c70;box-shadow:inset 2px 2px #8eafcc}input[type=file]{background:#50889a;border-color:#a1c9d6;box-shadow:inset 3px 3px #356879,inset -3px -3px #82b2c1}input[type=checkbox]{accent-color:#edb048}
+.design-standard{background:#526f99;border-color:#d9a850;box-shadow:inset 3px 3px #8caad0,inset -3px -3px #374f77}.standard-spark{color:#ffdb86}.design-standard p{color:#f2f7ff}.optional-label{background:#5b79a1;border-color:#9bb7d5}.mode-summary{background:#566e9b;border-left-color:#efab62}
+.glass-mint{--button-face:#bfe3a5;--button-down:#9dce78;--button-ink:#2c4b2d;--button-edge:#537a43;--button-shade:#82ac65}
+.glass-sky{--button-face:#aadcf1;--button-down:#79bee2;--button-ink:#234a66;--button-edge:#3b7297;--button-shade:#629fc3}
+.glass-lilac{--button-face:#f1bca7;--button-down:#e89b7d;--button-ink:#613a2c;--button-edge:#a26149;--button-shade:#c7876a}
+.glass-amber{--button-face:#f5d88c;--button-down:#ecc064;--button-ink:#5b4320;--button-edge:#a57d35;--button-shade:#c7a151}
+button:not(.mode-button):not(.secondary),.download:not(.outline),#generate{background:#f0ac50;color:#30291e;border-color:#86582d;text-shadow:none;box-shadow:inset 3px 3px #ffe3a1,inset -3px -3px #c57d32,0 5px 0 #8c542c,0 7px 0 #294565}button:not(.mode-button):not(.secondary):hover,.download:not(.outline):hover,#generate:hover{background:#f7bc68}button:not(.mode-button):not(.secondary):active,.download:not(.outline):active,#generate:active{box-shadow:inset 2px 2px #bc7f36,0 1px 0 #8c542c,0 3px 0 #294565}
+button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:inset 3px 3px #eefaff,inset -3px -3px #83a5be,0 4px 0 #3a5b80,0 6px 0 #294565}button.secondary:hover{background:#d5e9f3}
+.source-link,.pdf-page-link{color:#ffe0a0}.stage.running{background:#3c648d;border-color:#9ac7eb}.stage.complete{background:#3e755a;border-color:#9acd9d}.progress.busy:after{background:repeating-linear-gradient(90deg,#eeb358 0 15px,#ffdb8c 15px 19px)}#statusPanel #message{background:#4f8985;border-left-color:#f6c16d}.progress{background:#2e576c}#statusPanel:before{background:#2e4e69;border-color:#98bdd4}footer{background:#3e668e;border-color:#94c1dd;box-shadow:inset 2px 2px #709fc4}
+
+/* PIXEL WORLD THEME END */
+/* SELECTION ILLUSTRATIONS START */
+.design-standard,.arrangement-modes,.mode-summary{--slot:#8b8b8b;--slot-lo:#373737;--edge:#111;--gold:#ffd84a;--grass:#5d9b37;--focus:#2f62d6;--notch2:-2px 0 0 #111,2px 0 0 #111,0 -2px 0 #111,0 2px 0 #111;--notch2-lit:-2px 0 0 #fff,2px 0 0 #fff,0 -2px 0 #fff,0 2px 0 #fff}
+#documentPanel #modeSummary{color:#fff}
+
+/* Design options */
+.design-standard{display:flex;align-items:center;gap:14px;margin:24px 0;padding:14px 16px;background:#212121;border:0;border-radius:0;box-shadow:inset 0 0 0 2px #555,var(--notch2)}
+.standard-spark{flex:0 0 44px;height:44px;font-size:0;background:var(--slot) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%238a5a2b' d='M2 13h2v1h-2zM3 12h2v1h-2zM4 11h2v1h-2zM5 10h2v1h-2zM6 9h2v1h-2zM7 8h2v1h-2z'/%3E%3Cpath fill='%23c0c0c0' d='M8 7h2v1h-2zM9 6h2v1h-2z'/%3E%3Cpath fill='%23d94c3a' d='M10 4h2v2h-2zM11 3h2v2h-2zM12 2h2v2h-2z'/%3E%3Cpath fill='%23f07a62' d='M13 1h1v1h-1z'/%3E%3Cpath fill='%234a90d9' d='M3 3h2v2h-2z'/%3E%3Cpath fill='%23f2c94c' d='M2 7h2v2h-2z'/%3E%3C/svg%3E") center/32px 32px no-repeat;box-shadow:inset 3px 3px var(--slot-lo),inset -3px -3px #fff}
+.design-standard strong{font-size:15px;color:var(--gold);text-shadow:2px 2px 0 #3d3610}.design-standard p{margin:3px 0 0;font-size:13px;color:#e6e6e6}
+.arrangement-heading h3{font-size:16px;color:#333}
+.optional-label{font:bold 11px/1.4 Consolas,"BIZ UDPGothic",monospace;color:#fff;background:#555;border:2px solid var(--edge);padding:3px 7px}
+.arrangement-modes{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:3px}
+.mode-button{width:100%;min-height:86px;display:flex;align-items:center;gap:14px;position:relative;padding:14px 46px 14px 14px;text-align:left;color:#2b2b2b;text-shadow:none;background:#d9d9d9;border:0;border-radius:0;box-shadow:inset 3px 3px #fff,inset -3px -3px #7a7a7a,var(--notch2);transform:none;filter:none;transition:none}
+.mode-icon{flex:0 0 48px;height:48px;background:var(--slot) center/32px 32px no-repeat;box-shadow:inset 3px 3px var(--slot-lo),inset -3px -3px #fff}
+.mode-button[data-mode=clean] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23f2ecd8' d='M3 2h9v12h-9z'/%3E%3Cpath fill='%23c9bf9f' d='M12 3h1v11h-1zM4 14h9v1h-9z'/%3E%3Cpath fill='%239c9479' d='M5 5h5v1h-5zM5 8h5v1h-5zM5 11h3v1h-3z'/%3E%3C/svg%3E")}.mode-button[data-mode=diagrams] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23a88a54' d='M2 2h12v12h-12z'/%3E%3Cpath fill='%23efe2b8' d='M3 3h10v10h-10z'/%3E%3Cpath fill='%234a7ec2' d='M4 4h3v3h-3z'/%3E%3Cpath fill='%23d9533c' d='M9 9h3v3h-3z'/%3E%3Cpath fill='%236b5a3a' d='M7 5h3v1h-3zM9 6h1v3h-1z'/%3E%3Cpath fill='%235d9b37' d='M4 10h2v2h-2zM11 4h1v2h-1z'/%3E%3C/svg%3E")}.mode-button[data-mode=photos] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%238a5a2b' d='M1 2h14v12h-14z'/%3E%3Cpath fill='%2374b9e8' d='M2 3h12v9h-12z'/%3E%3Cpath fill='%235d9b37' d='M2 10h12v2h-12z'/%3E%3Cpath fill='%238a8a8a' d='M4 7h3v3h-3zM5 6h1v1h-1z'/%3E%3Cpath fill='%23ffd84a' d='M11 4h2v2h-2z'/%3E%3Cpath fill='%232f6b23' d='M9 7h3v2h-3z'/%3E%3Cpath fill='%236b4a2b' d='M10 9h1v1h-1z'/%3E%3C/svg%3E")}.mode-button[data-mode=comparison] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Cpath fill='%23866043' d='M1 5h6v6h-6z'/%3E%3Cpath fill='%235d9b37' d='M1 5h6v2h-6zM1 7h1v1h-1zM4 7h1v1h-1z'/%3E%3Cpath fill='%238a8a8a' d='M9 5h6v6h-6z'/%3E%3Cpath fill='%236d6d6d' d='M10 7h1v1h-1zM13 9h1v1h-1zM11 10h2v1h-2z'/%3E%3Cpath fill='%232b2b2b' d='M7 7h2v2h-2z'/%3E%3C/svg%3E")}
+.mode-copy{min-width:0}.mode-button strong{font-size:15px;font-weight:800;color:#2b2b2b}.mode-button small{font-size:12px;color:#4a4a4a;opacity:1;font-weight:normal}
+.mode-check{position:absolute;top:10px;right:10px;width:22px;height:22px;flex:none;border:2px solid #a0a0a0;background:#000;box-shadow:none;color:transparent}
+.mode-check:before,.mode-button[aria-pressed="true"] .mode-check:before{content:''}
+.mode-button:hover{color:#2b2b2b;background:#e6e6e6;box-shadow:inset 3px 3px #fff,inset -3px -3px #7a7a7a,var(--notch2-lit);transform:none;filter:none}
+.mode-button[aria-pressed="true"],.mode-button[aria-pressed="true"]:hover{padding:14px 46px 14px 14px;background:#b6da94;border:0;transform:none;box-shadow:inset 3px 3px #7d9d5c,inset -3px -3px #e3f4d3,-3px 0 0 #2f5c17,3px 0 0 #2f5c17,0 -3px 0 #2f5c17,0 3px 0 #2f5c17}
+.mode-button[aria-pressed="true"] .mode-check{background:#000 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10' shape-rendering='crispEdges'%3E%3Cpath fill='%237ed957' d='M1 5h2v2h-2zM3 7h2v2h-2zM5 5h2v2h-2zM7 3h2v2h-2zM8 1h2v2h-2z'/%3E%3C/svg%3E") center/14px 14px no-repeat;border-color:#fff;box-shadow:none}
+.mode-button:active{box-shadow:inset 3px 3px #7a7a7a,inset -3px -3px #fff,var(--notch2);transform:none}
+.mode-button:focus-visible{outline:3px solid var(--focus);outline-offset:5px}
+.mode-summary{min-height:0;margin:14px 0 20px;padding:7px 12px;font-size:12px;color:#fff;background:#262626;border-left:4px solid var(--grass)}.mode-summary:empty{padding:0;border:0;background:none}
+
+
+.mode-button::before{content:none!important}
+.mode-icon{display:block;image-rendering:pixelated;pointer-events:none}
+
+
+.mode-copy strong,.mode-copy small{overflow-wrap:anywhere}
+@media(max-width:650px){.mode-button,.mode-button[aria-pressed="true"],.mode-button[aria-pressed="true"]:hover{min-height:102px;padding:12px 34px 12px 12px;gap:12px}.mode-icon{flex-basis:42px;height:42px;background-size:28px 28px}.mode-check{width:19px;height:19px;top:8px;right:8px}.mode-button small{font-size:12px}}
+@media(max-width:420px){.arrangement-modes{grid-template-columns:1fr}.mode-button,.mode-button[aria-pressed="true"],.mode-button[aria-pressed="true"]:hover{min-height:88px}}
+
+/* SELECTION ILLUSTRATIONS END */
+
+/* Clear comparison illustration */
+.mode-button[data-mode="comparison"] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%2345494c%22%20d%3D%22M1%203h9v17H1zM14%203h9v17h-9z%22%2F%3E%3Cpath%20fill%3D%22%23f2eddc%22%20d%3D%22M2%204h7v15H2zM15%204h7v15h-7z%22%2F%3E%3Cpath%20fill%3D%22%23618eb4%22%20d%3D%22M3%206h5v2H3zM3%2010h5v1H3zM3%2013h3v1H3zM3%2016h5v1H3z%22%2F%3E%3Cpath%20fill%3D%22%23b9904c%22%20d%3D%22M16%206h5v2h-5zM16%2010h5v1h-5zM16%2016h3v1h-3z%22%2F%3E%3Cpath%20fill%3D%22%23e3c77f%22%20d%3D%22M15%2012h7v3h-7z%22%2F%3E%3Cpath%20fill%3D%22%23a07436%22%20d%3D%22M16%2013h5v1h-5z%22%2F%3E%3Cpath%20fill%3D%22%23d9d9d9%22%20d%3D%22M10%207h3v1h-3zM12%206h1v3h-1zM11%2015h3v1h-3zM11%2014h1v3h-1z%22%2F%3E%3C%2Fsvg%3E");background-size:38px 38px}
+</style>
+<main>
+<div class="language-tools" style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:18px"><label for="language" style="margin:0">Language / 言語</label><select id="language" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></div>
+<header class="pixel-hero"><!-- MOTION PRINT ART START --><div class="studio-scene" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 370" fill="none">
+<rect width="320" height="370" fill="#86bfd3"/>
+<path d="M0 30H320M0 66H320M0 102H320M0 138H320M0 174H320M0 210H320M0 246H320M0 282H320M0 318H320M0 354H320" stroke="#77adc6" stroke-width="2"/>
+<rect x="22" y="23" width="278" height="128" fill="#4984a7"/>
+<rect x="15" y="16" width="278" height="128" fill="#264c78" stroke="#161616" stroke-width="5"/>
+<rect x="26" y="27" width="256" height="102" fill="#f5d58f"/>
+<path d="M26 27H63V38H54V117H45V129H26V27Z" fill="#ba6551"/>
+<path d="M282 27H245V38H254V117H263V129H282V27Z" fill="#ba6551"/>
+<rect x="67" y="40" width="174" height="75" fill="#d4d8e6"/>
+<rect x="75" y="48" width="158" height="59" fill="#86c9e6"/>
+<g shape-rendering="crispEdges" opacity=".85"><path d="M78 55h12v-4h15v4h10v6H78zM196 60h10v-4h12v4h12v6h-34z" fill="#edf5fa"/><path d="M75 107V96h24v-6h20v-7h20v9h20v6h23v-7h20v-9h19v12h12v13z" fill="#80b66a"/></g><path d="M141 61V95H151V89H161V83H171V73H161V67H151V61H141Z" fill="#efab45"/>
+<path d="M31 22H39M55 22H63M79 22H87M103 22H111M127 22H135M151 22H159M175 22H183M199 22H207M223 22H231M247 22H255M271 22H279" stroke="#ffe0a0" stroke-width="5"/>
+<path d="M31 137H39M55 137H63M79 137H87M103 137H111M127 137H135M151 137H159M175 137H183M199 137H207M223 137H231M247 137H255M271 137H279" stroke="#ffe0a0" stroke-width="5"/>
+<rect x="151" y="158" width="8" height="8" fill="#ffd16e"/><rect x="151" y="172" width="8" height="8" fill="#ffd16e"/>
+<path d="M139 184H147V192H155V200H163V192H171V184H179V192H171V200H163V208H155V200H147V192H139V184Z" fill="#ffd16e"/>
+<path d="M86 217H246V231H269V288H66V231H86V217Z" fill="#4b4b4b"/>
+<path d="M80 210H240V224H263V281H60V224H80V210Z" fill="#b8d6e4" stroke="#252525" stroke-width="5"/>
+<path d="M80 211H240V230H80V211Z" fill="#d3d9e5" stroke="#252525" stroke-width="5"/>
+<rect x="95" y="201" width="130" height="15" fill="#6496b7" stroke="#252525" stroke-width="4"/>
+<rect x="75" y="240" width="44" height="19" fill="#4e6682"/>
+<rect x="80" y="245" width="19" height="5" fill="#b7d4db"/>
+<rect x="232" y="240" width="16" height="16" fill="#f0a14f" stroke="#8e644d" stroke-width="3"/>
+<rect x="93" y="269" width="135" height="12" fill="#222"/>
+<rect x="107" y="279" width="107" height="71" fill="#555"/>
+<path d="M99 274H205V291H215V342H99V274Z" fill="#eee6da" stroke="#333" stroke-width="3"/>
+<path d="M205 274V291H215" stroke="#a8afc1" stroke-width="3"/>
+<rect x="111" y="287" width="60" height="7" fill="#555"/>
+<rect x="111" y="302" width="25" height="20" fill="#e7a04f"/>
+<path d="M144 304H202M144 311H191M144 318H198M111 330H202" stroke="#a8afc1" stroke-width="3"/>
+<path d="M29 306H58M29 315H46M249 312H283M263 321H283" stroke="#a8afc1" stroke-width="4"/>
+<text x="159" y="364" fill="#e3e3e3" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="bold" letter-spacing="2">FROM MOTION TO PAPER</text>
+</svg>
+</div><!-- MOTION PRINT ART END --><div class="label">VIDEO → VISUAL DOCUMENT / LOCAL PROTOTYPE</div><h1>動画を資料に</h1><p>大事な内容を読み取り、写真と説明にメリハリをつけたPDFに。</p><nav class="craft-nav" aria-label="Document workflow"><a href="#videoPanel"><b>01</b><span>VIDEO</span></a><a href="#documentPanel"><b>02</b><span>DESIGN</span></a><a href="#statusPanel"><b>03</b><span>PDF</span></a></nav></header>
+<section class="panel"><label for="executionMode">実行方法</label><select id="executionMode"><option value="api">APIで生成する</option><option value="manual">APIを使わないテスト</option></select><p id="manualHelp" class="small" hidden>APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。</p><span class="pill" id="connection">AI接続を確認しています</span>
+<details id="settings"><summary>AI接続の設定</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><button class="secondary" id="save" style="margin-top:12px">接続設定を使う</button><button class="secondary" id="disconnect" style="margin-left:8px" disabled>APIキーの接続を解除</button><p class="small">共有元のPCへAPIキーが送られます。テスト用キーを使い、プロバイダー側で利用上限を設定してください。キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。</p><p class="small" id="settingStatus"></p></details>
+</section>
+<section class="panel" id="videoPanel"><h2>1. 動画を選ぶ</h2><label for="file">動画ファイル</label><input type="file" id="file" accept=".mp4,.mov,.webm,.mkv"><p class="small">MP4・MOV・WebM・MKV。最初の試作品は30分以内・1GB以内に対応。</p><label for="url">または、YouTube・Xの動画リンク</label><input id="url" type="url" placeholder="https://www.youtube.com/watch?v=… / https://x.com/…/status/…"><p class="small">動画ファイルを選んだ場合は、ファイルを優先します。</p><p class="small">Xは公開投稿の動画に対応。ログインが必要な投稿は取り込めません。</p><label style="font-weight:normal"><input type="checkbox" id="silent">解説音声がない動画（文字起こしを省略）</label><label style="font-weight:normal"><input type="checkbox" id="externalResearch" checked>必要な公開情報をWeb検索で補う</label><p class="small">不足する重要情報だけ検索し、外部資料の出典を残します。非公開の内容を含む動画ではオフにしてください。</p></section>
+<section class="panel" id="documentPanel"><h2>2. 仕上がりの希望</h2><div class="row"><div><label for="purpose">資料の用途</label><select id="purpose"><option value="auto">動画に合わせる</option><option value="procedure">作業手順書</option><option value="seminar">セミナー要約</option><option value="training">研修資料</option></select></div><div><label for="detailLevel">説明の詳しさ</label><select id="detailLevel"><option value="compact">簡潔</option><option value="standard" selected>標準</option><option value="detailed">詳しく</option></select></div></div><p class="small" id="purposeHelp"></p><p class="small">簡潔を選んでも、作業に必要な操作や重要な条件は省きません。</p><div class="design-standard"><span class="standard-spark" aria-hidden="true">✦</span><div><strong>デザイン重視で作成</strong><p>内容に合った構成・配色・余白で、読みやすく整えます。</p></div></div>
+<div class="arrangement-heading"><h3 id="arrangementTitle">仕上がりのアレンジ</h3><span class="optional-label">任意・複数選択OK</span></div>
+<p class="small arrangement-intro" id="arrangementHelp">そのままでも作れます。好みがあれば、組み合わせて選んでください。</p>
+<div class="arrangement-modes" id="presentationModes" role="group" aria-labelledby="arrangementTitle" aria-describedby="arrangementHelp">
+<button type="button" class="mode-button glass-mint" data-mode="clean" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>すっきり</strong><small>余白を生かして整理</small></span></button>
+<button type="button" class="mode-button glass-sky" data-mode="diagrams" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>図解多め</strong><small>関係や流れを見える形に</small></span></button>
+<button type="button" class="mode-button glass-lilac" data-mode="photos" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>写真多め</strong><small>実際の場面を見やすく</small></span></button>
+<button type="button" class="mode-button glass-amber" data-mode="comparison" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>比較で整理</strong><small>違いや選択肢を並べて理解</small></span></button>
+</div><p class="small mode-summary" id="modeSummary" role="status" aria-live="polite"></p>
+<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><details><summary>生成の設定</summary><div class="row"><div><label for="model">モデル</label><input id="model" value="claude-opus-5-5"></div><div><label for="effort">推論の深さ</label><select id="effort"><option value="high">高</option><option value="xhigh" selected>超高</option><option value="max">最大</option></select></div></div><p class="small">モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。</p></details><label for="budget">今回の費用目安（米ドル）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" value="3"><p class="small">次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。</p></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。再作成は1回までです。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。</p></section>
+<section class="panel" id="statusPanel" aria-live="polite"><h2>生成状況</h2><p id="message">動画とAI接続を設定すると生成できます。</p><a id="manualJump" class="download" href="#manualPanel" hidden>次の操作へ</a><p id="stageSummary" class="small"></p><ol id="stageList" class="stage-list" aria-live="polite"></ol><p id="lastUpdate" class="small" aria-live="off"></p><div id="stopNotice" class="stop-notice" hidden><strong id="stopTitle"></strong><p id="stopAction"></p><details><summary>詳しい停止理由</summary><pre id="stopDetails"></pre></details></div><button id="resume" class="secondary hidden">途中から再開する</button><button id="stop" class="secondary hidden">追加処理を止める</button><div id="bar" class="progress"></div><p class="small" id="usage"></p><p id="presentationSummary" class="small"></p><div id="results"></div><div id="restylePanel" hidden><h3>内容を保って仕上がりを変更</h3><p class="small">上のアレンジと追加の希望を使って、新しいPDFを作ります。</p><p class="small" id="restyleHelp"></p><button id="restyle" class="secondary">この設定で作り直す</button></div></section>
+<section class="panel" id="manualPanel" hidden><h2>APIなしテスト：回答の取り込み</h2><p id="manualSequence" class="small"></p><a id="manualPacket" class="download" download="manual-request.zip">1. 指示・画像をまとめて保存</a><h3>2. チャットで回答を作る</h3><p class="small">保存したZIPを展開し、README.txtの案内に従ってください。このチャットで作った回答JSONを読み込むと、検査して次の依頼へ進みます。</p><label for="manualAnswer">3. 回答JSONを選ぶ</label><input id="manualAnswer" type="file" accept=".json,application/json"><button id="manualSubmit" style="margin-top:16px">回答を読み込んで続ける</button><p id="manualError" class="error" role="alert"></p></section>
+<section class="panel" id="referencePanel" hidden><h2>内容の根拠を確認</h2><p class="small">各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。</p><p class="small">動画の解析内容です。PDF本文の表現と異なる場合があります。</p><p id="referenceSummary"></p><div id="referenceGaps"></div><video id="sourcePlayer" controls preload="metadata" playsinline hidden style="width:100%;max-height:480px;margin:14px 0"></video><div id="referenceList"></div></section><footer>ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。</footer>
+</main>
+<script>
+// Embedded in index.html so the existing local server can serve the updated UI.
+const $=id=>document.getElementById(id);
+const translations={
+ '次の操作へ':'Next action',
+ 'この段階は、チャットで作成した回答JSONの取り込み待ちです。下の「次の操作へ」を開いてください。':'This step is waiting for a reply JSON prepared in chat. Open Next action below.',
+ '実行方法':'Execution mode', 'APIで生成する':'Generate using an API',
+ 'APIを使わないテスト':'Test without an API',
+ 'APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。':'In manual mode, download the instructions and images, prepare a reply in chat, then import the reply JSON. No API key is needed.',
+ 'APIなしテスト：回答の取り込み':'Manual test: import a reply',
+ '1. 指示・画像をまとめて保存':'1. Download instructions and images',
+ '2. チャットで回答を作る':'2. Prepare the reply in chat',
+ '保存したZIPを展開し、README.txtの案内に従ってください。このチャットで作った回答JSONを読み込むと、検査して次の依頼へ進みます。':'Extract the ZIP and follow README.txt. Import the reply JSON prepared in chat to run the checks and continue to the next request.',
+ '3. 回答JSONを選ぶ':'3. Choose the reply JSON',
+ '回答を読み込んで続ける':'Import reply and continue',
+ 'APIなしのテスト：回答ファイルを待っています。':'Manual test: waiting for a reply file.',
+ '回答を受け取りました。通常の検査を続けています。':'Reply received. Continuing the ordinary checks.',
+ '回答ファイルを選んでください。':'Choose a reply file.',
+ '回答ファイルは3MB以内にしてください。':'Reply files must be no larger than 3 MB.',
+ 'テストを開始する':'Start manual test',
+ 'API呼び出しなし。このチャット側の利用量は集計対象外です。':'No API requests. Chat usage is not included in these records.',
+ '動画から、伝わる資料へ。':'Turn videos into clear, visual documents.',
+ '大事な内容を読み取り、写真と説明にメリハリをつけたPDFに。':'Create an illustrated PDF that gives the important details room to stand out.',
+ 'AI接続を確認しています':'Checking AI connection',
+ 'AI接続の設定':'AI connection settings',
+ 'APIキー':'API key',
+ 'OpenRouter / Anthropic APIキー':'OpenRouter / Anthropic API key',
+ '接続設定を使う':'Use this API key',
+ '1. 動画を選ぶ':'1. Choose a video',
+ '動画ファイル':'Video file',
+ 'MP4・MOV・WebM・MKV。最初の試作品は30分以内・1GB以内に対応。':'MP4, MOV, WebM or MKV. Up to 30 minutes and 1 GB.',
+ 'MP4・MOV・WebM・MKV。最初の試作品は30分以内・90MB以内に対応。':'MP4, MOV, WebM or MKV. Up to 30 minutes and 90 MB.',
+ 'または、YouTube・Xの動画リンク':'Or paste a YouTube or X video link',
+ 'Xは公開投稿の動画に対応。ログインが必要な投稿は取り込めません。':'X supports videos in public posts. Posts requiring login cannot be imported.',
+ 'YouTubeまたはXの動画付き投稿リンクか、動画ファイルを指定してください。':'Use a YouTube or X video-post link, or upload a video file.',
+ 'Xの動画を取得できませんでした。投稿の公開状態・動画番号・取得制限を確認してください。ログインが必要な投稿には対応していません。動画ファイルのアップロードも利用できます。':'Could not import the X video. Check post visibility, the video number, and download restrictions. Login-required posts are not supported. You can also upload the video file.',
+ '動画ファイルを選んだ場合は、ファイルを優先します。':'If a file is selected, it takes priority over the link.',
+ '解説音声がない動画（文字起こしを省略）':'No spoken explanation (skip transcription)',
+ '必要な公開情報をWeb検索で補う':'Supplement missing facts with public web sources',
+ '不足する重要情報だけ検索し、外部資料の出典を残します。非公開の内容を含む動画ではオフにしてください。':'Search only for important missing facts and retain source links. Turn this off for videos containing private information.',
+ '2. 仕上がりの希望':'2. Describe your document',
+ '図表は理解に役立つ箇所に使い、必要な写真や条件も残します。':'Use diagrams where they help understanding, preserving essential photos and conditions.',
+ 'デザイン':'Design', 'おまかせ':'Automatic', 'デザイン重視':'Design emphasis', '図解の量':'Amount of diagrams', '多め':'More', '控えめ':'Fewer', '図解多め':'Visual emphasis', 'すっきり':'Clean and simple', '内容を保ってデザインを変更':'Change design, keep the content', '変更後のデザイン':'New design', 'このデザインで作り直す':'Recreate with this design',
+ '資料の用途':'Document purpose', '動画に合わせる':'Adapt to the video', '作業手順書':'Procedure guide', 'セミナー要約':'Seminar summary', '研修資料':'Training material',
+ '説明の詳しさ':'Level of detail', '簡潔':'Concise', '標準':'Standard', '詳しく':'Detailed',
+ '簡潔を選んでも、作業に必要な操作や重要な条件は省きません。':'Even a concise guide keeps essential actions and conditions.',
+ '内容の根拠を確認':'Check the source scenes',
+ '各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。':'Compare each explanation with source times and images. Review labels describe AI checks.',
+ '出典情報を読み込んでいます':'Loading source references…',
+ '出典情報はまだありません。内容の解析後に確認できます。':'Source references become available after content analysis.',
+ '全体の内容確認は未完了です。以下の説明にも未確認の点が含まれる場合があります。':'Overall content verification is incomplete. Some explanations below may still need review.',
+ '最終資料の内容照合が完了しています。':'The final document has passed the AI content check.',
+ '動画の解析内容です。PDF本文の表現と異なる場合があります。':'These are the video-analysis notes; wording may differ from the PDF.',
+ '確認が必要な点':'Review notes',
+ 'ブラウザで再生できない形式です。表示された出典時刻を元動画で確認してください。':'This video format cannot be played in this browser. Use the displayed source times in the original video.',
+ 'PDFの出力言語':'PDF language',
+ 'どんな資料にしますか？':'What would you like to create?',
+ '作業動画には工程の説明、講演動画には要点・図解など、内容に合った構成を作ります。':'The structure follows the video: steps for practical tasks, or key points and illustrations for talks.',
+ '生成の設定':'Generation settings',
+ 'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
+ 'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
+ '今回の費用目安（米ドル）':'Estimated spending limit (USD)',
+ '次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。':'Processing stops if the next request is estimated to exceed this amount. This is not a guaranteed billing cap. Up to 12 AI requests; you can stop further requests during generation.',
+ 'PDFを生成する':'Generate PDF',
+ '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。再作成は1回までです。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One revision is allowed. Resuming reuses completed stages, and the spending estimate includes earlier requests.',
+ '生成状況':'Generation status',
+ '詳しい停止理由':'Technical details',
+ '生成が途中で停止しました。':'Generation stopped before completion.',
+ '停止しました。':'Stopped.',
+ '停止要求を受け付けました。現在の応答を記録してから停止します。':'Stop requested. The current response will be recorded before further requests stop.',
+ '動画とAI接続を設定すると生成できます。':'Choose a video and set up your API key to begin.',
+ '途中から再開する':'Resume generation', '追加処理を止める':'Stop further processing',
+ 'ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。':'Local prototype. Account management and in-browser editing are not yet available.',
+ '共有元のPCと共有処理が動いている間だけ利用できます。':'Available only while the host PC and sharing process are running.',
+ '共有用の試作品':'Shared prototype',
+ 'ご自身のAPIキーを入力して利用してください。API料金はそのキーの残高から発生します。キーと生成結果はブラウザごとに分離されます。アップロードした動画は共有元のPCで処理され、抽出画像は選択したAIサービスへ送信されます。開発中のため、生成が途中停止する場合があります。':'Use your own API key; charges apply to that key. Keys and results are separated by browser session. Uploaded videos are processed on the host PC, and extracted images are sent to the selected AI service. This prototype is still in development and generation may stop before completion.',
+ '操作に失敗しました':'The operation failed.',
+ 'キーを設定しました。未使用状態が30分続くと接続解除されます。':'API key set. It disconnects after 30 minutes without a generation request (once any active job has finished).',
+ 'APIキーの接続を解除':'Disconnect API key',
+ '接続を解除しました。':'API key disconnected.',
+ '共有元のPCへAPIキーが送られます。テスト用キーを使い、プロバイダー側で利用上限を設定してください。キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。':'Your API key is sent to the host PC. Use a test key and set spending limits with your provider. Disconnect it when finished; otherwise the server drops its reference after 30 minutes since its last use, once any active job has finished.',
+ 'Session verification failed. Reload the page.':'Session verification failed. Reload the page.',
+ '最初に上の「AI接続の設定」を開いて設定してください。':'Open AI connection settings above and enter your API key first.',
+ '準備しています':'Preparing…',
+ '動画は1GB以内で選んでください。':'Choose a video no larger than 1 GB.',
+ '動画は90MB以内で選んでください。':'Choose a video no larger than 90 MB.',
+ '動画を処理用のPCへアップロードしています':'Uploading the video to the processing PC…',
+ 'AI接続：設定済み':'AI connection: key set',
+ 'AI接続：未設定':'AI connection: not configured',
+ '画面との接続が切れました。起動し直してください。':'Connection lost. Reload the page or ask the host to restart sharing.',
+ 'PDFを保存':'Download PDF', '編集用Markdown':'Editable Markdown',
+ '生成記録':'Generation record', 'API使用量':'API usage',
+ 'PDFを保存（要確認）':'Download PDF (review needed)',
+ '確認が必要な点':'Review notes',
+ '内容の確認は未完了です。完成版として使う前に指摘を確認してください。':'Content verification is incomplete. Read the review notes before using this as a finished document.',
+ '完成しました':'Complete.',
+ 'PDF作成済み・内容の確認が必要です':'PDF created. Content review is needed.',
+ '動画の画像と文字起こしを準備しています':'Preparing video frames and transcript…',
+ '前回取得した動画と画像を再利用しています':'Reusing previously extracted video and images…',
+ 'PDFと編集用資料が完成しました':'PDF and editable document are ready.',
+ 'PDFを作成しました。内容の確認が必要な箇所があります':'PDF created. Some content needs review.',
+ '別の確認処理で、説明と元映像を照合しています':'Checking the descriptions against the original video…',
+ '完成した本文・写真の説明を元映像と照合しています':'Checking the final text and image captions against the video…',
+ '受信した内容を保ったまま、提出形式だけを修正しています':'Repairing the response format while preserving its content…',
+ '停止を受け付けました。実行中のAPI応答を記録した後、追加の送信を止めます。':'Stop requested. The current API response will be recorded, then further requests will stop.',
+ 'APIキーを入力してください。':'Enter your API key.',
+ '最初にAI接続を設定してください。':'Set up your API key first.',
+ '現在の生成が終わってから実行してください。':'Wait for the current generation to finish.',
+ '動画を選ぶかYouTube・Xの動画リンクを入力してください。':'Choose a video or enter a YouTube or X video link.',
+ '推論設定が正しくありません。':'Invalid reasoning effort setting.',
+ 'APIキーが認証されませんでした。':'The API key could not be authenticated.',
+ '残高またはキーの利用上限が不足しています。':'Insufficient balance or API key allowance.',
+ 'このキー・地域・アカウントでは利用できません。':'Access is unavailable for this key, region or account.',
+ '指定したモデルが利用できません。':'The selected model is unavailable.',
+ '利用上限です。時間をおいて再実行してください。':'Rate limit reached. Try again later.',
+ 'モデル名・推論設定・入力容量を確認してください。':'Check the model name, reasoning setting and input size.',
+ 'API接続に失敗しました。':'The API connection failed.',
+ 'OpenRouterに接続できません。ネットワーク接続を確認してください。':'Cannot connect to OpenRouter. Check the network connection.',
+ 'AIの提出データをJSONとして読み取れませんでした。':'The AI response could not be parsed as JSON.',
+ 'AIのツール出力が不正です。':'The AI returned an invalid tool response.',
+ 'AIから内容のある応答を受信できませんでした。':'The AI returned an empty response.',
+ 'モデルの料金を確認できないため、課金処理を開始しません。':'Cannot verify model pricing. No paid request was started.',
+ 'Anthropic直接接続では入出力単価の設定が必要です。OpenRouterでは自動取得します。':'Direct Anthropic access requires the host to configure token prices. OpenRouter pricing is retrieved automatically.',
+ '料金情報が不正なため停止しました。':'Stopped because the pricing information is invalid.',
+ '停止しました。次のAPI呼び出しは行っていません。':'Stopped. No further API request was sent.',
+ 'API呼び出し回数の上限です。追加の自動実行を停止しました。':'API request limit reached. Further automatic requests have stopped.',
+ '前回の料金が未確定のため、追加の課金処理を停止しました。':'The previous request cost is unconfirmed. Further paid requests have stopped.',
+ '現在のAPI応答を記録して停止しました。追加のAPI呼び出しは行いません。':'The current response was recorded. No further API requests will be sent.',
+ '映像と説明の食い違い、または確認できない箇所が残っています。plan-review.jsonを保存しました。':'Some descriptions conflict with the video or remain unverified. Review details were saved to plan-review.json.',
+ '内容の提出を完了できませんでした。quality-events.jsonとquality-progress.jsonを確認してください。':'Content planning did not finish. Details are saved in quality-events.json and quality-progress.json.',
+ '再作成の上限に達しました。生成済みPDFには確認が必要な指摘が残っています。':'Revision limit reached. The generated PDF still has items that need review.',
+ 'AI処理の回数上限に達しました。途中の資料を保存しました。':'AI processing limit reached. Partial results were saved.',
+ '共有画面の処理に失敗しました。ページを開き直してください':'The shared session failed. Reopen the shared link.',
+ '共有URLを開き直してください':'Reopen the shared link.',
+ 'YouTubeリンクかアップロードした動画を指定してください':'Use a YouTube link or an uploaded video.',
+ '別のサイトから操作できません':'Requests from another website are not allowed.',
+ 'この共有枠のアップロード容量に達しました':'The upload allowance for this browser session has been reached.',
+ 'アップロードは90MB以内、設定は100KB以内です':'Uploads must be no larger than 90 MB; settings must be under 100 KB.',
+ '費用目安は0.10～20ドルで指定してください。':'Enter an estimated spending limit between $0.10 and $20.',
+ '処理に失敗しました。入力とローカルの実行環境を確認してください。':'Processing failed. Check the inputs and ask the host to check the runtime.',
+};
+Object.assign(translations,{
+ '動画を資料に':'Video to PDF',
+ '動画から、':'From video,', '伝わる資料へ。':'to visual documents.',
+ '図解多め':'More diagrams',
+ 'デザイン重視で作成':'Thoughtfully designed by default',
+ '内容に合った構成・配色・余白で、読みやすく整えます。':'Clear structure, color and spacing, tailored to the content.',
+ '仕上がりのアレンジ':'Make it your own', '任意・複数選択OK':'Optional · Choose any combination',
+ 'そのままでも作れます。好みがあれば、組み合わせて選んでください。':'Ready to create as is. Select any combination to add your preferences.',
+ '余白を生かして整理':'Organized, with room to breathe', '関係や流れを見える形に':'Show relationships and flows',
+ '写真多め':'More photos', '実際の場面を見やすく':'Give real scenes more space',
+ '比較で整理':'Side-by-side comparisons', '違いや選択肢を並べて理解':'Compare differences and options',
+ '追加の希望（任意）':'Anything else? (optional)',
+ '対象読者、色、強調したい内容など。空欄でも作成できます。':'Tell us about your audience, colors or key points. You can leave this blank.',
+ '内容を保って仕上がりを変更':'Adjust the presentation, keep the content',
+ '上のアレンジと追加の希望を使って、新しいPDFを作ります。':'Create a new PDF using the preferences and notes above.',
+ 'この設定で作り直す':'Recreate with these preferences'
+});
+const connectionJa='OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。';
+translations[connectionJa]='Enter your OpenRouter or Anthropic API key. It stays in server memory and is not saved to disk. Extracted images and transcripts are sent to the selected API provider. OpenRouter requests pass through OpenRouter to the model provider. API charges apply.';
+translations[connectionJa.replace('このPC内の画面','この画面').replace('キーは保存せず、起動中だけ保持します。','キーは共有元のPCのメモリにのみ保持し、共有プロセスの終了時に消えます。')]=translations[connectionJa];
+const defaultPrompts={
+ ja:'動画の内容を正確に読み取り、写真と説明を組み合わせたPDFにまとめて。重要な部分に詳しい説明を付け、写真を2、3枚横並びにするなど、読みやすく構成して。',
+ en:'Turn this video into a clear, well-structured illustrated PDF. Adapt the structure to the content instead of using a repetitive list of steps. Give important information more emphasis, and arrange two or three images side by side where useful.'
+};
+let lang=document.documentElement.dataset.defaultLanguage||'ja';
+try{lang=localStorage.getItem('video-pdf-ui-language')||lang;}catch{}
+if(!['ja','en'].includes(lang))lang='ja';
+let busy=false,configured=false,lastJob=null,lastStatus=null,modelLoaded=false;
+let currentMessage={text:'動画とAI接続を設定すると生成できます。',error:false};
+let settingMessage='';
+let submitting=false,submissionStarted=0,clientError=null,stageSignature='';
+const stageNames={prepare:['動画の準備','Prepare video'],analyze:['内容の整理','Analyze content'],document:['資料・PDFの作成','Create document'],verify:['元動画との照合','Check against video'],finish:['最終確認・保存','Finalize and save']};
+const reasonNames={
+ cancelled:['操作により停止しました','Stopped at your request'],budget:['費用目安を超える見込みのため停止しました','Stopped before exceeding the estimated spending limit'],
+ billing_pending:['前回のAPI料金が未確定です','The previous API cost is unconfirmed'],call_limit:['今回のAI呼び出し回数の上限に達しました','The API request limit for this run was reached'],
+ round_limit:['今回の処理回数の上限に達しました','The processing limit for this run was reached'],revision_limit:['修正回数の上限に達しました','The revision limit was reached'],token_limit:['設定されたトークン上限に達しました','The configured token limit was reached'],
+ auth:['APIキーの認証・利用権限を確認してください','Check API key authentication and access'],credit:['APIの残高またはキーの利用上限が不足しています','Insufficient API balance or key allowance'],rate_limit:['APIの利用が一時的に制限されています','The API is temporarily rate limited'],
+ output_limit:['AIの応答が出力上限で途切れました','The AI response reached its output limit'],response_format:['生成結果を読み取れませんでした','The generated response could not be read'],network:['APIとの接続を確認できませんでした','The API connection failed'],quality:['内容の確認が必要です','Content needs review'],
+ request:['生成の受付を確認できませんでした','The generation request could not be confirmed'],error:['生成が途中で停止しました','Generation stopped before completion']
+};
+const actionNames={
+ budget:['「今回の費用目安」を見直してから再開してください。金額は再開前からの累計です。','Review the estimated spending limit before resuming. Earlier charges remain included.'],
+ billing_pending:['プロバイダー側で前回の利用状況を確認してください。料金が未確定の保存状態では、追加の課金を伴う再開を停止しています。','Check the previous request in your provider dashboard. Paid resumption is blocked while the saved cost is unconfirmed.'],
+ call_limit:['同じ保存位置からは追加実行できません。作成済みPDFや確認事項があれば確認してください。','This run cannot make more requests. Check any saved PDF and review notes.'],
+ round_limit:['この保存位置では処理回数が残っていません。途中の成果物を確認し、必要なら新しく生成してください。','No processing rounds remain at this saved position. Review partial results before starting a new generation.'],
+ revision_limit:['作成済みPDFと確認事項を確認してください。同じ保存位置からの自動修正は終了しています。','Review the saved PDF and notes. Automatic revisions at this saved position are exhausted.'],
+ token_limit:['この保存位置では設定された上限に達しています。途中の成果物を確認してください。','The saved run has reached its configured limit. Check any partial results.'],
+ version_changed:['生成処理の仕様が更新されています。この保存位置は使わず、新しく生成してください。','Generation rules have changed. Start a new generation instead of reusing this saved position.'],
+ video_incomplete:['動画の準備が完了していないため、動画を選び直して新しく生成してください。','Video preparation did not finish. Select the video and start a new generation.'],
+ legacy:['この版の保存データは途中再開に対応していません。','This saved version does not support resuming.'],
+ auth:['接続設定のキーと、モデルの利用権限を確認してください。','Check the configured key and its model access.'],
+ credit:['プロバイダー側の残高・利用上限を確認してください。','Check your provider balance and key allowance.'],
+ rate_limit:['時間をおいてから、保存された続きの再開を検討してください。','Wait before attempting to resume the saved run.'],
+ request:['入力と接続を確認してください。受付済みの場合は、接続が戻ると生成状況が表示されます。','Check the inputs and connection. If the request was accepted, its status will appear once the connection returns.']
+};
+const pair=value=>value?.[lang==='en'?1:0]||'';
+let referenceData=null,referenceFolder=null,referenceKey=null,referencePending=null;
+const purposeHelp={
+ auto:['動画に合った構成で、大切な内容と場面をまとめます。','Adapt the structure to the video and highlight important content and scenes.'],
+ procedure:['準備・操作の順序・完了状態・注意点を整理します。','Organize preparation, actions in order, completion states and cautions.'],
+ seminar:['要点・根拠・数字の条件・事例・結論を整理します。','Organize key points, supporting evidence, numerical conditions, examples and conclusions.'],
+ training:['学ぶ内容・解説・注意点・振り返り問題と回答をまとめます。','Create learning goals, explanations, cautions and review questions with answers.']
+};
+const tr=(ja,en)=>lang==='en'?(en||translations[ja]||ja):ja;
+function translatedStatus(text){
+ if(lang==='ja')return text;
+ if(translations[text])return translations[text];
+ const patterns=[
+  [/^PDFを作成して確認しています（(\d+)回目）$/,(_,n)=>`Creating and checking PDF (pass ${n})…`],
+  [/^AIが内容と画像を確認しています（処理(\d+)）$/,(_,n)=>`Reviewing content and images (pass ${n})…`],
+  [/^動画の内容と動作の前後関係を整理しています（(\d+)回目）$/,(_,n)=>`Mapping the content and sequence of actions (pass ${n})…`],
+  [/^AI処理 (\d+)\/(\d+)回・確定額 \$(.+) \/ 費用目安 \$(.+)$/,(_,n,max,c,b)=>`AI request ${n}/${max} · Confirmed $${c} / Estimated limit $${b}`],
+  [/^次の処理を含めると費用目安 \$(.+) を超える見込みのため停止しました。確定額 \$(.+)。$/,(_,b,c)=>`Stopped before the next request: estimated cost would exceed $${b}. Confirmed cost: $${c}.`],
+  [/^OpenRouterから完全な生成結果を受信できませんでした（(.+)）。$/,(_,s)=>`OpenRouter did not return a complete result (${s}).`],
+  [/^AIの返答が1回の出力上限（(.+)トークン）で途切れました。途中の出力は完成扱いにせず、使用量を保存しました。$/,(_,n)=>`The response reached the ${n}-token output limit. It is incomplete; usage was saved.`],
+ ];
+ for(const [pattern,fn] of patterns)if(pattern.test(text))return text.replace(pattern,fn);
+ let result=text;
+ for(const [ja,en] of Object.entries(translations))result=result.split(ja).join(en);
+ // Preserve diagnostic details rather than hide an unexpected server error.
+ if(/[ぁ-んァ-ヶ一-龠]/.test(result))return 'Server message (original diagnostic): '+result;
+ return result;
+}
+const staticNodes=[];
+const walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT);
+while(walker.nextNode()){
+ const node=walker.currentNode;
+ if(node.parentElement.closest('script,style,textarea,#language,#outputLanguage'))continue;
+ if(translations[node.textContent.trim()])staticNodes.push([node,node.textContent.trim()]);
+}
+const titleJa=document.title;
+function message(text,error=false){currentMessage={text,error};paintMessage();}
+function paintMessage(){
+ $('message').textContent=translatedStatus(currentMessage.text);
+ $('message').className=currentMessage.error?'error':'';
+}
+function renderLanguage(){
+ document.documentElement.lang=lang;
+ document.title=tr(titleJa);
+ for(const [node,ja] of staticNodes)node.textContent=tr(ja);
+ $('key').placeholder=tr('OpenRouter / Anthropic APIキー');
+ $('prompt').placeholder=tr('例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。','Example: For new employees. Highlight important decisions and use a blue palette.');
+ $('settingStatus').textContent=translatedStatus(settingMessage);
+ paintPurposeHelp();
+ paintModeSummary();
+ paintMessage();
+ if(lastStatus)paintStatus(lastStatus);
+ if(referenceData)renderReferenceCards();
+ paintExecutionMode();
+}
+$('language').value=lang;
+$('outputLanguage').value=lang;
+$('language').onchange=()=>{
+ lang=$('language').value;
+ try{localStorage.setItem('video-pdf-ui-language',lang);}catch{}
+ renderLanguage();
+};
+$('model').addEventListener('input',()=>modelLoaded=true);
+$('purpose').onchange=paintPurposeHelp;
+const modeNames={clean:['すっきり','Clean and simple'],diagrams:['図解多め','More diagrams'],photos:['写真多め','More photos'],comparison:['比較で整理','Side-by-side comparisons']};
+function selectedModes(){return [...document.querySelectorAll('#presentationModes [data-mode][aria-pressed="true"]')].map(button=>button.dataset.mode);}
+function arrangementPayload(){return {design:'editorial',visual_density:'auto',presentation_modes:selectedModes(),presentation_notes:$('prompt').value.trim()};}
+function paintModeSummary(){
+ const modes=selectedModes();
+ $('modeSummary').textContent=modes.length?tr('選択中：','Selected: ')+modes.map(mode=>pair(modeNames[mode])).join(' · '):tr('おまかせ：動画の内容に合わせて構成します。','Automatic: the structure adapts to your video.');
+}
+for(const button of document.querySelectorAll('#presentationModes [data-mode]'))button.addEventListener('click',()=>{
+ button.setAttribute('aria-pressed',String(button.getAttribute('aria-pressed')!=='true'));
+ paintModeSummary();
+});
+function paintExecutionMode(){
+ const manual=$('executionMode').value==='manual';
+ $('manualHelp').hidden=!manual;
+ $('apiOptions').hidden=manual;
+ $('budget').disabled=manual;
+ $('model').disabled=manual;$('effort').disabled=manual;
+ $('generate').textContent=tr(manual?'テストを開始する':'PDFを生成する');
+ if(manual&&!configured)$('settings').open=false;
+}
+$('executionMode').onchange=paintExecutionMode;
+$('manualSubmit').onclick=async()=>{
+ const file=$('manualAnswer').files[0];
+ try{
+  if(!file)throw Error(tr('回答ファイルを選んでください。'));
+  if(file.size>3000000)throw Error(tr('回答ファイルは3MB以内にしてください。'));
+  $('manualSubmit').disabled=true;
+  const reply=JSON.parse((await file.text()).replace(/^\uFEFF/,''));
+  await api('manual/respond',reply);
+  $('manualAnswer').value='';$('manualError').textContent='';
+  await refresh();
+ }catch(error){$('manualError').textContent=translatedStatus(error.message);}
+ finally{$('manualSubmit').disabled=false;}
+};
+function paintPurposeHelp(){const values=purposeHelp[$('purpose').value]||purposeHelp.auto;$('purposeHelp').textContent=values[lang==='en'?1:0];}
+async function api(route,body){
+ if(!lastStatus)await refresh();
+ const r=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':lastStatus?.csrf_token||''},body:JSON.stringify(body)});
+ const d=await r.json();if(!r.ok)throw Error(d.error||'操作に失敗しました');return d;
+}
+$('save').onclick=async()=>{
+ try{
+  const d=await api('configure',{api_key:$('key').value});
+  $('key').value='';$('model').value=d.model;modelLoaded=true;
+  settingMessage='キーを設定しました。未使用状態が30分続くと接続解除されます。';
+  $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
+ }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
+ finally{$('key').value='';}
+};
+$('disconnect').onclick=async()=>{
+ try{
+  await api('disconnect',{});$('key').value='';settingMessage='接続を解除しました。';
+  $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
+ }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
+};
+$('resume').onclick=async()=>{
+ if(busy||submitting||!lastJob)return;
+ submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('resume').disabled=true;
+ try{await api('start',{resume_folder:lastJob.folder,budget_usd:Number($('budget').value)});$('results').replaceChildren();submitting=false;await refresh();}
+ catch(e){message(e.message,true);}
+ finally{submitting=false;$('resume').disabled=false;}
+};
+$('stop').onclick=async()=>{try{const d=await api('stop',{});message(d.message);await refresh();}catch(e){message(e.message,true);}};
+$('restyle').onclick=async()=>{
+ if(busy||submitting||!lastJob||lastJob.status!=='complete')return;
+ try{
+  if(!lastJob.manual_mode&&!configured)throw Error(tr('最初にAI接続を設定してください。','Set up the AI connection first.'));
+  submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('restyle').disabled=true;
+  await api('start',{restyle_from:lastJob.folder,...arrangementPayload(),budget_usd:Number($('budget').value)});
+  submitting=false;await refresh();
+ }catch(e){message(e.message,true);}
+ finally{submitting=false;$('restyle').disabled=false;}
+};
+$('generate').onclick=async()=>{
+ if(busy||submitting)return;
+ try{
+  if(!configured&&$('executionMode').value!=='manual')throw Error('最初に上の「AI接続の設定」を開いて設定してください。');
+  submitting=true;submissionStarted=Date.now()/1000;clientError=null;
+  busy=true;$('generate').disabled=true;$('results').replaceChildren();message('準備しています');
+  paintSubmission();
+  let upload_id;const file=$('file').files[0];
+  // The shared page advertises and enforces a smaller upload size.
+  const shared=document.documentElement.dataset.defaultLanguage==='en';
+  if(file){
+   if(file.size>(shared?90*1024**2:1024**3))throw Error(shared?'動画は90MB以内で選んでください。':'動画は1GB以内で選んでください。');
+   message('動画を処理用のPCへアップロードしています');
+   const r=await fetch('upload',{method:'POST',headers:{'X-Filename':encodeURIComponent(file.name),'X-CSRF-Token':lastStatus?.csrf_token||''},body:file});
+   const d=await r.json();if(!r.ok)throw Error(d.error);upload_id=d.upload_id;
+  }
+  const prompt=defaultPrompts[lang];
+  await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,external_research:$('externalResearch').checked,budget_usd:Number($('budget').value)});
+  submitting=false;
+  await refresh();
+ }catch(e){submitting=false;busy=false;clientError={message:e.message,folder:lastJob?.folder};$('generate').disabled=false;message(e.message,true);paintProgress({status:'failed',message:e.message,report:{},progress:{available:true,current:'prepare',stages:Object.keys(stageNames).map(id=>({id,state:id==='prepare'?'stopped':'pending'})),completed_count:0,total_stages:5,stop_code:'request',resume:{available:false,reason:'request'}}});}
+};
+function paintStatus(d){
+ $('restylePanel').hidden=true;
+ $('presentationSummary').textContent='';
+ configured=d.configured;
+ if(d.job?.manual_mode&&d.job?.status==='running')$('executionMode').value='manual';
+ const waiting=d.job?.status==='running'&&d.job?.manual_mode?d.job.manual_request:null;
+ $('manualPanel').hidden=!waiting;
+ $('manualJump').hidden=!waiting;
+ $('executionMode').disabled=d.job?.status==='running'||submitting;
+ if(waiting){
+  const id=waiting.request_id;
+  if($('manualPacket').dataset.request!==id){$('manualAnswer').value='';$('manualError').textContent='';}
+  $('manualPacket').dataset.request=id;
+  $('manualPacket').href='manual/request/'+id+'.zip';
+  $('manualSequence').textContent=(lang==='en'?'Request ':'依頼 ')+waiting.sequence+' / '+pair(stageNames[waiting.phase]);
+ }
+ $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
+ $('save').disabled=d.job?.status==='running'||submitting;
+ if(!modelLoaded&&d.provider==='openrouter'){$('model').value='anthropic/claude-opus-5.5';modelLoaded=true;}
+ $('connection').textContent=configured?tr('AI接続：設定済み')+' ('+(d.provider==='openrouter'?'OpenRouter':'Anthropic')+')':tr('AI接続：未設定');
+ if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
+ paintExecutionMode();
+ if(submitting){paintSubmission();return;}
+ const j=d.job;lastJob=j;
+ if(!j){$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;if(clientError)message(clientError.message,true);return;}
+ if(clientError&&(j.status==='running'||j.folder!==clientError.folder))clientError=null;
+ if(j.references_available)loadReferences(j);
+ else{$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;}
+ $('resume').className=((j.status==='failed'||j.status==='needs_review')&&(j.progress?j.progress.resume.available:j.report?.quality_pipeline==='quality-first-v3'))?'secondary':'secondary hidden';
+ $('usage').textContent=j.usage?(lang==='en'
+  ?`API ${j.usage.call_count}/${j.usage.max_calls} calls / Confirmed $${j.usage.known_cost_usd.toFixed(3)} / Estimated limit $${j.usage.budget_usd.toFixed(2)}${j.usage.cost_complete?'':' (some costs unconfirmed)'}`
+  :`API ${j.usage.call_count}/${j.usage.max_calls}回 / 確定額 $${j.usage.known_cost_usd.toFixed(3)} / 費用目安 $${j.usage.budget_usd.toFixed(2)}${j.usage.cost_complete?'':'（未確定分あり）'}`):'';
+ if(j.manual_mode)$('usage').textContent=tr('API呼び出しなし。このチャット側の利用量は集計対象外です。');
+ busy=j.status==='running';
+ $('stop').className=busy?'secondary':'secondary hidden';$('generate').disabled=busy;
+ $('stop').disabled=!!j.progress?.stop_requested;
+ $('bar').className=busy&&!waiting?'progress busy':'progress';
+ const elapsed=Math.max(0,Math.round((Date.now()/1000-j.started)/60));
+ currentMessage={text:j.progress?.stop_requested?'停止要求を受け付けました。現在の応答を記録してから停止します。':j.status==='failed'?(j.progress?.stop_code==='cancelled'?'停止しました。':'生成が途中で停止しました。'):j.message,error:j.status==='failed'&&j.progress?.stop_code!=='cancelled'};paintMessage();
+ if(waiting)message('この段階は、チャットで作成した回答JSONの取り込み待ちです。下の「次の操作へ」を開いてください。');
+ if(busy&&!waiting)$('message').textContent+=lang==='en'?` / ${elapsed} min elapsed`:` / 約${elapsed}分経過`;
+ paintProgress(j);
+ if(clientError)message(clientError.message,true);
+ $('results').replaceChildren();
+ if(j.status!=='complete'&&j.status!=='needs_review')return;
+ const presentation=j.report.presentation;
+ if(presentation){
+  const names={procedure:['作業手順書','Procedure guide'],seminar:['セミナー要約','Seminar summary'],training:['研修資料','Training material'],mixed:['解説と実演を組み合わせ','Explanation and demonstration'],visual:['図解多め','Visual emphasis'],editorial:['デザイン重視','Design emphasis'],plain:['すっきり','Clean and simple']};
+  $('presentationSummary').textContent=tr('構成：','Structure: ')+pair(names[presentation.purpose])+' / '+tr('デザイン：','Design: ')+pair(names[presentation.design])+(presentation.requested_design==='auto'?tr('（おまかせ）',' (automatic)'):'');
+  if(presentation.presentation_modes?.length)$('presentationSummary').textContent+=' / '+presentation.presentation_modes.map(mode=>pair(modeNames[mode])).filter(Boolean).join(' · ');
+ }
+ $('restylePanel').hidden=j.status!=='complete'||!j.report.content_verified;
+ $('restyleHelp').textContent=tr('動画・画像・内容案を再利用して、新しいPDFを作ります。元のPDFは残ります。','Reuse the video, images and content plan to create a new PDF. The original PDF is preserved.')+' '+(j.manual_mode?tr('APIなしのテストは、チャットでの回答作成が必要です。','Manual mode requires chat responses.'):tr('AIによる再編集と確認にはAPI料金がかかります。','AI editing and review incur API charges.'));
+ const files=[['document.pdf',j.status==='needs_review'?'PDFを保存（要確認）':'PDFを保存'],['document.md','編集用Markdown'],['run.json','生成記録']];
+ if(!j.manual_mode&&['focused-evidence-v2','quality-first-v3'].includes(j.report.quality_pipeline))files.push(['usage.json','API使用量']);
+ if(j.status==='needs_review')files.push(['review-notes.txt','確認が必要な点']);
+ for(const [file,label] of files){
+  const a=document.createElement('a');a.href='files/'+encodeURIComponent(j.folder)+'/'+file;
+  a.textContent=tr(label);a.className='download'+(file.endsWith('.pdf')?'':' outline');a.download=file;$('results').appendChild(a);
+ }
+ const p=document.createElement('p');p.className='small';
+ const minutes=Math.round(j.report.seconds/60*10)/10;
+ p.textContent=(j.status==='needs_review'?tr('内容の確認は未完了です。完成版として使う前に指摘を確認してください。')+' ':'')
+  +(lang==='en'?`Generation: ${minutes} min / Layout passes: ${j.report.revisions}. See the generation record and your API dashboard for costs.`:`生成時間 ${minutes}分 / 紙面作成 ${j.report.revisions}回 / 費用は生成記録とAPI管理画面で確認`);
+ if(j.manual_mode)p.textContent=(lang==='en'?`Manual test: ${minutes} min / Layout passes: ${j.report.revisions}. `:`APIなしのテスト ${minutes}分 / 紙面作成 ${j.report.revisions}回。 `)+tr('API呼び出しなし。このチャット側の利用量は集計対象外です。');
+ $('results').appendChild(p);
+}
+function paintSubmission(){
+ $('generate').disabled=true;$('stop').className='secondary hidden';$('resume').className='secondary hidden';$('bar').className='progress busy';
+ const progress={available:true,current:'prepare',stages:Object.keys(stageNames).map(id=>({id,state:id==='prepare'?'running':'pending'})),completed_count:0,total_stages:5,updated_at:submissionStarted,resume:{available:false}};
+ paintProgress({status:'running',progress});
+}
+function paintProgress(job){
+ const progress=job.progress;
+ const stopped=job.status==='failed'||job.status==='needs_review';
+ const stages=progress?.stages?.map(stage=>job.manual_request&&job.status==='running'&&stage.state==='running'?{...stage,state:'waiting'}:stopped&&stage.state==='running'?{...stage,state:'stopped'}:stage);
+ const signature=JSON.stringify([lang,progress?.available,stages]);
+ if(signature!==stageSignature){
+  stageSignature=signature;$('stageList').replaceChildren();
+  if(progress?.available)for(const [index,stage] of stages.entries()){
+   const item=document.createElement('li');item.className='stage '+stage.state;
+   const title=document.createElement('strong');title.textContent=(index+1)+'. '+pair(stageNames[stage.id]);
+   const state=document.createElement('span');
+   state.textContent=pair({complete:['完了','Done'],running:['実行中','In progress'],waiting:['回答待ち','Waiting for reply'],stopped:['停止位置','Stopped here'],pending:['待機中','Pending']}[stage.state]);
+   item.append(title,state);$('stageList').appendChild(item);
+  }
+ }
+ $('stageSummary').textContent=progress?.available?(lang==='en'?`${progress.completed_count}/${progress.total_stages} stages complete`:`${progress.total_stages}工程中 ${progress.completed_count}工程が完了`):(job.status==='running'?tr('この生成の工程記録を待っています。','Waiting for the stage record.'):tr('この生成には工程記録がありません。','This generation has no stage record.'));
+ const updated=Number(progress?.updated_at);
+ let meta=updated&&Number.isFinite(updated)?tr('最終更新：','Last update: ')+new Intl.DateTimeFormat(lang==='en'?'en-US':'ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(updated*1000)):'';
+ if(progress?.api_wait_started_at&&job.status==='running'){
+  const seconds=Math.max(0,Math.floor(Date.now()/1000-progress.api_wait_started_at));
+  meta+=(meta?' / ':'')+(lang==='en'?`Waiting for the AI response: ${Math.floor(seconds/60)}m ${seconds%60}s`:`AIの応答待ち：${Math.floor(seconds/60)}分${seconds%60}秒経過`);
+ }
+ $('lastUpdate').textContent=meta;
+ $('stopNotice').hidden=!stopped;
+ if(!stopped)return;
+ const reason=progress?.stop_code||'error';
+ $('stopTitle').textContent=pair(reasonNames[reason]||reasonNames.error);
+ const resume=progress?.resume||{};
+ const action=pair(actionNames[resume.reason]||actionNames[reason]);
+ const saved=resume.available?(resume.saved_checkpoint
+  ?tr('保存済みの内容を使い、','Use saved content and resume from ')+pair(stageNames[resume.from_stage])+(lang==='ja'?'から再開できます。':' (local PDF rendering may be repeated).')
+  :tr('再開時に保存状態を確認します。再利用できない工程は再処理されます。','Saved data will be checked on resume. Stages that cannot be reused will be processed again.')):'';
+ $('stopAction').textContent=[action,saved].filter(Boolean).join(' ');
+ $('resume').textContent=resume.available&&resume.saved_checkpoint?tr('続きを再開：','Resume: ')+pair(stageNames[resume.from_stage]):tr('途中から再開する');
+ $('stopDetails').textContent=job.report?.review_note||job.report?.error||job.message||'';
+}
+function timeLabel(value){const seconds=Math.max(0,Math.floor(Number(value)||0));return String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');}
+function sourceButton(unit){
+ const label=timeLabel(unit.start)+'–'+timeLabel(unit.end);
+ if(unit.video_url&&/^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}&t=\d+s$/.test(unit.video_url)){
+  const link=document.createElement('a');link.href=unit.video_url;link.target='_blank';link.rel='noopener noreferrer';link.className='source-link';
+  link.textContent=tr('元動画を開く','Open source video')+' '+label;return link;
+ }
+ const button=document.createElement('button');button.type='button';button.className='secondary';
+ button.textContent=tr('動画のこの場面へ','Go to this scene')+' '+label;
+ button.disabled=!referenceData.local_video_available;
+ button.onclick=()=>{
+  const player=$('sourcePlayer');player.hidden=false;
+  const path='files/'+encodeURIComponent(referenceFolder)+'/source-video';
+  const seek=()=>{player.currentTime=Math.max(0,unit.start);player.play().catch(()=>{});};
+  if(player.dataset.source!==path){
+   player.dataset.source=path;player.src=path;player.addEventListener('loadedmetadata',seek,{once:true});player.load();
+  }else if(player.readyState>=1)seek();else player.addEventListener('loadedmetadata',seek,{once:true});
+  player.scrollIntoView({behavior:'smooth',block:'center'});
+ };
+ return button;
+}
+function renderReferenceCards(){
+ if(!referenceData)return;
+ $('referenceSummary').textContent=tr(referenceData.document_verified?'最終資料の内容照合が完了しています。':'全体の内容確認は未完了です。以下の説明にも未確認の点が含まれる場合があります。');
+ $('referenceSummary').className=referenceData.document_verified?'small':'review-warning';
+ const gaps=$('referenceGaps');gaps.replaceChildren();
+ if(referenceData.coverage_gaps?.length){
+  const heading=document.createElement('strong');heading.textContent=tr('確認が必要な点');gaps.appendChild(heading);
+  const list=document.createElement('ul');for(const text of referenceData.coverage_gaps){const li=document.createElement('li');li.textContent=text;list.appendChild(li);}gaps.appendChild(list);
+ }
+ const container=$('referenceList');container.replaceChildren();
+ for(const unit of referenceData.units||[]){
+  const card=document.createElement('article');card.className='reference-card';
+  const heading=document.createElement('h3');heading.textContent=unit.title;card.appendChild(heading);
+  const explanation=document.createElement('p');explanation.textContent=unit.explanation;card.appendChild(explanation);
+  for(const fact of unit.external_facts||[]){
+   const box=document.createElement('div');box.className='callout';
+   const title=document.createElement('strong');title.textContent=lang==='en'?'External information':'外部資料による補足';box.appendChild(title);
+   const statement=document.createElement('p');statement.textContent=fact.statement;box.appendChild(statement);
+   const meta=document.createElement('p');meta.className='small';
+   const checked=fact.status==='supported'&&fact.review?.verdict==='supported'&&fact.review.identity_matches===true&&fact.review.quote_supports_statement===true&&fact.review.source_reliable===true&&fact.review.video_consistency!=='conflict';
+   meta.textContent=(lang==='en'?(checked?'Source correspondence checked':'Unresolved / needs review'):(checked?'外部資料との対応を確認':'未確定・要確認'))+' / '+(fact.basis==='corroborated'?(lang==='en'?'Also checked in video':'映像でも確認'):(lang==='en'?'Supplemented from external source':'外部資料で補完'));box.appendChild(meta);
+   try{const url=new URL(fact.url);if(url.protocol==='https:'&&!url.username&&!url.password){const link=document.createElement('a');link.href=url.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent=fact.title;box.appendChild(link);}}catch{}
+   card.appendChild(box);
+  }
+  const labels={supported:unit.review_kind==='document'?['映像との照合済み','Checked against the video']:['内容案のみ照合済み','Analysis checked; final text not yet checked'],uncertain:['映像だけでは判断できません','Unclear from the video'],revise:['説明の修正が必要','Description needs correction'],unverified:['未確認','Not yet checked']};
+  const state=labels[unit.verdict]||labels.unverified;
+  const badge=document.createElement('span');badge.className=unit.verdict==='supported'?'pill':'review-warning';badge.textContent=state[lang==='en'?1:0];card.appendChild(badge);
+  if(unit.finding){const note=document.createElement('p');note.className='small';note.textContent=unit.finding;card.appendChild(note);}
+  card.appendChild(sourceButton(unit));
+  for(const pageNumber of unit.pages||[]){
+   const page=document.createElement('a');page.className='pdf-page-link';page.href='files/'+encodeURIComponent(referenceFolder)+'/document.pdf#page='+Number(pageNumber);page.target='_blank';page.rel='noopener noreferrer';page.textContent='PDF p.'+pageNumber;card.appendChild(page);
+  }
+  const images=document.createElement('div');images.className='reference-images';
+  for(const frame of unit.frames||[]){
+   if(!/^assets\/[A-Za-z0-9_.-]+\.(jpg|jpeg|png)$/.test(frame.file))continue;
+   const figure=document.createElement('figure'),image=document.createElement('img'),caption=document.createElement('figcaption');
+   image.src='files/'+encodeURIComponent(referenceFolder)+'/'+frame.file;image.loading='lazy';image.alt=unit.title+' '+timeLabel(frame.seconds);
+   caption.textContent=timeLabel(frame.seconds);figure.append(image,caption);images.appendChild(figure);
+  }
+  card.appendChild(images);container.appendChild(card);
+ }
+}
+async function loadReferences(job){
+ const key=job.folder+':'+job.status;
+ if(referenceKey===key||referencePending===key)return;
+ referencePending=key;$('referencePanel').hidden=false;
+ if(referenceFolder!==job.folder){
+  referenceData=null;$('referenceList').replaceChildren();$('referenceSummary').textContent=tr('出典情報を読み込んでいます');
+  const player=$('sourcePlayer');player.pause();player.removeAttribute('src');delete player.dataset.source;player.hidden=true;
+ }
+ try{
+  const response=await fetch('files/'+encodeURIComponent(job.folder)+'/source-index.json');
+  if(!response.ok)throw Error('Source reference request failed.');
+  const data=await response.json();
+  if(lastJob?.folder!==job.folder)return;
+  referenceData=data;referenceFolder=job.folder;referenceKey=key;renderReferenceCards();
+ }catch(e){$('referenceSummary').textContent=tr('出典情報はまだありません。内容の解析後に確認できます。');}
+ finally{if(referencePending===key)referencePending=null;}
+}
+$('sourcePlayer').onerror=()=>{$('referenceSummary').textContent=tr('ブラウザで再生できない形式です。表示された出典時刻を元動画で確認してください。');};
+async function refresh(){
+ try{
+  const r=await fetch('status');const d=await r.json();if(!r.ok)throw Error(d.error);
+  lastStatus=d;paintStatus(d);
+ }catch(e){message('画面との接続が切れました。起動し直してください。',true);}
+}
+renderLanguage();refresh();setInterval(refresh,2500);
+
+</script>
+</html>

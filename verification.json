@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-29",
+  "checks": [
+    "healthz available without credentials",
+    "unauthenticated root rejected",
+    "authenticated root redirects to session gateway",
+    "authenticated browser UI served with secure session cookie",
+    "session status reachable",
+    "second browser receives a different session",
+    "cross-origin request rejected",
+    "POST without CSRF token rejected",
+    "session cookie alone does not bypass invite password"
+  ],
+  "check_count": 9,
+  "python_syntax": "passed",
+  "api_calls": 0,
+  "docker_built": false,
+  "linux_extraction_tested": false,
+  "cloud_deployed": false,
+  "warning": "Local adapter smoke checks only; no claim of Render memory fit or cloud end-to-end PDF generation."
+}

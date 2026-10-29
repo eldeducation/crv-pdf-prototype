@@ -1,0 +1,4 @@
+Pillow>=10
+pypdf>=5
+pypdfium2>=4
+claude-real-video[whisper]==0.10.7

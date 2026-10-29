@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: crv-pdf-trial
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    envVars:
+      - key: VIDEO_PDF_ACCESS_PASSWORD
+        generateValue: true

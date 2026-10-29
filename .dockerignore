@@ -1,0 +1,12 @@
+**/.env
+**/.env.*
+**/work
+**/runs
+**/uploads
+**/cache
+**/node_modules
+**/__pycache__
+**/*.log
+**/server.local.json
+**/sharing.local.json
+.git
