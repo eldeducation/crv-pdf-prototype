@@ -1,21 +1,28 @@
 {
   "date": "2026-10-29",
   "checks": [
-    "healthz available without credentials",
-    "unauthenticated root rejected",
-    "authenticated root redirects to session gateway",
-    "authenticated browser UI served with secure session cookie",
-    "session status reachable",
-    "second browser receives a different session",
-    "cross-origin request rejected",
-    "POST without CSRF token rejected",
-    "session cookie alone does not bypass invite password"
+    "health endpoint available",
+    "browser-compatible login form without HTTP authentication challenge",
+    "login form CSP limited to own origin; framing forbidden",
+    "unauthenticated protected route denied",
+    "untrusted Host denied",
+    "cross-origin login denied",
+    "login without Origin denied",
+    "wrong invitation password denied",
+    "correct password creates bounded secure HttpOnly host cookie",
+    "forged cookie cannot access protected routes",
+    "authenticated root redirects to per-browser app",
+    "authenticated app UI served",
+    "own browser can access its status",
+    "session cookie alone cannot bypass invitation login",
+    "cross-origin app operation denied",
+    "app POST without CSRF rejected",
+    "second browser receives separate login and session tokens",
+    "login attempts rate limited"
   ],
-  "check_count": 9,
-  "python_syntax": "passed",
+  "check_count": 18,
   "api_calls": 0,
-  "docker_built": false,
-  "linux_extraction_tested": false,
-  "cloud_deployed": false,
-  "warning": "Local adapter smoke checks only; no claim of Render memory fit or cloud end-to-end PDF generation."
+  "python_syntax": "passed",
+  "docker_first_build": "succeeded on Render; browser login fix awaits redeploy",
+  "cloud_pdf_generation_tested": false
 }
