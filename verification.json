@@ -24,8 +24,31 @@
   "check_count": 19,
   "api_calls": 0,
   "python_syntax": "passed",
-  "docker_first_build": "succeeded on Render; browser login fix awaits redeploy",
-  "cloud_pdf_generation_tested": false,
+  "docker_first_build": "succeeded on Render; corrected login deployed as 39ad657",
+  "cloud_pdf_generation_tested": true,
   "real_browser_form_login": "passed on isolated loopback fixture; no real invitation password used",
-  "cloud_browser_form_login": "awaiting corrected deploy and owner login"
+  "cloud_browser_form_login": "owner confirmed successful; authenticated cloud app used for smoke test",
+  "cloud_smoke_test": {
+    "date": "2026-10-30",
+    "input": "self-created 6-second silent three-card MP4",
+    "mode": "API-free manual responses in this chat",
+    "stages_complete": 5,
+    "stages_total": 5,
+    "manual_reply_exchanges": 4,
+    "api_calls": 0,
+    "layout_passes": 1,
+    "pdf_pages": 1,
+    "pdf_downloaded": true,
+    "markdown_downloaded": true,
+    "pdf_render_visually_verified": true,
+    "pdf_sha256": "31bff5f32053693a31c9b2efd9ad2618fc18bf2c0f323cee274f1d58c3c73a19",
+    "independent_reviewer": false,
+    "not_tested": [
+      "paid AI API generation",
+      "speech recognition",
+      "long videos",
+      "YouTube/X direct import from Render"
+    ],
+    "timing_note": "UI showed 11.8 minutes including manual chat reply waits; not a throughput benchmark"
+  }
 }

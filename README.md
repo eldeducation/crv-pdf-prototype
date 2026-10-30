@@ -6,10 +6,10 @@
 
 ## 共有リンクと現在の公開状況
 
-- **[動画から資料を作る試作品（招待制）](https://crv-pdf-prototype.onrender.com/)**：Render Freeに配置しました。開発者のPCがスリープしていても、クラウド側で動作します。招待用パスワードは管理者から別途受け取ってください。**クラウドでの起動とログイン画面の表示まで確認済み。ログイン後の動画解析・PDF生成は検証中です。**
+- **[動画から資料を作る試作品（招待制）](https://crv-pdf-prototype.onrender.com/)**：Render Freeに配置しました。開発者のPCがスリープしていても、クラウド側で動作します。招待用パスワードは管理者から別途受け取ってください。**ログイン後、6秒・音声なしの自作動画を使い、画像抽出から日本語PDF・編集用MarkdownのダウンロードまでAPIなしで確認しました。長い動画、音声認識、YouTube/Xの直接取得、有料API生成はクラウドで未検証です。**
 - **[紹介・操作デモと全PDF見本](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/)**：APIキー不要で、用途切り替え・アレンジ選択・資料検索・PDF閲覧を試せます。この紹介ページ内では新しいPDFを生成しません。
 - **[公開プログラムとREADME](https://github.com/eldeducation/crv-pdf-prototype)**：キー・動画・利用者セッション・ログを除いたコードを公開しています。
-- [クラウド配置の手順と制約](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/deployment/README.md) / [配置用ソース一式](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/deployment/cloud-generation.zip)：DockerビルドとRender上の起動は成功しています。動画取得・音声認識・PDF描画が無料枠に収まるかは実機検証が残っています。
+- [クラウド配置の手順と制約](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/deployment/README.md) / [配置用ソース一式](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/deployment/cloud-generation.zip)：Dockerビルド、起動、短いアップロード動画の画像抽出・PDF描画は成功しました。音声認識や長い動画の処理が無料枠に収まるかは未検証です。
 
 利用者は、自分の対応APIキーを試作品に入力して生成します。API料金はそのキーの利用者が負担します。Lucasのキーは公開ページへ埋め込みません。キーはクラウドサーバーのメモリで扱い、抽出画像・字幕などは選択したAIサービスへ送信します。
 
@@ -122,4 +122,4 @@ APIキーの値はREADME・ソース・スクリーンショット・公開デ�
 
 ### 配置状況
 
-Dockerビルド・Render上の起動・ログイン画面表示は確認済みです。ログイン後の動画解析とPDF生成は実機検証中です。Free枠のメモリ・休止・一時ディスク、クラウドIPでの動画取得制限に注意してください。一般公開の安全性を承認したものではなく、招待した相手と使う試験用です。
+Dockerビルド・起動・招待ログイン・6秒の無音アップロード動画からの画像抽出・日本語PDFとMarkdownの保存を確認しました。APIなしの手動応答テストで、有料API・音声認識・長い動画・YouTube/Xのクラウド取得は未検証です。Free枠のメモリ・休止・一時ディスク、クラウドIPでの動画取得制限に注意してください。一般公開の安全性を承認したものではなく、招待した相手と使う試験用です。
