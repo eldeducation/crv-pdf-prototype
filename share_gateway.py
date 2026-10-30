@@ -14,11 +14,12 @@ import urllib.parse
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from security import response_headers, normalized_video_url
+from security import response_headers, normalized_video_url, child_environment, public_errors, audit_request
 
 ROOT = Path(__file__).resolve().parent
 TOKEN = secrets.token_urlsafe(32)
 SESSIONS = {}
+PENDING_SESSIONS = 0
 LOCK = threading.Lock()
 MAX_SESSION_AGE = 8 * 3600
 MAX_SESSION_IDLE = 3600
@@ -60,9 +61,31 @@ def start_input_error(data):
     return None
 
 
+class SessionCapacityError(ValueError):
+    pass
+
+
 def create_session(restore_identity=None):
-    if len(SESSIONS) >= 8:
-        raise ValueError('共有枠が使用中です。管理者に共有の再起動を依頼してください。')
+    # Reserve capacity atomically, but copy files/start/poll outside the gateway
+    # lock. Existing users can keep polling/downloading during a slow startup.
+    global PENDING_SESSIONS
+    with LOCK:
+        if len(SESSIONS) + PENDING_SESSIONS >= 8:
+            raise SessionCapacityError('共有枠が使用中です。しばらくしてから試してください。')
+        if restore_identity and restore_identity in SESSIONS:
+            raise ValueError('Session is already active.')
+        PENDING_SESSIONS += 1
+    try:
+        identity, session = _launch_session(restore_identity)
+        with LOCK:
+            SESSIONS[identity] = session
+        return identity, session
+    finally:
+        with LOCK:
+            PENDING_SESSIONS -= 1
+
+
+def _launch_session(restore_identity=None):
     identity = restore_identity or secrets.token_urlsafe(24)
     if not re.fullmatch(r'[A-Za-z0-9_-]{32}', identity):
         raise ValueError('Invalid session identity.')
@@ -84,9 +107,7 @@ def create_session(restore_identity=None):
                         'クラウドの試験公開版です。休止・再起動で生成物が消える場合があります。完成したPDFは保存してください。')
     page += '<script>' + script
     (folder / 'index.html').write_text(page, encoding='utf-8')
-    env = os.environ.copy()
-    for name in ('ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'VIDEO_PDF_ACCESS_PASSWORD'):
-        env.pop(name, None)
+    env = child_environment()
     process = subprocess.Popen([sys.executable, '-u', str(folder / 'server.py')],
         cwd=folder, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))
@@ -109,7 +130,6 @@ def create_session(restore_identity=None):
                     session['csrf_token'] = status['csrf_token']
                 finally:
                     connection.close()
-                SESSIONS[identity] = session
                 return identity, session
             except (ValueError, OSError):
                 pass
@@ -155,8 +175,9 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def send(self, status, payload, media='application/json; charset=utf-8', cookie=None, extra_headers=None):
+        audit_request(self.command, self.path, status)
         if not isinstance(payload, bytes):
-            payload = json.dumps(payload, ensure_ascii=False).encode('utf-8')
+            payload = json.dumps(public_errors(payload, roots=(ROOT, Path.home())), ensure_ascii=False).encode('utf-8')
         self.send_response(status)
         secure = self.headers.get('Host', '') != f'127.0.0.1:{self.server.server_port}'
         for key, value in {'Content-Type': media, 'Content-Length': str(len(payload)),
@@ -196,12 +217,13 @@ class Handler(BaseHTTPRequestHandler):
         with LOCK:
             expire_sessions()
             session = SESSIONS.get(identity)
-            if not session:
-                if self.command != 'GET' or route != '':
-                    return self.send(401, {'error': '共有URLを開き直してください'})
-                identity, session = create_session()
-                new_cookie = identity
-            session['last_seen'] = time.monotonic()
+            if session:
+                session['last_seen'] = time.monotonic()
+        if not session:
+            if self.command != 'GET' or route != '':
+                return self.send(401, {'error': '共有URLを開き直してください'})
+            identity, session = create_session()
+            new_cookie = identity
         body = None
         headers = {}
         if route.endswith('/source-video'):
@@ -249,6 +271,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(429, {'error': 'Uploads are busy. Try again shortly.'})
         try:
             self.forward()
+        except SessionCapacityError as error:
+            self.send(429, {'error': str(error)}, extra_headers={'Retry-After': '10'})
         except (ValueError, OSError, http.client.HTTPException):
             self.send(400, {'error': '共有画面の処理に失敗しました。ページを開き直してください'})
         finally:

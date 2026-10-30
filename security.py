@@ -2,6 +2,9 @@
 import base64
 import hashlib
 import re
+import os
+import json
+import time
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 
@@ -87,3 +90,75 @@ def response_headers(payload=b'', media='', secure=False, trusted_script=None):
     if secure:
         headers['Strict-Transport-Security'] = 'max-age=86400'
     return headers
+
+
+# Explicit runtime settings only. Never inherit arbitrary host credentials,
+# Python/Node startup hooks, or a wildcard VIDEO_PDF_* namespace.
+CHILD_ENV_NAMES = frozenset("""
+PATH PATHEXT SYSTEMROOT WINDIR COMSPEC TEMP TMP TMPDIR HOME USERPROFILE
+LOCALAPPDATA APPDATA NUMBER_OF_PROCESSORS PROCESSOR_ARCHITECTURE
+LANG LC_ALL LC_CTYPE TZ PYTHONUTF8 PYTHONIOENCODING PYTHONUNBUFFERED
+PYTHONDONTWRITEBYTECODE PYTHONNOUSERSITE VIRTUAL_ENV
+XDG_CACHE_HOME XDG_CONFIG_HOME XDG_DATA_HOME HF_HOME HF_HUB_CACHE
+HUGGINGFACE_HUB_CACHE TRANSFORMERS_CACHE TORCH_HOME
+HF_HUB_OFFLINE TRANSFORMERS_OFFLINE HF_HUB_DISABLE_TELEMETRY
+PLAYWRIGHT_BROWSERS_PATH OMP_NUM_THREADS MKL_NUM_THREADS OPENBLAS_NUM_THREADS
+CRV_MEMORY_DB CRV_NO_MEMORY VIDEO_PDF_SPEED_CHECK VIDEO_PDF_MODEL
+VIDEO_PDF_EFFORT VIDEO_PDF_INPUT_USD_PER_MILLION VIDEO_PDF_OUTPUT_USD_PER_MILLION
+SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
+""".split())
+
+
+def child_environment(environ=None):
+    source = os.environ if environ is None else environ
+    return {k: v for k, v in source.items() if k.upper() in CHILD_ENV_NAMES}
+
+
+def public_error(value, secret='', roots=()):
+    """Keep useful error detail, without key-shaped values or host paths.
+
+    Used only on responses, never on evidence, prompts or the stored document.
+    Known workspace roots also cover paths containing spaces/Japanese text.
+    """
+    text = redact(value, secret)
+    for root in sorted({str(p).rstrip('/\\') for p in roots if p}, key=len, reverse=True):
+        for spelling in {root, root.replace('\\', '/'), root.replace('/', '\\')}:
+            text = re.sub(re.escape(spelling) + r'(?=[/\\\s\x22\x27:]|$)', '[workspace]', text, flags=re.I)
+    # Drive/UNC paths outside known roots; do not match https:// URLs.
+    text = re.sub(r'(?<![A-Za-z0-9])(?:[A-Za-z]:[\\/]|\\\\[^\s\\/]+[\\/])[^\r\n\x22\x27<>]*', '[local path]', text)
+    text = re.sub(r'(?<![A-Za-z0-9:/])/(?:app|home|Users|tmp|var/tmp|opt|root|usr/local)(?:/[^\s\x22\x27<>:,;]+)+', '[local path]', text)
+    return text
+
+
+def public_errors(value, roots=()):
+    if isinstance(value, dict):
+        result = {}
+        for k, v in value.items():
+            if isinstance(v, str) and k in {'error', 'message', 'stderr', 'traceback'}:
+                result[k] = public_error(v, roots=roots)
+            elif isinstance(v, str) and k in {'source', 'evidence_dir'} and (v.startswith('/') or re.match(r'^[A-Za-z]:[\\/]', v)):
+                result[k] = v.replace('\\', '/').rstrip('/').rsplit('/', 1)[-1]
+            else:
+                result[k] = public_errors(v, roots)
+        return result
+    if isinstance(value, list):
+        return [public_errors(v, roots) for v in value]
+    return value
+
+
+def audit_request(method, path, status):
+    """Only fixed route categories, time and outcome; no URL/token/body/IP."""
+    parts = str(path).split('?', 1)[0].strip('/').split('/')
+    known = {'login', 'healthz', 'status', 'configure', 'disconnect', 'upload', 'start', 'stop', 'ui.js'}
+    category = next((p for p in parts if p in known), None)
+    if category is None:
+        category = 'download' if 'files' in parts else 'manual' if 'manual' in parts else 'page' if len(parts) <= 1 else 'other'
+    if int(status) < 400 and category in {'status', 'healthz', 'ui.js'}:
+        return
+    event = {'event': 'http_result', 'time': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+             'method': method if method in {'GET', 'POST', 'HEAD'} else 'OTHER',
+             'route': category, 'status': int(status)}
+    try:
+        print(json.dumps(event, separators=(',', ':')), flush=True)
+    except (OSError, ValueError):
+        pass  # Logging must not interrupt an existing generation.

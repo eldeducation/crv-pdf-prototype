@@ -50,5 +50,28 @@
       "YouTube/X direct import from Render"
     ],
     "timing_note": "UI showed 11.8 minutes including manual chat reply waits; not a throughput benchmark"
+  },
+  "infrastructure_hardening": {
+    "date": "2026-10-30",
+    "existing_regression_tests": 159,
+    "infrastructure_tests": 5,
+    "local_login_checks": 19,
+    "all_passed": true,
+    "output_parity": {
+      "equal": {
+        "requests": true,
+        "markdown": true,
+        "pdf_text": true,
+        "page_pixels": true,
+        "decoded_frame": true,
+        "layout_errors": true
+      },
+      "pdf_pages": 2,
+      "api_calls": 0,
+      "artifact_tag": "63f7c84a",
+      "scope": "Identical test-only responses replayed through before/after programs; no claim of improved AI accuracy"
+    },
+    "paid_api_calls": 0,
+    "cloud_deployment": "pending"
   }
 }

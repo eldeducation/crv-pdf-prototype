@@ -32,7 +32,7 @@ from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
                                validate_design_plan, validate_design_review)
 from source_references import citation_html, write_index, source_link, markdown_references
 from web_research import WebResearch, POLICY as RESEARCH_POLICY, LIMITS as RESEARCH_LIMITS
-from security import normalized_video_url, X_IMPORT_ERROR
+from security import normalized_video_url, X_IMPORT_ERROR, child_environment
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_PROMPT = "手順書というよりは動画の内容をうまくPDFにまとめて。単調な流れではなく、情報に濃淡をつけて。写真を2、3枚横並びにおくなど。"
@@ -118,7 +118,7 @@ def runtime():
 def command_run(args, *, env=None, log=None, timeout=1800, include_stderr=False):
     # Use an argument list throughout; video names and URLs are never shell code.
     result = subprocess.run([str(x) for x in args], capture_output=True, text=True,
-                            encoding="utf-8", errors="replace", env=env, timeout=timeout)
+                            encoding="utf-8", errors="replace", env=child_environment(env), timeout=timeout)
     if log:
         Path(log).write_text(result.stdout + "\n" + result.stderr, encoding="utf-8")
     if result.returncode:
@@ -851,7 +851,7 @@ def extract(source, folder, config, notify=print):
     elif not Path(source).is_file():
         raise PrototypeError("動画ファイルが見つかりません。")
     folder.parent.mkdir(parents=True, exist_ok=True)
-    env = os.environ.copy()
+    env = child_environment()
     env["CRV_NO_MEMORY"] = "1"
     env["CRV_MEMORY_DB"] = str((folder.parent / "memory.db").resolve())
     env["XDG_CACHE_HOME"] = str((folder.parent / "cache").resolve())

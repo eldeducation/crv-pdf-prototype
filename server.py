@@ -10,7 +10,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from security import validated_provider, redact, response_headers
+from security import validated_provider, redact, response_headers, public_errors
 from source_references import write_index, local_video, byte_range
 from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
@@ -104,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def send(self, status, content, media="application/json; charset=utf-8", extra_headers=None):
         if isinstance(content, (dict, list)):
-            content = json.dumps(content, ensure_ascii=False).encode("utf-8")
+            content = json.dumps(public_errors(content, roots=(ROOT, Path.home())), ensure_ascii=False).encode("utf-8")
         elif isinstance(content, str):
             content = content.encode("utf-8")
         self.send_response(status)
@@ -191,6 +191,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, target.read_bytes(), 'image/png' if target.suffix == '.png' else 'image/jpeg')
             if not target.is_relative_to((ROOT / "runs").resolve()) or target.name not in allowed or not target.is_file():
                 return self.send(404, {"error": "ファイルがありません"})
+            if target.suffix == '.json':
+                return self.send(200, json.loads(target.read_text(encoding='utf-8')), allowed[target.name])
             return self.send(200, target.read_bytes(), allowed[target.name])
         return self.send(404, {"error": "ページがありません"})
 
