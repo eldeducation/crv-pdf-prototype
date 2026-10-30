@@ -4,6 +4,7 @@
     "health endpoint available",
     "browser-compatible login form without HTTP authentication challenge",
     "login form CSP limited to own origin; framing forbidden",
+    "form policy preserves same-origin Origin header",
     "unauthenticated protected route denied",
     "untrusted Host denied",
     "cross-origin login denied",
@@ -20,7 +21,7 @@
     "second browser receives separate login and session tokens",
     "login attempts rate limited"
   ],
-  "check_count": 18,
+  "check_count": 19,
   "api_calls": 0,
   "python_syntax": "passed",
   "docker_first_build": "succeeded on Render; browser login fix awaits redeploy",

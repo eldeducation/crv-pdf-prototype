@@ -56,6 +56,8 @@ class CloudHandler(gateway.Handler):
         self.send_response(200)
         headers = response_headers(LOGIN_HTML, 'text/html; charset=utf-8', secure=True, trusted_script=b'')
         headers['Content-Security-Policy'] = headers['Content-Security-Policy'].replace("form-action 'none'", "form-action 'self'")
+        # Form navigation must retain its same-origin Origin for CSRF validation.
+        headers['Referrer-Policy'] = 'same-origin'
         for name, value in {'Content-Type': 'text/html; charset=utf-8', 'Content-Length': str(len(LOGIN_HTML)), **headers}.items():
             self.send_header(name, value)
         self.end_headers()
