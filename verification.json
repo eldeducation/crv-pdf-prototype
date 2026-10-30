@@ -103,5 +103,36 @@
       "https://openrouter.ai/openai/gpt-6.1-sol",
       "https://openrouter.ai/anthropic/claude-opus-5.5"
     ]
+  },
+  "dynamic_model_catalog": {
+    "date": "2026-10-30",
+    "feature": "provider model discovery after API configuration",
+    "model_catalog_tests": 16,
+    "existing_regression_tests": 164,
+    "all_passed": true,
+    "browser_fixture_checks": [
+      "auto discovery of all six fixture models",
+      "Sol selection sets correct ID",
+      "name and ID search",
+      "selection preserved while filtering and refreshing",
+      "compatible-only filter",
+      "unsupported options disabled with reasons",
+      "custom ID entry",
+      "no reasoning parameter for non-reasoning model",
+      "Anthropic provider switch discards OpenRouter models",
+      "English labels and placeholder",
+      "manual mode hides selector",
+      "disconnect clears catalogue",
+      "authentication failure has no stale models"
+    ],
+    "test_data": "isolated loopback app with fake keys and mocked provider catalogues",
+    "paid_inference_calls": 0,
+    "live_provider_catalog_tested": false,
+    "default_generation_payload_unchanged": true,
+    "inline_script_matches_csp_source": true,
+    "sources": [
+      "https://openrouter.ai/docs/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails",
+      "https://platform.claude.com/docs/en/api/models/list"
+    ]
   }
 }

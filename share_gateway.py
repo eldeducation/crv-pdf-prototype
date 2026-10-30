@@ -25,7 +25,7 @@ MAX_SESSION_AGE = 8 * 3600
 MAX_SESSION_IDLE = 3600
 UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 COPY_FILES = (
-    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py',
+    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py',
     'content_quality.py', 'checkpoints.py', 'crv_worker.py', 'render.cjs',
     'layout.css', 'index.html', 'ui.js', 'runtime.local.json', 'security.py',
     'document_options.py', 'document_design.py', 'editorial_quality.py', 'restyle.py', 'source_references.py',
@@ -35,7 +35,7 @@ COPY_FILES = (
 
 def allowed_route(method, route):
     if method == 'POST':
-        return route in ('configure', 'disconnect', 'upload', 'start', 'stop', 'manual/respond')
+        return route in ('configure', 'disconnect', 'models', 'upload', 'start', 'stop', 'manual/respond')
     if method != 'GET':
         return False
     return (route in ('', 'ui.js', 'status') or bool(re.fullmatch(r'manual/request/[a-f0-9]{24}\.zip', route))

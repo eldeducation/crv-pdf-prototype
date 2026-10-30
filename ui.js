@@ -5,6 +5,10 @@ const translations={
  "APIキーを入力・変更":"Enter or change API key",
  "このAPIキーを設定する":"Set this API key",
  "使用するモデル":"Model to use",
+ "モデルを検索":"Search models",
+ "名前やモデルIDで検索":"Search by name or model ID",
+ "資料作成に対応するモデルだけ表示":"Show only models that support document creation",
+ "一覧を更新":"Refresh list",
  "モデルを選ぶ":"Choose a model",
  "APIのモデルID":"API model ID",
  "APIキーを設定すると、モデルを選べます。":"Set your API key to choose a model.",
@@ -249,6 +253,7 @@ function renderLanguage(){
  document.title=tr(titleJa);
  for(const [node,ja] of staticNodes)node.textContent=tr(ja);
  $('key').placeholder=tr('OpenRouter / Anthropic APIキー');
+ $('modelSearch').placeholder=tr('名前やモデルIDで検索','Search by name or model ID');
  $('prompt').placeholder=tr('例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。','Example: For new employees. Highlight important decisions and use a blue palette.');
  $('settingStatus').textContent=translatedStatus(settingMessage);
  paintPurposeHelp();
@@ -267,44 +272,108 @@ $('language').onchange=()=>{
 };
 
 let connectionProvider=null, connectionOperation=false, connectionOffline=false;
-const modelChoices={openrouter:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['openai/gpt-6.1-sol','GPT-6.1 Sol']],anthropic:[['claude-opus-5-5','Claude Opus 5.5']]};
+let catalogModels=[], catalogLoaded=false, catalogLoading=false, catalogAttempted=false, catalogError='', catalogRevision=null, catalogRequest=0, catalogFetched=0, customModelMode=false;
+const catalogErrors={
+ authentication:['APIキーの認証に失敗しました。キーを確認して設定し直してください。','Authentication failed. Check and replace your API key.'],
+ access:['このキーでは一覧を取得できません。接続先の権限・利用設定を確認してください。','This key cannot access the catalogue. Check provider permissions and settings.'],
+ credits:['接続先の残高・利用上限を確認してください。','Check the provider balance and spending limits.'],
+ rate_limit:['接続先の回数制限です。少し待って一覧を更新してください。','Provider rate limit reached. Wait briefly and refresh the list.'],
+ network:['接続先から一覧を取得できませんでした。「一覧を更新」で再試行できます。','Could not reach the provider. Choose Refresh list to retry.'],
+ changed:['接続が変更されました。画面を更新してください。','The connection changed. Reload this page.'],
+ no_key:['キーの有効時間が切れました。もう一度設定してください。','Your key has expired. Set it again.'],
+ retry_later:['少し待ってから一覧を更新してください。','Wait briefly before refreshing the list.'],
+ loading:['一覧を取得中です。少し待ってから更新してください。','The list is being retrieved. Wait briefly before refreshing.']
+};
+const compatibilityReasons={no_image:['画像入力に非対応','No image input'],no_text:['文章出力に非対応','No text output'],no_tools:['必要なツール機能に非対応','No required tool support'],retired:['提供終了','Retired'],extra_pricing:['追加料金の見積もりに未対応','Extra fees cannot be estimated']};
+function modelLabel(m){return m.name+(m.name===m.id?'':' · '+m.id);}
+function modelReason(m){return (m.reasons||[]).map(code=>pair(compatibilityReasons[code]||[code,code])).join(' / ');}
+function selectedCatalogueModel(){return catalogModels.find(m=>m.id===$('model').value.trim());}
+function resetCatalogue(revision){
+ catalogRequest++;catalogRevision=revision;catalogModels=[];catalogLoaded=false;catalogLoading=false;catalogAttempted=false;catalogError='';catalogFetched=0;customModelMode=false;
+ $('model').value='';$('modelSearch').value='';modelLoaded=false;
+ $('modelChoice').dataset.signature='';settingMessage='';$('settingStatus').textContent='';
+}
+async function loadModels(force=false){
+ if(!configured||connectionOperation||catalogLoading||connectionOffline)return;
+ const request=++catalogRequest, revision=catalogRevision;
+ catalogLoading=true;catalogAttempted=true;catalogError='';paintConnection();
+ try{
+  const response=await fetch('models',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':lastStatus?.csrf_token||''},body:JSON.stringify({refresh:force})});
+  const data=await response.json();
+  if(request!==catalogRequest||revision!==catalogRevision)return;
+  if(!response.ok){catalogError=data.catalog_error||'provider_error';return;}
+  if(data.key_revision!==catalogRevision){catalogError='changed';return;}
+  catalogModels=data.models;catalogLoaded=true;catalogFetched=data.fetched_at;connectionProvider=data.provider;
+  const previous=selectedCatalogueModel();
+  if(!customModelMode&&(!previous||previous.compatibility==='unsupported')){
+   const preferred=catalogModels.find(m=>m.id===lastStatus?.default_model&&m.compatibility!=='unsupported');
+   $('model').value=preferred?.id||'';
+  }
+  modelLoaded=true;
+ }catch{if(request===catalogRequest)catalogError='network';}
+ finally{if(request===catalogRequest){catalogLoading=false;paintConnection();}}
+}
 function paintConnection(){
  const manual=$('executionMode').value==='manual', running=lastStatus?.job?.status==='running'||submitting;
- const provider=lastStatus?.provider||connectionProvider;
- const providerName=provider==='openrouter'?'OpenRouter':'Anthropic';
- const ready=configured&&!connectionOffline;
- $('connectionCard').dataset.state=connectionOffline?'offline':manual?'manual':ready?'ready':'missing';
- $('connection').textContent=connectionOffline?tr('接続状態を確認できません','Connection status unavailable'):manual?tr('APIなしのテストモード','Test without an API'):ready?tr('APIキー設定済み','API key configured')+' · '+providerName:tr('APIキー未設定','No API key configured');
- $('connectionHelp').textContent=connectionOffline?tr('画面を再読み込みして、接続状態を確認してください。','Reload the page to check the connection.'):manual?tr(configured?'設定済みのキーは、このモードでは使いません。':'このモードではAPIキーを使いません。',configured?'The configured key is not used in this mode.':'This mode does not use an API key.'):ready?tr('キーはサーバーで設定済みです。API認証とモデルの利用権限は、生成時に確認されます。','The key is set on the server. Authentication and model access are checked when generation starts.'):tr('下の欄にキーを入力し、「このAPIキーを設定する」を押してください。','Enter your key below and choose “Set this API key”.');
+ const provider=lastStatus?.provider||connectionProvider, providerName=provider==='openrouter'?'OpenRouter':'Anthropic';
+ const ready=configured&&!connectionOffline, invalid=['authentication','access','no_key'].includes(catalogError);
+ $('connectionCard').dataset.state=connectionOffline?'offline':manual?'manual':ready&&!invalid?'ready':'missing';
+ $('connection').textContent=connectionOffline?tr('接続状態を確認できません','Connection status unavailable'):manual?tr('APIなしのテストモード','Test without an API'):!ready?tr('APIキー未設定','No API key configured'):invalid?tr('API接続を確認してください','Check the API connection')+' · '+providerName:catalogLoaded?tr('接続確認済み','Connection checked')+' · '+providerName:catalogLoading?tr('モデル一覧を取得しています…','Retrieving model list…')+' · '+providerName:tr('APIキー設定済み','API key configured')+' · '+providerName;
+ $('connectionHelp').textContent=connectionOffline?tr('画面を再読み込みして、接続状態を確認してください。','Reload the page to check the connection.'):manual?tr('このモードではAPIキーを使いません。','This mode does not use an API key.'):!ready?tr('下の欄にキーを入力し、「このAPIキーを設定する」を押してください。','Enter your key below and choose “Set this API key”.'):invalid?pair(catalogErrors[catalogError]):tr('キーはサーバーのメモリにのみ保持します。未使用状態が30分続くと接続解除されます。','Your key stays in server memory only and expires after 30 minutes without use.');
  $('disconnect').disabled=!configured||running||connectionOperation||connectionOffline;
  $('save').disabled=running||connectionOperation||connectionOffline;
  $('key').disabled=running||connectionOperation;
  $('save').textContent=connectionOperation?tr('設定しています…','Updating…'):tr('このAPIキーを設定する','Set this API key');
  $('modelSettings').hidden=manual;
- const choices=modelChoices[provider]||[];
- if(ready&&(!modelLoaded||(connectionProvider&&connectionProvider!==provider))){$('model').value=lastStatus?.default_model||choices[0]?.[0]||'';modelLoaded=true;}
- if(ready)connectionProvider=provider;
- const signature=JSON.stringify([ready,provider,lang]);
+ $('modelHelp').textContent=tr('接続先が返すモデルをすべて表示します。資料作成には画像入力・文章出力・ツール機能が必要です。','All models returned by your provider are listed. Documents require image input, text output and tool support.');
+ const query=$('modelSearch').value.trim().toLowerCase(), compatibleOnly=$('compatibleOnly').checked;
+ const filtered=catalogModels.filter(m=>(!compatibleOnly||m.compatibility==='supported')&&(!query||(m.name+' '+m.id).toLowerCase().includes(query)));
+ const actual=$('model').value.trim(), selected=selectedCatalogueModel();
+ const signature=JSON.stringify([catalogRequest,catalogLoading,catalogLoaded,ready,lang,query,compatibleOnly,customModelMode,actual,catalogError]);
  if($('modelChoice').dataset.signature!==signature){
-  $('modelChoice').replaceChildren();
-  for(const [value,label] of ready?[...choices,['custom',tr('その他のモデル（IDを入力）','Other model (enter ID)')]]:[['',tr('APIキーを設定してください','Set an API key first')]]){const option=document.createElement('option');option.value=value;option.textContent=label;$('modelChoice').append(option);}
-  $('modelChoice').dataset.signature=signature;
+  const select=$('modelChoice');select.replaceChildren();
+  const append=(parent,value,label,disabled=false)=>{const option=document.createElement('option');option.value=value;option.textContent=label;option.disabled=disabled;parent.append(option);};
+  append(select,'',!ready?tr('APIキーを設定してください','Set an API key first'):catalogLoading?tr('一覧を取得しています…','Retrieving list…'):tr('モデルを選択してください','Choose a model'));
+  if(selected&&!filtered.includes(selected))append(select,selected.id,tr('選択中：','Selected: ')+modelLabel(selected),selected.compatibility==='unsupported');
+  for(const [state,ja,en] of [['supported','資料作成に対応','Supports document creation'],['unknown','仕様の確認が必要','Capabilities not confirmed'],['unsupported','この試作品では非対応','Not supported by this prototype']]){
+   const matches=filtered.filter(m=>m.compatibility===state);if(!matches.length)continue;
+   const group=document.createElement('optgroup');group.label=tr(ja,en)+' ('+matches.length+')';
+   for(const m of matches)append(group,m.id,modelLabel(m)+(state==='unsupported'?' — '+modelReason(m):''),state==='unsupported');select.append(group);
+  }
+  if(ready&&!catalogLoading)append(select,'custom',tr('一覧にないモデルIDを入力（上級者向け）','Enter an unlisted model ID (advanced)'));
+  select.value=ready?(customModelMode?'custom':actual):'';select.dataset.signature=signature;
  }
- const actual=$('model').value.trim(), known=choices.find(([id])=>id===actual);
- $('modelChoice').value=ready?(known?actual:'custom'):'';
- $('customModel').hidden=!ready||!!known;
- $('modelChoice').disabled=!ready||running||connectionOperation;
- $('model').disabled=!ready||running||connectionOperation;
- $('effort').disabled=!ready||manual||running||connectionOperation;
- $('modelHelp').textContent=ready?tr(provider==='openrouter'?'OpenRouter経由でOpus・GPTを選べます。':'AnthropicのキーではClaudeを使います。GPTを使う場合はOpenRouterのキーへ変更してください。',provider==='openrouter'?'Choose Opus or GPT through OpenRouter.':'An Anthropic key uses Claude. Use an OpenRouter key for GPT.'):tr('APIキーを設定すると、モデルを選べます。','Set your API key to choose a model.');
- $('selectedModel').textContent=ready?tr('選択中：','Selected: ')+(known?known[1]:actual||tr('モデルIDを入力してください','Enter a model ID'))+' · '+providerName:tr('モデル未選択','No model selected');
+ const locked=!ready||running||connectionOperation||catalogLoading;
+ $('customModel').hidden=!ready||!customModelMode;
+ $('modelChoice').disabled=locked;
+ $('model').disabled=locked;
+ $('modelSearch').disabled=locked||!catalogLoaded;
+ $('compatibleOnly').disabled=locked||!catalogLoaded;
+ $('refreshModels').disabled=!ready||running||connectionOperation||catalogLoading;
+ $('refreshModels').textContent=catalogLoading?tr('取得中…','Loading…'):tr('一覧を更新','Refresh list');
+ $('catalogStatus').className=catalogError?'small error':'small';
+ $('catalogStatus').textContent=!ready?tr('APIキーを設定すると、モデル一覧を取得します。','Set an API key to retrieve the model list.'):catalogLoading?tr('接続先にモデル一覧を問い合わせています。','Retrieving the model catalogue from your provider.'):catalogError?pair(catalogErrors[catalogError]||['モデル一覧を取得できませんでした。「一覧を更新」で再試行してください。','Could not retrieve the model list. Choose Refresh list to retry.']):catalogLoaded?tr(`${catalogModels.length}件取得 · 表示${filtered.length}件 · 資料作成対応${catalogModels.filter(m=>m.compatibility==='supported').length}件`,`${catalogModels.length} retrieved · ${filtered.length} shown · ${catalogModels.filter(m=>m.compatibility==='supported').length} support document creation`)+(catalogFetched?' · '+new Date(catalogFetched*1000).toLocaleTimeString(lang==='en'?'en-US':'ja-JP',{hour:'2-digit',minute:'2-digit'}):''):'';
+ $('catalogNote').textContent=provider==='anthropic'?tr('一覧の取得ではAIに生成を依頼しません。直接接続にはサーバーの料金設定が必要です。モデルの利用可否は生成時にも確認されます。','Retrieving the list does not run AI generation. Direct Anthropic connections require server-side pricing configuration. Model access is also checked during generation.'):tr('一覧の取得ではAIに生成を依頼しません。OpenRouterの利用設定・プライバシー設定・制限を反映します。残高やモデルの利用可否は生成時にも確認されます。','Retrieving the list does not run AI generation. OpenRouter preferences, privacy settings and restrictions are applied. Balance and model access are also checked at generation time.');
+ const noReasoning=selected?.reasoning===false;
+ let efforts=noReasoning?['high']:(provider==='anthropic'&&selected?.efforts?.length?selected.efforts:['high','xhigh','max']);
+ const effortSig=JSON.stringify([efforts,noReasoning,lang]);
+ if($('effort').dataset.signature!==effortSig){
+  const previous=$('effort').value;$('effort').replaceChildren();
+  for(const e of efforts){const o=document.createElement('option');o.value=e;o.textContent=noReasoning?tr('モデル標準','Model default'):pair(({low:['低','Low'],medium:['中','Medium'],high:['高','High'],xhigh:['超高','Extra high'],max:['最大','Maximum']})[e]);$('effort').append(o);}
+  $('effort').value=efforts.includes(previous)?previous:efforts.includes('high')?'high':efforts[efforts.length-1];$('effort').dataset.signature=effortSig;
+ }
+ $('effort').disabled=locked||manual||noReasoning||!actual;
+ $('selectedModel').textContent=!ready||!actual?tr('モデル未選択','No model selected'):tr('選択中：','Selected: ')+(selected?modelLabel(selected):actual)+(selected?.compatibility==='unknown'?tr(' · 対応仕様が未確認です',' · Capabilities unconfirmed'):'')+(customModelMode?tr(' · 一覧では未確認。利用可否は生成時に確認します。',' · Not verified in the catalogue; access is checked during generation.'):'')+(selected?.max_output_tokens?tr(` · 出力上限 ${selected.max_output_tokens.toLocaleString()}トークン`,` · Output limit ${selected.max_output_tokens.toLocaleString()} tokens`):'');
+ if(ready&&!manual&&!running&&!connectionOperation&&!catalogAttempted)void loadModels();
 }
 $('modelChoice').addEventListener('change',()=>{
- if($('modelChoice').value==='custom'){$('model').value='';modelLoaded=true;paintConnection();$('model').focus();}
- else{$('model').value=$('modelChoice').value;modelLoaded=true;paintConnection();}
+ customModelMode=$('modelChoice').value==='custom';$('model').value=customModelMode?'':$('modelChoice').value;modelLoaded=true;paintConnection();if(customModelMode)$('model').focus();
 });
-
 $('model').addEventListener('input',()=>{modelLoaded=true;paintConnection();});
+$('modelSearch').addEventListener('input',paintConnection);
+$('compatibleOnly').addEventListener('change',paintConnection);
+$('refreshModels').addEventListener('click',()=>void loadModels(true));
+
 $('purpose').onchange=paintPurposeHelp;
 const modeNames={clean:['すっきり','Clean and simple'],diagrams:['図解多め','More diagrams'],photos:['写真多め','More photos'],comparison:['比較で整理','Side-by-side comparisons']};
 function selectedModes(){return [...document.querySelectorAll('#presentationModes [data-mode][aria-pressed="true"]')].map(button=>button.dataset.mode);}
@@ -386,6 +455,7 @@ $('restyle').onclick=async()=>{
 $('generate').onclick=async()=>{
  if(busy||submitting)return;
  try{
+  if($('executionMode').value!=='manual'&&(!($('model').value.trim())||catalogLoading))throw Error(tr('モデル一覧の取得後、使用するモデルを選んでください。','After the model list loads, choose a model.'));
   if(!configured&&$('executionMode').value!=='manual')throw Error('最初に上の「AI接続の設定」を開いて設定してください。');
   submitting=true;submissionStarted=Date.now()/1000;clientError=null;
   busy=true;$('generate').disabled=true;$('results').replaceChildren();message('準備しています');
@@ -408,6 +478,7 @@ $('generate').onclick=async()=>{
 function paintStatus(d){
  $('restylePanel').hidden=true;
  $('presentationSummary').textContent='';
+ if(catalogRevision!==d.key_revision||configured&&!d.configured)resetCatalogue(d.key_revision);
  configured=d.configured;
  if(d.job?.manual_mode&&d.job?.status==='running')$('executionMode').value='manual';
  const waiting=d.job?.status==='running'&&d.job?.manual_mode?d.job.manual_request:null;

@@ -85,6 +85,8 @@ class OpenRouterClient:
                    'tools': [{'type': 'function', 'function': {'name': t['name'], 'description': t['description'], 'parameters': t['input_schema']}} for t in tools],
                    'reasoning': {'effort': self.config.effort}, 'max_tokens': self.config.max_tokens,
                    'provider': {'require_parameters': True}, 'stream': True, 'stream_options': {'include_usage': True}}
+        from model_catalog import apply_model_options
+        apply_model_options(payload, self.config.model_options, 'openrouter', self.config.effort)
         data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         if len(data) > 30_000_000:
             raise self.error_type('AIへの送信量が大きすぎます。解析画像数を減らしてください。')

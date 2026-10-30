@@ -82,6 +82,7 @@ class Config:
     presentation_notes: str = ''
     restyle_from: str | None = None
     progress: object = None
+    model_options: dict | None = None
 
     def __post_init__(self):
         validate_options(self.purpose, self.detail_level, self.output_language, self.design, self.visual_density)
@@ -560,6 +561,8 @@ class ClaudeClient:
         payload = {"model": self.config.model, "max_tokens": self.config.max_tokens,
                    "thinking": {"type": "adaptive"}, "output_config": {"effort": self.config.effort},
                    "system": system, "messages": messages, "tools": tools, "stream": True}
+        from model_catalog import apply_model_options
+        apply_model_options(payload, self.config.model_options, 'anthropic', self.config.effort)
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         if len(data) > 30_000_000:
             raise PrototypeError("AIへの送信量が大きすぎます。解析画像数を減らしてください。")
@@ -920,7 +923,7 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
     def notify(message):
         progress.touch()
         original_notify(message)
-    report = {"status": "running", "model": config.model, "effort": config.effort,
+    report = {"status": "running", "model": config.model, "effort": config.effort, "model_options": config.model_options,
               "source": str(source), "prompt": prompt, "live_ai": client is None,
               "provider": 'manual' if manual_mode else provider_for(api_key), 'manual_mode': manual_mode,
               "quality_pipeline": "quality-first-v3" if config.efficient else "evidence-plan-review-document-review-v1",

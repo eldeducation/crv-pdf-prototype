@@ -15,6 +15,7 @@ from source_references import write_index, local_video, byte_range
 from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
 from restyle import restyle_source
+from model_catalog import fetch_models, CatalogError
 
 from pipeline import ROOT, Config, DEFAULT_PROMPT, PrototypeError, load_env, run, provider_for, resume_fingerprint
 
@@ -54,11 +55,12 @@ def last_job():
 
 KEY_IDLE_SECONDS = 30 * 60
 STATE = {"api_key": os.getenv("OPENROUTER_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", ""), "job": last_job(),
-         "key_used_at": time.monotonic()}
+         "key_used_at": time.monotonic(), "key_revision": 0, "catalog": None, "catalog_attempt": 0}
 CSRF_TOKEN = secrets.token_urlsafe(32)
 CANCEL = threading.Event()
 UPLOADS = {}
 MANUAL_CLIENT = None
+CATALOG_LOCK = threading.Lock()
 
 
 def public_status():
@@ -79,7 +81,7 @@ def public_status():
                 except (OSError, ValueError, KeyError):
                     pass
         return {"configured": bool(STATE["api_key"]), "job": job, "csrf_token": CSRF_TOKEN,
-                "quality_pipeline": "quality-first-v3",
+                "key_revision": STATE["key_revision"], "quality_pipeline": "quality-first-v3",
                 "default_model": os.getenv("VIDEO_PDF_MODEL", "anthropic/claude-opus-5.5" if provider_for(STATE["api_key"]) == "openrouter" else "claude-opus-5-5"),
                 "default_effort": os.getenv("VIDEO_PDF_EFFORT", "xhigh"), "provider": provider_for(STATE["api_key"])}
 
@@ -87,8 +89,45 @@ def public_status():
 def expire_key():
     # Caller holds LOCK. Polling the UI must not extend the key's lifetime.
     running = STATE['job'] and STATE['job']['status'] == 'running'
-    if not running and time.monotonic() - STATE['key_used_at'] >= KEY_IDLE_SECONDS:
-        STATE['api_key'] = ''
+    if STATE['api_key'] and not running and time.monotonic() - STATE['key_used_at'] >= KEY_IDLE_SECONDS:
+        clear_connection()
+
+
+def clear_connection():
+    # Caller holds LOCK; invalidate both successful and in-flight catalogues.
+    STATE['api_key'] = ''
+    STATE['key_revision'] += 1
+    STATE['catalog'] = None
+    STATE['catalog_attempt'] = 0
+
+
+def model_catalog(force=False):
+    with LOCK:
+        expire_key()
+        key, revision = STATE['api_key'], STATE['key_revision']
+        if not key:
+            raise CatalogError('no_key', 400)
+        cached = STATE['catalog']
+        if cached and (not force and time.time() - cached['fetched_at'] < 600):
+            return cached
+        if STATE['catalog_attempt'] and time.monotonic() - STATE['catalog_attempt'] < 10:
+            if cached:
+                return cached
+            raise CatalogError('retry_later', 429)
+        if not CATALOG_LOCK.acquire(blocking=False):
+            raise CatalogError('loading', 409)
+        STATE['catalog_attempt'] = time.monotonic()
+    try:
+        result = fetch_models(key, provider_for(key))
+        with LOCK:
+            expire_key()
+            if STATE['key_revision'] != revision:
+                raise CatalogError('changed', 409)
+            result['key_revision'] = revision
+            STATE['catalog'] = result
+            return result
+    finally:
+        CATALOG_LOCK.release()
 
 
 def key_expiry_worker():
@@ -235,11 +274,16 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError('回答待ちのテストはありません。')
                     MANUAL_CLIENT.submit(body)
                 return self.send(200, {'accepted': True})
+            if route == 'models':
+                try:
+                    return self.send(200, model_catalog(bool(body.get('refresh'))))
+                except CatalogError as error:
+                    return self.send(error.status, {'error': 'モデル一覧を取得できませんでした。', 'catalog_error': error.code})
             if route == 'disconnect':
                 with LOCK:
                     if STATE['job'] and STATE['job']['status'] == 'running':
                         raise ValueError('Stop generation and wait for the current request to finish before disconnecting.')
-                    STATE['api_key'] = ''
+                    clear_connection()
                 return self.send(200, {'configured': False})
             if route == "stop":
                 CANCEL.set()
@@ -255,6 +299,7 @@ class Handler(BaseHTTPRequestHandler):
                 with LOCK:
                     if STATE['job'] and STATE['job']['status'] == 'running':
                         raise ValueError('Wait for the current generation to finish before replacing the API key.')
+                    clear_connection()
                     STATE["api_key"] = key
                     STATE['key_used_at'] = time.monotonic()
                 return self.send(200, {"configured": True, "provider": provider, "model": "anthropic/claude-opus-5.5" if provider == "openrouter" else "claude-opus-5-5"})
@@ -311,7 +356,14 @@ class Handler(BaseHTTPRequestHandler):
                     effort = body.get("effort", "xhigh")
                     if effort not in {"low", "medium", "high", "xhigh", "max"}:
                         raise PrototypeError("推論設定が正しくありません。")
-                    config = Config(model=body.get("model", "claude-opus-5-5").strip(), effort=effort,
+                    model_id = body.get("model", "claude-opus-5-5").strip()
+                    if not manual_mode and not model_id:
+                        raise PrototypeError('使用するモデルを選んでください。')
+                    selected = next((m for m in (STATE.get('catalog') or {}).get('models', []) if m['id'] == model_id), None)
+                    if not manual_mode and selected and selected['compatibility'] == 'unsupported':
+                        raise PrototypeError('選択したモデルは画像の読み取り・文章作成・ツール利用の要件を満たしていません。')
+                    options = (previous.get('model_options') if resume_folder or restyle_from else None) or selected
+                    config = Config(model=model_id, effort=effort, model_options=None if manual_mode else options,
                                     no_transcribe=bool(body.get("no_transcribe")),
                                     external_research=body.get('external_research', True),
                                     budget_usd=float(body.get("budget_usd", 3)), cancel_event=CANCEL,
