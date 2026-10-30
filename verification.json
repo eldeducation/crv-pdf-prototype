@@ -79,5 +79,29 @@
       "login_page": "verified after deploy",
       "post_login_pdf": "previous deployed version verified; this release tested with local parity replay"
     }
+  },
+  "connection_ui": {
+    "date": "2026-10-30",
+    "checks": [
+      "unconfigured status and disabled model selector",
+      "OpenRouter key-configured status without claiming provider authentication",
+      "Opus and Sol selector",
+      "Sol selection sets openai/gpt-6.1-sol for generation",
+      "API key field clears after configuration",
+      "explicit disconnect returns to unconfigured",
+      "Anthropic key shows Claude choices only",
+      "custom model ID entry",
+      "English labels",
+      "manual mode hides model options"
+    ],
+    "check_count": 10,
+    "browser": "isolated loopback app with fake keys; no provider requests",
+    "paid_api_calls": 0,
+    "unique_ids": true,
+    "inline_script_matches_csp_source": true,
+    "model_sources": [
+      "https://openrouter.ai/openai/gpt-6.1-sol",
+      "https://openrouter.ai/anthropic/claude-opus-5.5"
+    ]
   }
 }

@@ -178,6 +178,23 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 
 /* Clear comparison illustration */
 .mode-button[data-mode="comparison"] .mode-icon{background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20shape-rendering%3D%22crispEdges%22%3E%3Cpath%20fill%3D%22%2345494c%22%20d%3D%22M1%203h9v17H1zM14%203h9v17h-9z%22%2F%3E%3Cpath%20fill%3D%22%23f2eddc%22%20d%3D%22M2%204h7v15H2zM15%204h7v15h-7z%22%2F%3E%3Cpath%20fill%3D%22%23618eb4%22%20d%3D%22M3%206h5v2H3zM3%2010h5v1H3zM3%2013h3v1H3zM3%2016h5v1H3z%22%2F%3E%3Cpath%20fill%3D%22%23b9904c%22%20d%3D%22M16%206h5v2h-5zM16%2010h5v1h-5zM16%2016h3v1h-3z%22%2F%3E%3Cpath%20fill%3D%22%23e3c77f%22%20d%3D%22M15%2012h7v3h-7z%22%2F%3E%3Cpath%20fill%3D%22%23a07436%22%20d%3D%22M16%2013h5v1h-5z%22%2F%3E%3Cpath%20fill%3D%22%23d9d9d9%22%20d%3D%22M10%207h3v1h-3zM12%206h1v3h-1zM11%2015h3v1h-3zM11%2014h1v3h-1z%22%2F%3E%3C%2Fsvg%3E");background-size:38px 38px}
+
+/* Connection and model selection stay visible together. */
+#connectionPanel .connection-card,#connectionPanel .connection-card strong,#connectionPanel .connection-card p,#connectionPanel #selectedModel{color:#203627}
+
+#connectionPanel .connection-card{margin:18px 0;padding:16px 18px;border:2px solid #928f83;background:#eee6cf;box-shadow:inset 2px 2px #ffffff70,inset -2px -2px #867a5630}
+#connectionPanel .connection-card strong{display:block;font-size:18px;line-height:1.5}
+#connectionPanel .connection-card[data-state="ready"]{background:#d9eebf;border-color:#73994c}
+#connectionPanel .connection-card[data-state="offline"]{background:#eee1db;border-color:#ae7163}
+#connectionPanel .connection-card[data-state="manual"]{background:#dce8f2;border-color:#7694ab}
+#connectionPanel .connection-card p{margin:8px 0 12px}
+#connectionPanel #disconnect:disabled{display:none}
+#connectionPanel #settings{margin:18px 0}
+#connectionPanel #modelSettings{border-top:2px dashed #aaa58b;margin-top:22px;padding-top:18px}
+#connectionPanel #modelSettings h3{margin:0 0 8px}
+#connectionPanel .model-summary{padding:12px 14px;border-left:4px solid #658a4e;background:#eff5e6;font-weight:700;overflow-wrap:anywhere}
+#connectionPanel [hidden]{display:none!important}
+
 </style>
 <main>
 <div class="language-tools" style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:18px"><label for="language" style="margin:0">Language / 言語</label><select id="language" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></div>
@@ -214,8 +231,11 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 <text x="159" y="364" fill="#e3e3e3" text-anchor="middle" font-family="Consolas,monospace" font-size="9" font-weight="bold" letter-spacing="2">FROM MOTION TO PAPER</text>
 </svg>
 </div><!-- MOTION PRINT ART END --><div class="label">VIDEO → VISUAL DOCUMENT / LOCAL PROTOTYPE</div><h1>動画を資料に</h1><p>大事な内容を読み取り、写真と説明にメリハリをつけたPDFに。</p><nav class="craft-nav" aria-label="Document workflow"><a href="#videoPanel"><b>01</b><span>VIDEO</span></a><a href="#documentPanel"><b>02</b><span>DESIGN</span></a><a href="#statusPanel"><b>03</b><span>PDF</span></a></nav></header>
-<section class="panel"><label for="executionMode">実行方法</label><select id="executionMode"><option value="api">APIで生成する</option><option value="manual">APIを使わないテスト</option></select><p id="manualHelp" class="small" hidden>APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。</p><span class="pill" id="connection">AI接続を確認しています</span>
-<details id="settings"><summary>AI接続の設定</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><button class="secondary" id="save" style="margin-top:12px">接続設定を使う</button><button class="secondary" id="disconnect" style="margin-left:8px" disabled>APIキーの接続を解除</button><p class="small">共有元のPCへAPIキーが送られます。テスト用キーを使い、プロバイダー側で利用上限を設定してください。キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。</p><p class="small" id="settingStatus"></p></details>
+<section class="panel" id="connectionPanel"><h2>AI接続とモデル</h2>
+<label for="executionMode">実行方法</label><select id="executionMode"><option value="api">APIで生成する</option><option value="manual">APIを使わないテスト</option></select><p id="manualHelp" class="small" hidden>APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。</p>
+<div class="connection-card" id="connectionCard" data-state="checking"><strong id="connection" role="status" aria-live="polite">AI接続を確認しています</strong><p class="small" id="connectionHelp"></p><button class="secondary" id="disconnect" disabled>APIキーの接続を解除</button></div>
+<details id="settings" open><summary>APIキーを入力・変更</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><button id="save" style="margin-top:12px">このAPIキーを設定する</button><p class="small">キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。</p></details><p class="small" id="settingStatus" role="status" aria-live="polite"></p>
+<div id="modelSettings"><h3>使用するモデル</h3><p class="small" id="modelHelp">APIキーを設定すると、モデルを選べます。</p><div class="row"><div><label for="modelChoice">モデルを選ぶ</label><select id="modelChoice" disabled><option value="">APIキーを設定してください</option></select></div><div><label for="effort">推論の深さ</label><select id="effort"><option value="high">高</option><option value="xhigh" selected>超高</option><option value="max">最大</option></select></div></div><div id="customModel" hidden><label for="model">APIのモデルID</label><input id="model" value="claude-opus-5-5" autocomplete="off"></div><p id="selectedModel" class="model-summary" aria-live="polite"></p></div>
 </section>
 <section class="panel" id="videoPanel"><h2>1. 動画を選ぶ</h2><label for="file">動画ファイル</label><input type="file" id="file" accept=".mp4,.mov,.webm,.mkv"><p class="small">MP4・MOV・WebM・MKV。最初の試作品は30分以内・1GB以内に対応。</p><label for="url">または、YouTube・Xの動画リンク</label><input id="url" type="url" placeholder="https://www.youtube.com/watch?v=… / https://x.com/…/status/…"><p class="small">動画ファイルを選んだ場合は、ファイルを優先します。</p><p class="small">Xは公開投稿の動画に対応。ログインが必要な投稿は取り込めません。</p><label style="font-weight:normal"><input type="checkbox" id="silent">解説音声がない動画（文字起こしを省略）</label><label style="font-weight:normal"><input type="checkbox" id="externalResearch" checked>必要な公開情報をWeb検索で補う</label><p class="small">不足する重要情報だけ検索し、外部資料の出典を残します。非公開の内容を含む動画ではオフにしてください。</p></section>
 <section class="panel" id="documentPanel"><h2>2. 仕上がりの希望</h2><div class="row"><div><label for="purpose">資料の用途</label><select id="purpose"><option value="auto">動画に合わせる</option><option value="procedure">作業手順書</option><option value="seminar">セミナー要約</option><option value="training">研修資料</option></select></div><div><label for="detailLevel">説明の詳しさ</label><select id="detailLevel"><option value="compact">簡潔</option><option value="standard" selected>標準</option><option value="detailed">詳しく</option></select></div></div><p class="small" id="purposeHelp"></p><p class="small">簡潔を選んでも、作業に必要な操作や重要な条件は省きません。</p><div class="design-standard"><span class="standard-spark" aria-hidden="true">✦</span><div><strong>デザイン重視で作成</strong><p>内容に合った構成・配色・余白で、読みやすく整えます。</p></div></div>
@@ -227,7 +247,7 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 <button type="button" class="mode-button glass-lilac" data-mode="photos" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>写真多め</strong><small>実際の場面を見やすく</small></span></button>
 <button type="button" class="mode-button glass-amber" data-mode="comparison" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>比較で整理</strong><small>違いや選択肢を並べて理解</small></span></button>
 </div><p class="small mode-summary" id="modeSummary" role="status" aria-live="polite"></p>
-<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><details><summary>生成の設定</summary><div class="row"><div><label for="model">モデル</label><input id="model" value="claude-opus-5-5"></div><div><label for="effort">推論の深さ</label><select id="effort"><option value="high">高</option><option value="xhigh" selected>超高</option><option value="max">最大</option></select></div></div><p class="small">モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。</p></details><label for="budget">今回の費用目安（米ドル）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" value="3"><p class="small">次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。</p></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。再作成は1回までです。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。</p></section>
+<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><label for="budget">今回の費用目安（米ドル）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" value="3"><p class="small">次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。</p></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。再作成は1回までです。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。</p></section>
 <section class="panel" id="statusPanel" aria-live="polite"><h2>生成状況</h2><p id="message">動画とAI接続を設定すると生成できます。</p><a id="manualJump" class="download" href="#manualPanel" hidden>次の操作へ</a><p id="stageSummary" class="small"></p><ol id="stageList" class="stage-list" aria-live="polite"></ol><p id="lastUpdate" class="small" aria-live="off"></p><div id="stopNotice" class="stop-notice" hidden><strong id="stopTitle"></strong><p id="stopAction"></p><details><summary>詳しい停止理由</summary><pre id="stopDetails"></pre></details></div><button id="resume" class="secondary hidden">途中から再開する</button><button id="stop" class="secondary hidden">追加処理を止める</button><div id="bar" class="progress"></div><p class="small" id="usage"></p><p id="presentationSummary" class="small"></p><div id="results"></div><div id="restylePanel" hidden><h3>内容を保って仕上がりを変更</h3><p class="small">上のアレンジと追加の希望を使って、新しいPDFを作ります。</p><p class="small" id="restyleHelp"></p><button id="restyle" class="secondary">この設定で作り直す</button></div></section>
 <section class="panel" id="manualPanel" hidden><h2>APIなしテスト：回答の取り込み</h2><p id="manualSequence" class="small"></p><a id="manualPacket" class="download" download="manual-request.zip">1. 指示・画像をまとめて保存</a><h3>2. チャットで回答を作る</h3><p class="small">保存したZIPを展開し、README.txtの案内に従ってください。このチャットで作った回答JSONを読み込むと、検査して次の依頼へ進みます。</p><label for="manualAnswer">3. 回答JSONを選ぶ</label><input id="manualAnswer" type="file" accept=".json,application/json"><button id="manualSubmit" style="margin-top:16px">回答を読み込んで続ける</button><p id="manualError" class="error" role="alert"></p></section>
 <section class="panel" id="referencePanel" hidden><h2>内容の根拠を確認</h2><p class="small">各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。</p><p class="small">動画の解析内容です。PDF本文の表現と異なる場合があります。</p><p id="referenceSummary"></p><div id="referenceGaps"></div><video id="sourcePlayer" controls preload="metadata" playsinline hidden style="width:100%;max-height:480px;margin:14px 0"></video><div id="referenceList"></div></section><footer>ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。</footer>
@@ -236,6 +256,16 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 // Embedded in index.html so the existing local server can serve the updated UI.
 const $=id=>document.getElementById(id);
 const translations={
+ "AI接続とモデル":"AI connection and model",
+ "APIキーを入力・変更":"Enter or change API key",
+ "このAPIキーを設定する":"Set this API key",
+ "使用するモデル":"Model to use",
+ "モデルを選ぶ":"Choose a model",
+ "APIのモデルID":"API model ID",
+ "APIキーを設定すると、モデルを選べます。":"Set your API key to choose a model.",
+ "APIキーを設定してください":"Set an API key first",
+ "キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。":"Disconnect the key when finished. It expires after 30 minutes without use once generation has finished. Set a spending limit with your provider too.",
+
  '次の操作へ':'Next action',
  'この段階は、チャットで作成した回答JSONの取り込み待ちです。下の「次の操作へ」を開いてください。':'This step is waiting for a reply JSON prepared in chat. Open Next action below.',
  '実行方法':'Execution mode', 'APIで生成する':'Generate using an API',
@@ -490,7 +520,46 @@ $('language').onchange=()=>{
  try{localStorage.setItem('video-pdf-ui-language',lang);}catch{}
  renderLanguage();
 };
-$('model').addEventListener('input',()=>modelLoaded=true);
+
+let connectionProvider=null, connectionOperation=false, connectionOffline=false;
+const modelChoices={openrouter:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['openai/gpt-6.1-sol','GPT-6.1 Sol']],anthropic:[['claude-opus-5-5','Claude Opus 5.5']]};
+function paintConnection(){
+ const manual=$('executionMode').value==='manual', running=lastStatus?.job?.status==='running'||submitting;
+ const provider=lastStatus?.provider||connectionProvider;
+ const providerName=provider==='openrouter'?'OpenRouter':'Anthropic';
+ const ready=configured&&!connectionOffline;
+ $('connectionCard').dataset.state=connectionOffline?'offline':manual?'manual':ready?'ready':'missing';
+ $('connection').textContent=connectionOffline?tr('接続状態を確認できません','Connection status unavailable'):manual?tr('APIなしのテストモード','Test without an API'):ready?tr('APIキー設定済み','API key configured')+' · '+providerName:tr('APIキー未設定','No API key configured');
+ $('connectionHelp').textContent=connectionOffline?tr('画面を再読み込みして、接続状態を確認してください。','Reload the page to check the connection.'):manual?tr(configured?'設定済みのキーは、このモードでは使いません。':'このモードではAPIキーを使いません。',configured?'The configured key is not used in this mode.':'This mode does not use an API key.'):ready?tr('キーはサーバーで設定済みです。API認証とモデルの利用権限は、生成時に確認されます。','The key is set on the server. Authentication and model access are checked when generation starts.'):tr('下の欄にキーを入力し、「このAPIキーを設定する」を押してください。','Enter your key below and choose “Set this API key”.');
+ $('disconnect').disabled=!configured||running||connectionOperation||connectionOffline;
+ $('save').disabled=running||connectionOperation||connectionOffline;
+ $('key').disabled=running||connectionOperation;
+ $('save').textContent=connectionOperation?tr('設定しています…','Updating…'):tr('このAPIキーを設定する','Set this API key');
+ $('modelSettings').hidden=manual;
+ const choices=modelChoices[provider]||[];
+ if(ready&&(!modelLoaded||(connectionProvider&&connectionProvider!==provider))){$('model').value=lastStatus?.default_model||choices[0]?.[0]||'';modelLoaded=true;}
+ if(ready)connectionProvider=provider;
+ const signature=JSON.stringify([ready,provider,lang]);
+ if($('modelChoice').dataset.signature!==signature){
+  $('modelChoice').replaceChildren();
+  for(const [value,label] of ready?[...choices,['custom',tr('その他のモデル（IDを入力）','Other model (enter ID)')]]:[['',tr('APIキーを設定してください','Set an API key first')]]){const option=document.createElement('option');option.value=value;option.textContent=label;$('modelChoice').append(option);}
+  $('modelChoice').dataset.signature=signature;
+ }
+ const actual=$('model').value.trim(), known=choices.find(([id])=>id===actual);
+ $('modelChoice').value=ready?(known?actual:'custom'):'';
+ $('customModel').hidden=!ready||!!known;
+ $('modelChoice').disabled=!ready||running||connectionOperation;
+ $('model').disabled=!ready||running||connectionOperation;
+ $('effort').disabled=!ready||manual||running||connectionOperation;
+ $('modelHelp').textContent=ready?tr(provider==='openrouter'?'OpenRouter経由でOpus・GPTを選べます。':'AnthropicのキーではClaudeを使います。GPTを使う場合はOpenRouterのキーへ変更してください。',provider==='openrouter'?'Choose Opus or GPT through OpenRouter.':'An Anthropic key uses Claude. Use an OpenRouter key for GPT.'):tr('APIキーを設定すると、モデルを選べます。','Set your API key to choose a model.');
+ $('selectedModel').textContent=ready?tr('選択中：','Selected: ')+(known?known[1]:actual||tr('モデルIDを入力してください','Enter a model ID'))+' · '+providerName:tr('モデル未選択','No model selected');
+}
+$('modelChoice').addEventListener('change',()=>{
+ if($('modelChoice').value==='custom'){$('model').value='';modelLoaded=true;paintConnection();$('model').focus();}
+ else{$('model').value=$('modelChoice').value;modelLoaded=true;paintConnection();}
+});
+
+$('model').addEventListener('input',()=>{modelLoaded=true;paintConnection();});
 $('purpose').onchange=paintPurposeHelp;
 const modeNames={clean:['すっきり','Clean and simple'],diagrams:['図解多め','More diagrams'],photos:['写真多め','More photos'],comparison:['比較で整理','Side-by-side comparisons']};
 function selectedModes(){return [...document.querySelectorAll('#presentationModes [data-mode][aria-pressed="true"]')].map(button=>button.dataset.mode);}
@@ -508,7 +577,7 @@ function paintExecutionMode(){
  $('manualHelp').hidden=!manual;
  $('apiOptions').hidden=manual;
  $('budget').disabled=manual;
- $('model').disabled=manual;$('effort').disabled=manual;
+ paintConnection();
  $('generate').textContent=tr(manual?'テストを開始する':'PDFを生成する');
  if(manual&&!configured)$('settings').open=false;
 }
@@ -533,19 +602,23 @@ async function api(route,body){
  const d=await r.json();if(!r.ok)throw Error(d.error||'操作に失敗しました');return d;
 }
 $('save').onclick=async()=>{
+ if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
   const d=await api('configure',{api_key:$('key').value});
-  $('key').value='';$('model').value=d.model;modelLoaded=true;
+  $('key').value='';if(!modelLoaded||connectionProvider!==d.provider){$('model').value=d.model;modelLoaded=true;}
+  $('settings').open=false;
   settingMessage='キーを設定しました。未使用状態が30分続くと接続解除されます。';
   $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
- finally{$('key').value='';}
+ finally{$('key').value='';connectionOperation=false;paintConnection();}
 };
 $('disconnect').onclick=async()=>{
+ if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
   await api('disconnect',{});$('key').value='';settingMessage='接続を解除しました。';
   $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
+ finally{connectionOperation=false;paintConnection();}
 };
 $('resume').onclick=async()=>{
  if(busy||submitting||!lastJob)return;
@@ -605,8 +678,6 @@ function paintStatus(d){
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
  $('save').disabled=d.job?.status==='running'||submitting;
- if(!modelLoaded&&d.provider==='openrouter'){$('model').value='anthropic/claude-opus-5.5';modelLoaded=true;}
- $('connection').textContent=configured?tr('AI接続：設定済み')+' ('+(d.provider==='openrouter'?'OpenRouter':'Anthropic')+')':tr('AI接続：未設定');
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();
  if(submitting){paintSubmission();return;}
@@ -779,8 +850,8 @@ $('sourcePlayer').onerror=()=>{$('referenceSummary').textContent=tr('ブラウ�
 async function refresh(){
  try{
   const r=await fetch('status');const d=await r.json();if(!r.ok)throw Error(d.error);
-  lastStatus=d;paintStatus(d);
- }catch(e){message('画面との接続が切れました。起動し直してください。',true);}
+  lastStatus=d;connectionOffline=false;paintStatus(d);
+ }catch(e){connectionOffline=true;paintConnection();message('画面との接続が切れました。起動し直してください。',true);}
 }
 renderLanguage();refresh();setInterval(refresh,2500);
 

@@ -9,6 +9,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+MODULE_ROOT = Path(__file__).resolve().parent
+if not (MODULE_ROOT / 'security.py').is_file(): MODULE_ROOT = MODULE_ROOT.parent
+sys.path.insert(0, str(MODULE_ROOT))
+
 import security
 import share_gateway as gateway
 import pipeline

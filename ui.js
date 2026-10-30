@@ -1,6 +1,16 @@
 // Embedded in index.html so the existing local server can serve the updated UI.
 const $=id=>document.getElementById(id);
 const translations={
+ "AI接続とモデル":"AI connection and model",
+ "APIキーを入力・変更":"Enter or change API key",
+ "このAPIキーを設定する":"Set this API key",
+ "使用するモデル":"Model to use",
+ "モデルを選ぶ":"Choose a model",
+ "APIのモデルID":"API model ID",
+ "APIキーを設定すると、モデルを選べます。":"Set your API key to choose a model.",
+ "APIキーを設定してください":"Set an API key first",
+ "キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。":"Disconnect the key when finished. It expires after 30 minutes without use once generation has finished. Set a spending limit with your provider too.",
+
  '次の操作へ':'Next action',
  'この段階は、チャットで作成した回答JSONの取り込み待ちです。下の「次の操作へ」を開いてください。':'This step is waiting for a reply JSON prepared in chat. Open Next action below.',
  '実行方法':'Execution mode', 'APIで生成する':'Generate using an API',
@@ -255,7 +265,46 @@ $('language').onchange=()=>{
  try{localStorage.setItem('video-pdf-ui-language',lang);}catch{}
  renderLanguage();
 };
-$('model').addEventListener('input',()=>modelLoaded=true);
+
+let connectionProvider=null, connectionOperation=false, connectionOffline=false;
+const modelChoices={openrouter:[['anthropic/claude-opus-5.5','Claude Opus 5.5'],['openai/gpt-6.1-sol','GPT-6.1 Sol']],anthropic:[['claude-opus-5-5','Claude Opus 5.5']]};
+function paintConnection(){
+ const manual=$('executionMode').value==='manual', running=lastStatus?.job?.status==='running'||submitting;
+ const provider=lastStatus?.provider||connectionProvider;
+ const providerName=provider==='openrouter'?'OpenRouter':'Anthropic';
+ const ready=configured&&!connectionOffline;
+ $('connectionCard').dataset.state=connectionOffline?'offline':manual?'manual':ready?'ready':'missing';
+ $('connection').textContent=connectionOffline?tr('接続状態を確認できません','Connection status unavailable'):manual?tr('APIなしのテストモード','Test without an API'):ready?tr('APIキー設定済み','API key configured')+' · '+providerName:tr('APIキー未設定','No API key configured');
+ $('connectionHelp').textContent=connectionOffline?tr('画面を再読み込みして、接続状態を確認してください。','Reload the page to check the connection.'):manual?tr(configured?'設定済みのキーは、このモードでは使いません。':'このモードではAPIキーを使いません。',configured?'The configured key is not used in this mode.':'This mode does not use an API key.'):ready?tr('キーはサーバーで設定済みです。API認証とモデルの利用権限は、生成時に確認されます。','The key is set on the server. Authentication and model access are checked when generation starts.'):tr('下の欄にキーを入力し、「このAPIキーを設定する」を押してください。','Enter your key below and choose “Set this API key”.');
+ $('disconnect').disabled=!configured||running||connectionOperation||connectionOffline;
+ $('save').disabled=running||connectionOperation||connectionOffline;
+ $('key').disabled=running||connectionOperation;
+ $('save').textContent=connectionOperation?tr('設定しています…','Updating…'):tr('このAPIキーを設定する','Set this API key');
+ $('modelSettings').hidden=manual;
+ const choices=modelChoices[provider]||[];
+ if(ready&&(!modelLoaded||(connectionProvider&&connectionProvider!==provider))){$('model').value=lastStatus?.default_model||choices[0]?.[0]||'';modelLoaded=true;}
+ if(ready)connectionProvider=provider;
+ const signature=JSON.stringify([ready,provider,lang]);
+ if($('modelChoice').dataset.signature!==signature){
+  $('modelChoice').replaceChildren();
+  for(const [value,label] of ready?[...choices,['custom',tr('その他のモデル（IDを入力）','Other model (enter ID)')]]:[['',tr('APIキーを設定してください','Set an API key first')]]){const option=document.createElement('option');option.value=value;option.textContent=label;$('modelChoice').append(option);}
+  $('modelChoice').dataset.signature=signature;
+ }
+ const actual=$('model').value.trim(), known=choices.find(([id])=>id===actual);
+ $('modelChoice').value=ready?(known?actual:'custom'):'';
+ $('customModel').hidden=!ready||!!known;
+ $('modelChoice').disabled=!ready||running||connectionOperation;
+ $('model').disabled=!ready||running||connectionOperation;
+ $('effort').disabled=!ready||manual||running||connectionOperation;
+ $('modelHelp').textContent=ready?tr(provider==='openrouter'?'OpenRouter経由でOpus・GPTを選べます。':'AnthropicのキーではClaudeを使います。GPTを使う場合はOpenRouterのキーへ変更してください。',provider==='openrouter'?'Choose Opus or GPT through OpenRouter.':'An Anthropic key uses Claude. Use an OpenRouter key for GPT.'):tr('APIキーを設定すると、モデルを選べます。','Set your API key to choose a model.');
+ $('selectedModel').textContent=ready?tr('選択中：','Selected: ')+(known?known[1]:actual||tr('モデルIDを入力してください','Enter a model ID'))+' · '+providerName:tr('モデル未選択','No model selected');
+}
+$('modelChoice').addEventListener('change',()=>{
+ if($('modelChoice').value==='custom'){$('model').value='';modelLoaded=true;paintConnection();$('model').focus();}
+ else{$('model').value=$('modelChoice').value;modelLoaded=true;paintConnection();}
+});
+
+$('model').addEventListener('input',()=>{modelLoaded=true;paintConnection();});
 $('purpose').onchange=paintPurposeHelp;
 const modeNames={clean:['すっきり','Clean and simple'],diagrams:['図解多め','More diagrams'],photos:['写真多め','More photos'],comparison:['比較で整理','Side-by-side comparisons']};
 function selectedModes(){return [...document.querySelectorAll('#presentationModes [data-mode][aria-pressed="true"]')].map(button=>button.dataset.mode);}
@@ -273,7 +322,7 @@ function paintExecutionMode(){
  $('manualHelp').hidden=!manual;
  $('apiOptions').hidden=manual;
  $('budget').disabled=manual;
- $('model').disabled=manual;$('effort').disabled=manual;
+ paintConnection();
  $('generate').textContent=tr(manual?'テストを開始する':'PDFを生成する');
  if(manual&&!configured)$('settings').open=false;
 }
@@ -298,19 +347,23 @@ async function api(route,body){
  const d=await r.json();if(!r.ok)throw Error(d.error||'操作に失敗しました');return d;
 }
 $('save').onclick=async()=>{
+ if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
   const d=await api('configure',{api_key:$('key').value});
-  $('key').value='';$('model').value=d.model;modelLoaded=true;
+  $('key').value='';if(!modelLoaded||connectionProvider!==d.provider){$('model').value=d.model;modelLoaded=true;}
+  $('settings').open=false;
   settingMessage='キーを設定しました。未使用状態が30分続くと接続解除されます。';
   $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
- finally{$('key').value='';}
+ finally{$('key').value='';connectionOperation=false;paintConnection();}
 };
 $('disconnect').onclick=async()=>{
+ if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
   await api('disconnect',{});$('key').value='';settingMessage='接続を解除しました。';
   $('settingStatus').textContent=translatedStatus(settingMessage);await refresh();
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
+ finally{connectionOperation=false;paintConnection();}
 };
 $('resume').onclick=async()=>{
  if(busy||submitting||!lastJob)return;
@@ -370,8 +423,6 @@ function paintStatus(d){
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
  $('save').disabled=d.job?.status==='running'||submitting;
- if(!modelLoaded&&d.provider==='openrouter'){$('model').value='anthropic/claude-opus-5.5';modelLoaded=true;}
- $('connection').textContent=configured?tr('AI接続：設定済み')+' ('+(d.provider==='openrouter'?'OpenRouter':'Anthropic')+')':tr('AI接続：未設定');
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();
  if(submitting){paintSubmission();return;}
@@ -544,7 +595,7 @@ $('sourcePlayer').onerror=()=>{$('referenceSummary').textContent=tr('ブラウ�
 async function refresh(){
  try{
   const r=await fetch('status');const d=await r.json();if(!r.ok)throw Error(d.error);
-  lastStatus=d;paintStatus(d);
- }catch(e){message('画面との接続が切れました。起動し直してください。',true);}
+  lastStatus=d;connectionOffline=false;paintStatus(d);
+ }catch(e){connectionOffline=true;paintConnection();message('画面との接続が切れました。起動し直してください。',true);}
 }
 renderLanguage();refresh();setInterval(refresh,2500);
