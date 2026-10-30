@@ -134,5 +134,28 @@
       "https://openrouter.ai/docs/api/api-reference/models/list-models-filtered-by-user-provider-preferences-privacy-settings-and-guardrails",
       "https://platform.claude.com/docs/en/api/models/list"
     ]
+  },
+  "model_reasoning_controls": {
+    "date": "2026-10-30",
+    "feature": "model-specific API reasoning controls",
+    "catalog_tests": 20,
+    "openrouter_client_tests": 8,
+    "security_tests": 11,
+    "all_passed": true,
+    "browser_checks": [
+      "GPT API label and five official effort values",
+      "Claude Effort label",
+      "unknown models show model default only",
+      "per-model preference restored after switching",
+      "English labels and help"
+    ],
+    "selection_policy": "Provider supported_efforts/capabilities first; exact verified Sol/Opus fallback only; otherwise model default",
+    "paid_inference_calls": 0,
+    "live_key_generation_tested": false,
+    "sources": [
+      "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+      "https://platform.claude.com/docs/en/build-with-claude/effort",
+      "https://openrouter.ai/docs/guides/best-practices/reasoning-tokens"
+    ]
   }
 }

@@ -10,6 +10,36 @@ MAX_BYTES = 12_000_000
 MAX_MODELS = 10000
 TIMEOUT = 12
 EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+GATEWAY_EFFORTS = ('none', 'minimal') + EFFORTS
+
+
+def reasoning_options(item, provider):
+    """Prefer provider metadata; never invent a universal three-level selector."""
+    if provider == 'anthropic':
+        cap = (item.get('capabilities') or {}).get('effort') or {}
+        levels = [e for e in EFFORTS if (cap.get(e) or {}).get('supported') is True]
+        return {'efforts': levels, 'effort_source': 'provider' if levels else 'model_default',
+                'effort_default': None, 'reasoning_mandatory': False}
+    reasoning = item.get('reasoning')
+    if isinstance(reasoning, dict) and 'supported_efforts' not in reasoning:
+        return {'efforts': [], 'effort_default': None, 'effort_source': 'provider',
+                'reasoning_mandatory': reasoning.get('mandatory') is True}
+    if isinstance(reasoning, dict) and 'supported_efforts' in reasoning:
+        values = reasoning['supported_efforts']
+        mandatory = reasoning.get('mandatory') is True
+        levels = list(GATEWAY_EFFORTS) if values is None else [e for e in GATEWAY_EFFORTS if isinstance(values, list) and e in values]
+        if mandatory:
+            levels = [e for e in levels if e != 'none']
+        return {'efforts': levels, 'effort_default': reasoning.get('default_effort') if reasoning.get('default_effort') in levels else None,
+                'effort_source': 'provider', 'reasoning_mandatory': mandatory}
+    # Verified official specifications, only for these exact models when the
+    # key-scoped catalogue has no per-model effort metadata. No family guessing.
+    model = item.get('id', '').split(':', 1)[0]
+    known = {'openai/gpt-6.1-sol', 'anthropic/claude-opus-5.5'}
+    return {'efforts': list(EFFORTS) if model in known else [],
+            'effort_default': 'medium' if model in known else None,
+            'effort_source': 'official_spec' if model in known else 'model_default',
+            'reasoning_mandatory': model in known}
 
 
 class CatalogError(Exception):
@@ -105,6 +135,9 @@ def normalize(item, provider):
         if item.get('lifecycle') == 'retired':
             reasons.append('retired')
     result.update(compatibility='unsupported' if reasons else 'unknown' if unknown else 'supported', reasons=reasons)
+    result.update(reasoning_options(item, provider))
+    if result.get('reasoning') is False:
+        result['efforts'] = []
     return result
 
 
@@ -138,6 +171,16 @@ def fetch_models(key, provider):
 
 def apply_model_options(payload, options, provider, effort):
     """Respect explicit provider capabilities without changing the default path."""
+    if effort == 'auto':
+        payload.pop('reasoning', None)
+        payload.pop('output_config', None)
+        if provider == 'anthropic':
+            # Let the model use its default thinking policy; this does not send
+            # "disabled" to models that require reasoning.
+            payload.pop('thinking', None)
+    if options and 'efforts' in options and effort != 'auto':
+        if effort not in options['efforts'] and options.get('reasoning') is not False:
+            raise ValueError('選択したモデルでは、この推論設定を使えません。')
     if not options:
         return
     limit = positive(options.get('max_output_tokens'))
@@ -146,6 +189,8 @@ def apply_model_options(payload, options, provider, effort):
     if provider == 'openrouter':
         if options.get('reasoning') is False:
             payload.pop('reasoning', None)
+        return
+    if effort == 'auto':
         return
     efforts = options.get('efforts') or []
     if options.get('adaptive') is False:

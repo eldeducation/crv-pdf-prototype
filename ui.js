@@ -272,7 +272,7 @@ $('language').onchange=()=>{
 };
 
 let connectionProvider=null, connectionOperation=false, connectionOffline=false;
-let catalogModels=[], catalogLoaded=false, catalogLoading=false, catalogAttempted=false, catalogError='', catalogRevision=null, catalogRequest=0, catalogFetched=0, customModelMode=false;
+let catalogModels=[], catalogLoaded=false, catalogLoading=false, catalogAttempted=false, catalogError='', catalogRevision=null, catalogRequest=0, catalogFetched=0, customModelMode=false, effortSelections={};
 const catalogErrors={
  authentication:['APIキーの認証に失敗しました。キーを確認して設定し直してください。','Authentication failed. Check and replace your API key.'],
  access:['このキーでは一覧を取得できません。接続先の権限・利用設定を確認してください。','This key cannot access the catalogue. Check provider permissions and settings.'],
@@ -290,7 +290,7 @@ function modelReason(m){return (m.reasons||[]).map(code=>pair(compatibilityReaso
 function selectedCatalogueModel(){return catalogModels.find(m=>m.id===$('model').value.trim());}
 function resetCatalogue(revision){
  catalogRequest++;catalogRevision=revision;catalogModels=[];catalogLoaded=false;catalogLoading=false;catalogAttempted=false;catalogError='';catalogFetched=0;customModelMode=false;
- $('model').value='';$('modelSearch').value='';modelLoaded=false;
+ $('model').value='';$('modelSearch').value='';modelLoaded=false;effortSelections={};
  $('modelChoice').dataset.signature='';settingMessage='';$('settingStatus').textContent='';
 }
 async function loadModels(force=false){
@@ -355,14 +355,20 @@ function paintConnection(){
  $('catalogStatus').textContent=!ready?tr('APIキーを設定すると、モデル一覧を取得します。','Set an API key to retrieve the model list.'):catalogLoading?tr('接続先にモデル一覧を問い合わせています。','Retrieving the model catalogue from your provider.'):catalogError?pair(catalogErrors[catalogError]||['モデル一覧を取得できませんでした。「一覧を更新」で再試行してください。','Could not retrieve the model list. Choose Refresh list to retry.']):catalogLoaded?tr(`${catalogModels.length}件取得 · 表示${filtered.length}件 · 資料作成対応${catalogModels.filter(m=>m.compatibility==='supported').length}件`,`${catalogModels.length} retrieved · ${filtered.length} shown · ${catalogModels.filter(m=>m.compatibility==='supported').length} support document creation`)+(catalogFetched?' · '+new Date(catalogFetched*1000).toLocaleTimeString(lang==='en'?'en-US':'ja-JP',{hour:'2-digit',minute:'2-digit'}):''):'';
  $('catalogNote').textContent=provider==='anthropic'?tr('一覧の取得ではAIに生成を依頼しません。直接接続にはサーバーの料金設定が必要です。モデルの利用可否は生成時にも確認されます。','Retrieving the list does not run AI generation. Direct Anthropic connections require server-side pricing configuration. Model access is also checked during generation.'):tr('一覧の取得ではAIに生成を依頼しません。OpenRouterの利用設定・プライバシー設定・制限を反映します。残高やモデルの利用可否は生成時にも確認されます。','Retrieving the list does not run AI generation. OpenRouter preferences, privacy settings and restrictions are applied. Balance and model access are also checked at generation time.');
  const noReasoning=selected?.reasoning===false;
- let efforts=noReasoning?['high']:(provider==='anthropic'&&selected?.efforts?.length?selected.efforts:['high','xhigh','max']);
- const effortSig=JSON.stringify([efforts,noReasoning,lang]);
+ const efforts=noReasoning?[]:(selected?.efforts||[]);
+ const modelID=selected?.id||actual;
+ const brand=modelID.startsWith('openai/')?'GPT':(modelID.startsWith('anthropic/')||modelID.startsWith('claude-'))?'Claude':'';
+ $('effortLabel').textContent=brand==='GPT'?tr('GPTの推論設定（API）','GPT reasoning effort (API)'):brand==='Claude'?tr('ClaudeのEffort（API）','Claude effort (API)'):tr('推論設定（API）','Reasoning effort (API)');
+ const effortSig=JSON.stringify([modelID,efforts,noReasoning,lang]);
  if($('effort').dataset.signature!==effortSig){
-  const previous=$('effort').value;$('effort').replaceChildren();
-  for(const e of efforts){const o=document.createElement('option');o.value=e;o.textContent=noReasoning?tr('モデル標準','Model default'):pair(({low:['低','Low'],medium:['中','Medium'],high:['高','High'],xhigh:['超高','Extra high'],max:['最大','Maximum']})[e]);$('effort').append(o);}
-  $('effort').value=efforts.includes(previous)?previous:efforts.includes('high')?'high':efforts[efforts.length-1];$('effort').dataset.signature=effortSig;
+  const remembered=effortSelections[modelID];$('effort').replaceChildren();
+  for(const e of ['auto',...efforts]){const o=document.createElement('option');o.value=e;o.textContent=e==='auto'?tr('モデル標準（自動）','Model default (Auto)'):({none:'None (none)',minimal:'Minimal (minimal)',low:'Low (low)',medium:'Medium (medium)',high:'High (high)',xhigh:'Extra high (xhigh)',max:'Max (max)'})[e]||e;$('effort').append(o);}
+  const preferred=lastStatus?.default_effort||'xhigh';
+  $('effort').value=remembered==='auto'||efforts.includes(remembered)?remembered:efforts.includes(preferred)?preferred:efforts.includes(selected?.effort_default)?selected.effort_default:'auto';
+  $('effort').dataset.signature=effortSig;
  }
- $('effort').disabled=locked||manual||noReasoning||!actual;
+ $('effort').disabled=locked||manual||noReasoning||!actual||!efforts.length;
+ $('effortHelp').textContent=noReasoning?tr('このモデルは推論設定に対応していません。','This model does not support reasoning controls.'):!efforts.length?tr('対応する設定値を確認できないため、モデル標準を使います。','Supported effort values are unconfirmed; the model default is used.'):tr('このモデルで利用できるAPIの設定名です。ChatGPTやClaudeのチャット画面のモード名とは別です。','These are API settings accepted by this model, distinct from modes in the ChatGPT or Claude chat interface.');
  $('selectedModel').textContent=!ready||!actual?tr('モデル未選択','No model selected'):tr('選択中：','Selected: ')+(selected?modelLabel(selected):actual)+(selected?.compatibility==='unknown'?tr(' · 対応仕様が未確認です',' · Capabilities unconfirmed'):'')+(customModelMode?tr(' · 一覧では未確認。利用可否は生成時に確認します。',' · Not verified in the catalogue; access is checked during generation.'):'')+(selected?.max_output_tokens?tr(` · 出力上限 ${selected.max_output_tokens.toLocaleString()}トークン`,` · Output limit ${selected.max_output_tokens.toLocaleString()} tokens`):'');
  if(ready&&!manual&&!running&&!connectionOperation&&!catalogAttempted)void loadModels();
 }
@@ -370,6 +376,7 @@ $('modelChoice').addEventListener('change',()=>{
  customModelMode=$('modelChoice').value==='custom';$('model').value=customModelMode?'':$('modelChoice').value;modelLoaded=true;paintConnection();if(customModelMode)$('model').focus();
 });
 $('model').addEventListener('input',()=>{modelLoaded=true;paintConnection();});
+$('effort').addEventListener('change',()=>{effortSelections[selectedCatalogueModel()?.id||$('model').value.trim()]=$('effort').value;});
 $('modelSearch').addEventListener('input',paintConnection);
 $('compatibleOnly').addEventListener('change',paintConnection);
 $('refreshModels').addEventListener('click',()=>void loadModels(true));

@@ -1045,7 +1045,7 @@ def main():
     parser.add_argument("--evidence", help="既存crv-outを再利用")
     parser.add_argument("--prompt", default=DEFAULT_PROMPT)
     parser.add_argument("--model", default=os.getenv("VIDEO_PDF_MODEL", "claude-opus-5-5"))
-    parser.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"], default=os.getenv("VIDEO_PDF_EFFORT", "xhigh"))
+    parser.add_argument("--effort", choices=["auto", "none", "minimal", "low", "medium", "high", "xhigh", "max"], default=os.getenv("VIDEO_PDF_EFFORT", "xhigh"))
     parser.add_argument("--max-frames", type=int, default=96)
     parser.add_argument("--no-transcribe", action="store_true")
     args = parser.parse_args()

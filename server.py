@@ -354,7 +354,7 @@ class Handler(BaseHTTPRequestHandler):
                     if not source:
                         raise PrototypeError("動画を選ぶかYouTubeリンクを入力してください。")
                     effort = body.get("effort", "xhigh")
-                    if effort not in {"low", "medium", "high", "xhigh", "max"}:
+                    if effort not in {"auto", "none", "minimal", "low", "medium", "high", "xhigh", "max"}:
                         raise PrototypeError("推論設定が正しくありません。")
                     model_id = body.get("model", "claude-opus-5-5").strip()
                     if not manual_mode and not model_id:
@@ -363,6 +363,8 @@ class Handler(BaseHTTPRequestHandler):
                     if not manual_mode and selected and selected['compatibility'] == 'unsupported':
                         raise PrototypeError('選択したモデルは画像の読み取り・文章作成・ツール利用の要件を満たしていません。')
                     options = (previous.get('model_options') if resume_folder or restyle_from else None) or selected
+                    if not manual_mode and options and 'efforts' in options and options.get('reasoning') is not False and effort != 'auto' and effort not in options['efforts']:
+                        raise PrototypeError('選択したモデルでは、この推論設定を使えません。')
                     config = Config(model=model_id, effort=effort, model_options=None if manual_mode else options,
                                     no_transcribe=bool(body.get("no_transcribe")),
                                     external_research=body.get('external_research', True),

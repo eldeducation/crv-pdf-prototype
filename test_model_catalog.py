@@ -106,6 +106,35 @@ class CatalogTests(unittest.TestCase):
         catalog.apply_model_options(payload, options, 'anthropic', 'xhigh')
         self.assertEqual(payload, before)
 
+    def test_provider_effort_metadata_overrides_known_model_spec(self):
+        model = catalog.normalize(router_model('openai/gpt-6.1-sol', reasoning={
+            'supported_efforts': ['high', 'medium', 'low'], 'default_effort': 'medium', 'mandatory': True}), 'openrouter')
+        self.assertEqual(model['efforts'], ['low', 'medium', 'high'])
+        self.assertEqual(model['effort_source'], 'provider')
+        with self.assertRaises(ValueError):
+            catalog.apply_model_options({'max_tokens': 32768, 'reasoning': {'effort': 'xhigh'}}, model, 'openrouter', 'xhigh')
+
+    def test_mandatory_reasoning_never_offers_none_and_null_is_not_missing(self):
+        result = catalog.reasoning_options({'reasoning': {'supported_efforts': None, 'mandatory': True}}, 'openrouter')
+        self.assertIn('minimal', result['efforts'])
+        self.assertNotIn('none', result['efforts'])
+        self.assertEqual(catalog.reasoning_options({'id': 'unknown/new-model'}, 'openrouter')['efforts'], [])
+        self.assertEqual(catalog.reasoning_options({'reasoning': {'supported_efforts': []}}, 'openrouter')['efforts'], [])
+        self.assertEqual(catalog.reasoning_options({'id': 'openai/gpt-6.1-sol', 'reasoning': {'supports_max_tokens': True}}, 'openrouter')['efforts'], [])
+
+    def test_known_sol_fallback_is_exact_and_supports_five_official_values(self):
+        self.assertEqual(catalog.reasoning_options({'id': 'openai/gpt-6.1-sol'}, 'openrouter')['efforts'], list(catalog.EFFORTS))
+        self.assertEqual(catalog.reasoning_options({'id': 'openai/gpt-6.1-sol-other'}, 'openrouter')['efforts'], [])
+
+    def test_model_default_omits_overrides_instead_of_disabling_reasoning(self):
+        for provider in ('openrouter', 'anthropic'):
+            payload = {'max_tokens': 32768, 'reasoning': {'effort': 'xhigh'}, 'thinking': {'type': 'adaptive'}, 'output_config': {'effort': 'xhigh'}}
+            catalog.apply_model_options(payload, {'efforts': ['high'], 'max_output_tokens': 16000}, provider, 'auto')
+            self.assertNotIn('reasoning', payload)
+            self.assertNotIn('output_config', payload)
+            self.assertEqual(payload['max_tokens'], 16000)
+            if provider == 'anthropic': self.assertNotIn('thinking', payload)
+
     def test_non_reasoning_router_and_provider_output_limit(self):
         payload = {'reasoning': {'effort': 'xhigh'}, 'max_tokens': 32768, 'tools': ['unchanged'], 'messages': ['unchanged']}
         catalog.apply_model_options(payload, {'reasoning': False, 'max_output_tokens': 16000}, 'openrouter', 'xhigh')
