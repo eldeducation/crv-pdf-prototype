@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-29",
+  "date": "2026-10-30",
   "checks": [
     "health endpoint available",
     "browser-compatible login form without HTTP authentication challenge",
@@ -25,5 +25,7 @@
   "api_calls": 0,
   "python_syntax": "passed",
   "docker_first_build": "succeeded on Render; browser login fix awaits redeploy",
-  "cloud_pdf_generation_tested": false
+  "cloud_pdf_generation_tested": false,
+  "real_browser_form_login": "passed on isolated loopback fixture; no real invitation password used",
+  "cloud_browser_form_login": "awaiting corrected deploy and owner login"
 }
