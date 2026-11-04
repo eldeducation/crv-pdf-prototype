@@ -10,9 +10,12 @@ import sys
 from contextlib import ExitStack
 from unittest.mock import patch
 from claude_real_video.cli import main
+from youtube_support import is_youtube, youtube_context
 
 if __name__ == '__main__':
     with ExitStack() as stack:
+        if len(sys.argv) > 1 and is_youtube(sys.argv[1]):
+            stack.enter_context(youtube_context())
         if len(sys.argv) > 1 and sys.argv[1].startswith('https://x.com/'):
             # CRV's preliminary caption probe ignores yt-dlp passthrough flags.
             # Avoid that unrestricted duplicate fetch for X. Speech still uses

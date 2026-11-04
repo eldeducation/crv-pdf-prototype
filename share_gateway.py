@@ -25,7 +25,7 @@ MAX_SESSION_AGE = 8 * 3600
 MAX_SESSION_IDLE = 3600
 UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 COPY_FILES = (
-    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py',
+    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py', 'youtube_support.py',
     'content_quality.py', 'checkpoints.py', 'crv_worker.py', 'render.cjs',
     'layout.css', 'index.html', 'ui.js', 'runtime.local.json', 'security.py',
     'document_options.py', 'document_design.py', 'editorial_quality.py', 'restyle.py', 'source_references.py',

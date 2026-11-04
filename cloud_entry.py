@@ -138,6 +138,10 @@ def main():
     record = {'pid': os.getpid(), 'port': server.server_port, 'path': '/' + gateway.TOKEN + '/', 'public_url': origin}
     (gateway.ROOT / 'work/sharing.local.json').write_text(json.dumps(record), encoding='utf-8')
     threading.Thread(target=gateway.session_expiry_worker, daemon=True).start()
+    verify_source = os.environ.pop('VIDEO_PDF_VERIFY_YOUTUBE', '')
+    if verify_source:
+        from youtube_support import deployment_probe
+        threading.Thread(target=deployment_probe, args=(verify_source, gateway.ROOT / 'work'), daemon=True).start()
     try:
         server.serve_forever()
     finally:
