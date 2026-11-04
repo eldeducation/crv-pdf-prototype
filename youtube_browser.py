@@ -248,7 +248,7 @@ def download_check(source, folder):
                 report['matched_user_agent']=True
             async def reuse_browser(_config):
                 return browser
-            with patch.object(plugin, 'launch_browser', reuse_browser), patch.object(plugin, 'mint_po_token', observed_mint):
+            with patch.object(plugin, 'loop', return_value=loop), patch.object(plugin, 'launch_browser', reuse_browser), patch.object(plugin, 'mint_po_token', observed_mint):
                 ydl.extract_info(source, download=True)
         videos = [p for p in Path(folder).glob('source.*') if p.suffix.lower() in ('.mp4','.mkv','.webm','.mov')]
         if not videos:
