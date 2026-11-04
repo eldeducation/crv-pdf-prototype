@@ -13,7 +13,7 @@ from youtube_support import is_youtube, error_code
 CHROME = Path('/opt/youtube-chromium')
 PLUGINS = Path('/opt/wpc-plugins')
 SAFE_FIELDS = ('success', 'provider_loaded', 'browser_started', 'token_generated',
-               'login_required', 'browser_failed', 'bytes', 'duration_seconds', 'audio', 'error_code')
+               'login_required', 'browser_failed', 'browser_start_reason', 'bytes', 'duration_seconds', 'audio', 'error_code')
 
 
 def browser_args(source, folder, sub_lang=None):
@@ -87,6 +87,26 @@ def ydl_options(source, folder, logger):
     opts.update(logger=logger, noprogress=True)
     return opts
 
+
+def browser_start_diagnostic(folder):
+    # Launch only about:blank with the default sandbox, not a logged-in profile.
+    try:
+        result = subprocess.run([str(CHROME),'--headless=new','--dump-dom',
+                                 '--user-data-dir='+str(Path(folder)/'startup-check'),'about:blank'],
+                                capture_output=True,text=True,timeout=12,env=child_environment())
+        detail=(result.stderr or '').lower()
+        if any(x in detail for x in ('no usable sandbox','failed to move to new namespace','operation not permitted','sandbox_linux','zygote_host_impl_linux')):
+            return 'sandbox_unavailable'
+        if 'cannot open shared object file' in detail:
+            return 'browser_library_missing'
+        if 'missing x server' in detail or 'display' in detail and 'error' in detail:
+            return 'display_unavailable'
+        return 'blank_page_ok' if result.returncode==0 and '<html' in result.stdout else 'chromium_start_failed'
+    except subprocess.TimeoutExpired:
+        return 'chromium_start_timeout'
+    except Exception:
+        return 'chromium_check_failed'
+
 def download_check(source, folder):
     report = dict(success=False, provider_loaded=False, browser_started=False,
                   token_generated=False, login_required=False, browser_failed=False)
@@ -118,8 +138,20 @@ def download_check(source, folder):
                 try:
                     browser = await launch(*args, **kwargs)
                 except Exception:
-                    report['browser_failed'] = True
-                    raise
+                    report['browser_start_reason'] = browser_start_diagnostic(folder)
+                    # A functioning sandboxed headless browser is a safe fallback
+                    # for a display-only failure. Do not disable the sandbox.
+                    config = args[0] if args else kwargs.get('config')
+                    if report['browser_start_reason'] == 'blank_page_ok' and config is not None:
+                        config.headless = True
+                        try:
+                            browser = await launch(config)
+                        except Exception:
+                            report['browser_failed'] = True
+                            raise
+                    else:
+                        report['browser_failed'] = True
+                        raise
                 report['browser_started'] = True
                 print(json.dumps({'event':'youtube_browser_stage', 'stage':'browser_started'}), flush=True)
                 return browser
@@ -144,7 +176,7 @@ def download_check(source, folder):
                       duration_seconds=float(data['format']['duration']),
                       audio=any(x.get('codec_type')=='audio' for x in data['streams']))
     except Exception as error:
-        report['error_code'] = 'youtube_verification' if report['login_required'] else 'browser_start_failed' if report['browser_failed'] else error_code(error)
+        report['error_code'] = 'browser_start_failed' if report['browser_failed'] else 'youtube_verification' if report['login_required'] else error_code(error)
     print(json.dumps(report),flush=True)
     return 0 if report['success'] else 1
 

@@ -35,6 +35,13 @@ class BrowserImportTests(unittest.TestCase):
         finally:
             plugin_dirs.value=original
 
+    def test_browser_diagnostic_preserves_sandbox_and_redacts_stderr(self):
+        with patch.object(browser.subprocess,'run',return_value=Mock(returncode=1,stderr='No usable sandbox! secret-do-not-log',stdout='')) as run:
+            result=browser.browser_start_diagnostic(ROOT)
+        self.assertEqual(result,'sandbox_unavailable')
+        self.assertNotIn('--no-sandbox',run.call_args.args[0])
+        self.assertNotIn('secret-do-not-log',result)
+
     def test_probe_isolated_profile_sanitized_env_and_safe_logs(self):
         folder=MagicMock();folder.__enter__.return_value='/fresh-ephemeral-profile'
         proc=Mock(returncode=1);proc.communicate.return_value=(json.dumps({'success':False,'provider_loaded':True,'error_code':'youtube_verification','cookie':'secret-must-not-appear'}),'private details')
