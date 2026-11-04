@@ -146,6 +146,10 @@ def main():
     if browser_source:
         from youtube_browser import browser_probe
         threading.Thread(target=browser_probe, args=(browser_source, gateway.ROOT / 'work'), daemon=True).start()
+    diagnose_source = os.environ.pop('VIDEO_PDF_DIAGNOSE_YOUTUBE', '')
+    if diagnose_source:
+        from youtube_diagnose import run_probe
+        threading.Thread(target=run_probe, args=(diagnose_source, gateway.ROOT / 'work'), daemon=True).start()
     try:
         server.serve_forever()
     finally:
