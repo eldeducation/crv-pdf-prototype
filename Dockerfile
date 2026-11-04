@@ -24,6 +24,12 @@ COPY --from=youtube_pot /opt/bgutil/server /opt/bgutil/server
 COPY --from=youtube_pot /opt/bgutil/LICENSE /opt/bgutil/LICENSE
 RUN node /opt/bgutil/server/build/generate_once.js --version
 RUN node --version && python -m yt_dlp --version
+# Separate, pinned browser experiment; no account profile or proxy is used.
+RUN apt-get update && apt-get install -y --no-install-recommends xvfb xauth && rm -rf /var/lib/apt/lists/*
+RUN pip install 'nodriver==0.50.3' && pip install --no-deps --target /opt/wpc-plugins/wpc 'yt-dlp-getpot-wpc==1.1.2'
+RUN python -c "from pathlib import Path; paths=list(Path('/opt/pw').glob('chromium-*/chrome-linux*/chrome')); assert len(paths)==1, paths; Path('/opt/youtube-chromium').symlink_to(paths[0])"
+# Temporary opt-in check on the cloud host; removed after the experiment.
+ENV VIDEO_PDF_VERIFY_YOUTUBE_BROWSER=https://www.youtube.com/watch?v=Q2w4-mluYo0
 RUN useradd --create-home --uid 1000 appuser
 COPY --chown=appuser:appuser *.py *.cjs *.css *.html *.js *.json /app/
 COPY --chown=appuser:appuser editor.txt /app/prompts/editor.txt

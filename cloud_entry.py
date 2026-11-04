@@ -142,6 +142,10 @@ def main():
     if verify_source:
         from youtube_support import deployment_probe
         threading.Thread(target=deployment_probe, args=(verify_source, gateway.ROOT / 'work'), daemon=True).start()
+    browser_source = os.environ.pop('VIDEO_PDF_VERIFY_YOUTUBE_BROWSER', '')
+    if browser_source:
+        from youtube_browser import browser_probe
+        threading.Thread(target=browser_probe, args=(browser_source, gateway.ROOT / 'work'), daemon=True).start()
     try:
         server.serve_forever()
     finally:
