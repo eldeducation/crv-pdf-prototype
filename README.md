@@ -181,8 +181,9 @@ Render内の一時ChromiumとWPC provider 1.1.2 / nodriver 0.50.3を使い、同
 | yt-dlpの9クライアント（web、web_safari、mweb、tv、tv_simply、web_embedded、android_vr、ios、android） | 全クライアントが「bot確認のためログイン」を要求 |
 | IPv6での接続 | Renderから利用できない |
 
+- 別リージョンでも確認するため、無料の一時サービスをFrankfurtに作って同じ診断を実行しました（302.7秒、AI呼び出し0回）。匿名ブラウザーはYouTubeを開けたものの、プレーヤーが「botでないことをログインで確認」（`LOGIN_REQUIRED`）を返して再生されず、9クライアントもすべて同じ要求でした。IPv6も利用できませんでした。確認後、この一時サービスは削除しました。
 - 同じ動画・同じコード・同じyt-dlp 2026.10.26を開発者PCの家庭回線で実行すると、android_vrとmwebで再生可能な形式を取得できました。
-- 以上から、**原因は取得設定ではなく、Render Freeの共有の通信元IPがGoogle側で拒否されていること**と判断しました。PO Token・クライアント変更・匿名Cookie・User-Agent一致では解除できません。Renderの有料プランに変えても通信元は共有のままのため、解決は見込めません。
+- 以上から、**原因は取得設定ではなく、Renderの共有の通信元IPがGoogle側で拒否されていること**と判断しました。OregonとFrankfurtの2リージョンで同じ結果でした。PO Token・クライアント変更・匿名Cookie・User-Agent一致では解除できません。Renderの有料プランに変えても通信元は共有のままのため、解決は見込めません。
 - CAPTCHAの自動突破は行いません。個人のGoogleログインやCookieも使っていません。
 - 検証途中で、yt-dlpのコマンド行既定値（`ignoreerrors='only_download'`）がエラーを握りつぶし、拒否が「形式なし」と表示される問題を見つけて修正しました。
 - 診断は管理者専用の起動フラグ `VIDEO_PDF_DIAGNOSE_YOUTUBE` を設定したときだけ動きます。最大600秒で、ログには決められた項目だけを出し、IPアドレス・Cookie・トークンは出力しません。検証後、この設定はRenderから削除しました。オフラインテストは `test_youtube_diagnose.py` です。
