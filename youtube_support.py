@@ -25,6 +25,14 @@ def is_youtube(source):
         return False
 
 
+POT_HOME = Path('/opt/bgutil/server')
+POT_PLUGINS = Path('/opt/youtube-plugins')
+
+
+def pot_available():
+    return (POT_HOME/'build/generate_once.js').is_file() and (POT_PLUGINS/'bgutil/yt_dlp_plugins').is_dir()
+
+
 def youtube_args(client=None):
     node = shutil.which('node')
     args = ['--ignore-config', '--no-plugin-dirs', '--no-playlist', '--use-extractors', '^youtube$',
@@ -32,6 +40,11 @@ def youtube_args(client=None):
             '--match-filter', 'duration <= 1800 & !is_live']
     if node:
         args += ['--js-runtimes', 'node:' + node]
+    if pot_available():
+        # Only the pinned build-time plugin; ignore user/global plugin folders.
+        args += ['--plugin-dirs', str(POT_PLUGINS), '--extractor-args',
+                 'youtubepot-bgutilscript:server_home=' + str(POT_HOME)]
+        client = client or 'mweb,tv,web_safari'
     if client:
         args += ['--extractor-args', 'youtube:player_client=' + client]
     return args
@@ -83,7 +96,7 @@ def youtube_context():
                 if error_code(error) not in ('youtube_verification', 'youtube_client'):
                     raise
         raise RuntimeError('YouTube URL取り込みを確認できませんでした。公開サーバーからのアクセス確認が要求されています。'
-                           '（youtube_verification）') from last_error
+                           '（' + error_code(last_error) + '）') from last_error
 
     with ExitStack() as stack:
         stack.enter_context(patch.object(core, 'fetch_video', fetch))

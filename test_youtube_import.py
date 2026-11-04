@@ -22,6 +22,17 @@ class YouTubeImportTests(unittest.TestCase):
         self.assertFalse(any('cookies' in v or 'proxy' in v for v in args))
         self.assertIn('youtube:player_client=android_vr',args)
 
+    def test_pinned_provider_is_loaded_only_when_installed(self):
+        with patch.object(youtube,'pot_available',return_value=True):
+            args=youtube.youtube_args()
+        self.assertIn('--plugin-dirs',args)
+        self.assertIn(str(youtube.POT_PLUGINS),args)
+        self.assertIn('youtube:player_client=mweb,tv,web_safari',args)
+        self.assertIn('youtubepot-bgutilscript:server_home='+str(youtube.POT_HOME),args)
+        self.assertNotIn('default',args)
+        with patch.object(youtube,'pot_available',return_value=False):
+            self.assertNotIn('--plugin-dirs',youtube.youtube_args())
+
     def test_only_validated_youtube_urls_receive_new_policy(self):
         self.assertTrue(youtube.is_youtube(URL))
         self.assertTrue(youtube.is_youtube('https://youtu.be/Q2w4-mluYo0'))
