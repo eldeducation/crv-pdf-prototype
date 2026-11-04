@@ -35,7 +35,8 @@ SAFE_FIELDS = frozenset(
     ['success', 'verdict', 'egress_colo', 'egress_ip_version', 'ipv6_reachable', 'ipv6_mweb', 'browser_started',
      'browser_watch_status', 'browser_watch_bot', 'browser_watch_played', 'browser_consent_page',
      'embed_status', 'embed_bot', 'embed_played', 'download_client', 'bytes', 'duration_seconds',
-     'height', 'audio', 'error_code', 'stage'] + ['client_' + c for c in CLIENTS])
+     'height', 'audio', 'error_code', 'stage', 'browser_watch_page', 'embed_page']
+    + ['client_' + c for c in CLIENTS] + ['detail_' + c for c in CLIENTS])
 CHILD_TIMEOUT = 600  # Render Free has 0.1 CPU; every stage reports as it finishes.
 
 
@@ -71,9 +72,27 @@ def egress(report):
 
 # --- yt-dlp clients ---------------------------------------------------------
 
+# Fixed vocabulary read from yt-dlp's own messages; message text is never logged.
+FLAG_PATTERNS = (
+    ('login', ('not a bot', 'LOGIN_REQUIRED', 'confirm your identity')),
+    ('pot_skip', ('require a GVS PO Token', 'require a PO Token')),
+    ('pot_made', ('Generating a', 'Retrieved a', 'via bgutil')),
+    ('drm', ('DRM',)),
+    ('sabr', ('SABR',)),
+    ('jsc_fail', ('challenge solving failed', 'nsig extraction failed', 'Signature extraction failed',
+                  'Unable to extract nsig', 'n challenge')),
+    ('filtered', ('does not pass filter',)),
+    ('unavailable', ('Video unavailable', 'This video is unavailable')),
+)
+
+
 class QuietLogger:
     def __init__(self):
-        self.bot = False
+        self.flags = set()
+
+    @property
+    def bot(self):
+        return 'login' in self.flags
 
     def debug(self, text):
         self.observe(text)
@@ -82,8 +101,9 @@ class QuietLogger:
 
     def observe(self, text):
         text = str(text)
-        if 'not a bot' in text or 'LOGIN_REQUIRED' in text or 'confirm your identity' in text:
-            self.bot = True
+        for flag, needles in FLAG_PATTERNS:
+            if any(n in text for n in needles):
+                self.flags.add(flag)
 
 
 def client_options(client, logger, extra=None):
@@ -96,7 +116,9 @@ def client_options(client, logger, extra=None):
         plugin_dirs.value = parsed.options.plugin_dirs
         load_all_plugins()
     opts = parsed.ydl_opts
-    opts.update(logger=logger, quiet=True, no_warnings=False, noprogress=True)
+    # The CLI default ignoreerrors='only_download' returns None instead of
+    # raising, which hid the real refusal in the first cloud run.
+    opts.update(logger=logger, quiet=True, no_warnings=False, noprogress=True, verbose=True, ignoreerrors=False)
     return opts
 
 
@@ -105,18 +127,31 @@ def playable(info):
                for f in (info or {}).get('formats') or [])
 
 
-def probe_client(source, client, extra=None):
+def describe(logger, info):
+    """e.g. 'f5v0+pot_skip' : format count, playable-video count, fixed flags."""
+    formats = (info or {}).get('formats') or []
+    video = sum(1 for f in formats if f.get('vcodec') not in (None, 'none') and f.get('url') and f.get('ext') != 'mhtml')
+    head = 'none' if info is None else 'f%dv%d' % (len(formats), video)
+    return '+'.join([head] + sorted(logger.flags))[:63]
+
+
+def probe_client(source, client, extra=None, details=None):
     import yt_dlp
     logger = QuietLogger()
+    info = None
     try:
         with yt_dlp.YoutubeDL(client_options(client, logger, extra)) as ydl:
             info = ydl.extract_info(source, download=False)
-        return 'ok' if playable(info) else 'no_formats'
+        result = 'ok' if playable(info) else 'bot_check' if logger.bot else 'no_formats'
     except Exception as error:
-        if logger.bot:
-            return 'bot_check'
         code = error_code(error)
-        return 'bot_check' if code == 'youtube_verification' else enum(code, RESULTS, 'download_failed')
+        if logger.bot or code == 'youtube_verification':
+            result = 'bot_check'
+        else:
+            result = enum(code, RESULTS, 'download_failed')
+    if details is not None:
+        details['detail_' + client] = describe(logger, info)
+    return result
 
 
 def download(source, client, folder, report):
@@ -166,20 +201,40 @@ PLAY_JS = '''(() => { const v = document.querySelector('video');
 
 async def page_state(tab):
     try:
-        return json.loads(await tab.evaluate(STATE_JS))
+        value = await tab.evaluate(STATE_JS, return_by_value=True)
     except Exception:
-        return {}
+        return {'eval': 'eval_error'}
+    if not isinstance(value, str):
+        return {'eval': 'eval_not_string'}
+    try:
+        return dict(json.loads(value), eval='ok')
+    except ValueError:
+        return {'eval': 'eval_bad_json'}
+
+
+def page_kind(host, evaluated):
+    if evaluated != 'ok':
+        return evaluated
+    host = str(host)
+    if host.startswith('consent.'):
+        return 'consent'
+    if host in ('www.google.com', 'google.com') or host.startswith('sorry.'):
+        return 'google_sorry'
+    if host in ('www.youtube.com', 'm.youtube.com', 'www.youtube-nocookie.com'):
+        return 'youtube'
+    return 'other'
 
 
 async def watch(browser, url, report, prefix):
     tab = await browser.get(url)
     await tab.sleep(8)
     try:
-        await tab.evaluate(PLAY_JS)
+        await tab.evaluate(PLAY_JS, return_by_value=True)
     except Exception:
         pass
     await tab.sleep(12)
     state = await page_state(tab)
+    report[prefix + '_page'] = page_kind(state.get('host', ''), state.get('eval'))
     report[prefix + '_status'] = enum(state.get('status', ''), PLAYABILITY, 'unknown' if not state.get('status') else 'other')
     report[prefix + '_bot'] = bool(state.get('bot'))
     report[prefix + '_played'] = bool(state.get('time', -1) > 1)
@@ -247,7 +302,7 @@ def diagnose(source, folder):
         report.setdefault('error_code', 'browser_check_failed')
     emit(report, 'browser')
     for client in CLIENTS:
-        report['client_' + client] = probe_client(source, client)
+        report['client_' + client] = probe_client(source, client, details=report)
         emit(report, 'client_' + client)
         time.sleep(2)  # pace one request per client; no retry loop
     if report.get('ipv6_reachable'):
@@ -317,4 +372,6 @@ if __name__ == '__main__':
     except Exception:
         result = {'success': False, 'error_code': 'diagnosis_crashed'}
     print(json.dumps(safe_report(result)), flush=True)
-    raise SystemExit(0 if result.get('success') else 1)
+    # Skip interpreter shutdown: nodriver's exit hooks can wait on the closed
+    # browser. The parent still removes the temporary folder.
+    os._exit(0 if result.get('success') else 1)
