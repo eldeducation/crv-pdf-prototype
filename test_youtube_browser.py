@@ -42,6 +42,15 @@ class BrowserImportTests(unittest.TestCase):
         self.assertNotIn('--no-sandbox',run.call_args.args[0])
         self.assertNotIn('secret-do-not-log',result)
 
+    def test_only_temporary_xvfb_display_survives_environment_filter(self):
+        env=browser.worker_environment(ROOT,{'DISPLAY':':123','XAUTHORITY':str(ROOT/'xvfb/Xauthority'),'OPENROUTER_API_KEY':'secret'})
+        self.assertEqual(env['DISPLAY'],':123')
+        self.assertNotIn('OPENROUTER_API_KEY',env)
+        for display,authority in [('remote-host:0',str(ROOT/'Xauthority')),(':123',str(ROOT.parent/'personal-Xauthority'))]:
+            env=browser.worker_environment(ROOT,{'DISPLAY':display,'XAUTHORITY':authority})
+            self.assertNotIn('DISPLAY',env)
+            self.assertNotIn('XAUTHORITY',env)
+
     def test_probe_isolated_profile_sanitized_env_and_safe_logs(self):
         folder=MagicMock();folder.__enter__.return_value='/fresh-ephemeral-profile'
         proc=Mock(returncode=1);proc.communicate.return_value=(json.dumps({'success':False,'provider_loaded':True,'error_code':'youtube_verification','cookie':'secret-must-not-appear'}),'private details')

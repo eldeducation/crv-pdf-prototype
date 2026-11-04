@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -14,6 +15,19 @@ CHROME = Path('/opt/youtube-chromium')
 PLUGINS = Path('/opt/wpc-plugins')
 SAFE_FIELDS = ('success', 'provider_loaded', 'browser_started', 'token_generated',
                'login_required', 'browser_failed', 'browser_start_reason', 'bytes', 'duration_seconds', 'audio', 'error_code')
+
+
+
+def worker_environment(folder, environ=None):
+    source = os.environ if environ is None else environ
+    env = child_environment(source)
+    # Preserve only the temporary Xvfb display, never a host display/profile.
+    display = source.get('DISPLAY', '')
+    authority = source.get('XAUTHORITY', '')
+    if re.fullmatch(r':[0-9]+(?:\.0)?', display) and authority:
+        if Path(authority).resolve().is_relative_to(Path(folder).resolve()):
+            env.update(DISPLAY=display, XAUTHORITY=authority)
+    return env
 
 
 def browser_args(source, folder, sub_lang=None):
@@ -184,5 +198,5 @@ def download_check(source, folder):
 if __name__=='__main__':
     if len(sys.argv)!=4 or sys.argv[1]!='--download-check' or not is_youtube(sys.argv[2]):
         raise SystemExit(2)
-    env=child_environment();os.environ.clear();os.environ.update(env)
+    env=worker_environment(sys.argv[3]);os.environ.clear();os.environ.update(env)
     raise SystemExit(download_check(normalized_video_url(sys.argv[2]),sys.argv[3]))
