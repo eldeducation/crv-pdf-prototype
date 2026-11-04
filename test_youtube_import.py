@@ -1,8 +1,10 @@
 """Offline importer tests: no AI, real cookies, or external network."""
 from pathlib import Path
 import sys
+import tempfile
+import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock, MagicMock
 
 MODULE_ROOT = Path(__file__).resolve().parent
 if not (MODULE_ROOT/'youtube_support.py').is_file(): MODULE_ROOT = MODULE_ROOT.parent
@@ -32,6 +34,22 @@ class YouTubeImportTests(unittest.TestCase):
         self.assertNotIn('default',args)
         with patch.object(youtube,'pot_available',return_value=False):
             self.assertNotIn('--plugin-dirs',youtube.youtube_args())
+
+    def test_probe_reports_failure_without_exposing_child_tokens(self):
+        process=Mock(returncode=1)
+        process.communicate.return_value=(json.dumps({'provider_loaded':True,'token_generated':False,'login_required':True,'secret':'must-never-be-logged'}),'youtube_verification')
+        folder=MagicMock()
+        folder.__enter__.return_value=str(MODULE_ROOT)
+        with patch.object(youtube.tempfile,'TemporaryDirectory',return_value=folder), patch.object(youtube.subprocess,'Popen',return_value=process) as spawn, patch('builtins.print') as log:
+            report=youtube.deployment_probe(URL,MODULE_ROOT)
+        self.assertFalse(report['success'])
+        self.assertEqual(report['error_code'],'youtube_verification')
+        self.assertTrue(report['provider_loaded'])
+        self.assertNotIn('secret',report)
+        self.assertNotIn('must-never-be-logged',str(log.call_args_list))
+        self.assertEqual(report['ai_calls'],0)
+        process.communicate.assert_called_once_with(timeout=300)
+        self.assertNotIn('VIDEO_PDF_ACCESS_PASSWORD',spawn.call_args.kwargs['env'])
 
     def test_only_validated_youtube_urls_receive_new_policy(self):
         self.assertTrue(youtube.is_youtube(URL))

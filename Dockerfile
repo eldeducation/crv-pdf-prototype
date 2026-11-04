@@ -21,10 +21,9 @@ COPY --from=youtube_node /usr/local/bin/node /usr/local/bin/node
 RUN pip install 'yt-dlp[default]==2026.10.26'
 RUN pip install --target /opt/youtube-plugins/bgutil 'bgutil-ytdlp-pot-provider==2.0.2'
 COPY --from=youtube_pot /opt/bgutil/server /opt/bgutil/server
+COPY --from=youtube_pot /opt/bgutil/LICENSE /opt/bgutil/LICENSE
 RUN node /opt/bgutil/server/build/generate_once.js --version
 RUN node --version && python -m yt_dlp --version
-# Temporary, bounded verification of the reported public URL. No AI is called.
-ENV VIDEO_PDF_VERIFY_YOUTUBE=https://www.youtube.com/watch?v=Q2w4-mluYo0
 RUN useradd --create-home --uid 1000 appuser
 COPY --chown=appuser:appuser *.py *.cjs *.css *.html *.js *.json /app/
 COPY --chown=appuser:appuser editor.txt /app/prompts/editor.txt

@@ -130,6 +130,10 @@ def deployment_probe(source, work):
             # Child emits only its controlled final summary to stdout.
             if process.returncode:
                 report['error_code'] = error_code(stderr)
+                if stdout.strip():
+                    diagnostic = json.loads(stdout.strip().splitlines()[-1])
+                    for key in ('provider_loaded', 'token_generated', 'login_required'):
+                        report[key] = bool(diagnostic.get(key, False))
             else:
                 report.update(json.loads(stdout.strip().splitlines()[-1]))
     except subprocess.TimeoutExpired:
@@ -145,10 +149,23 @@ if __name__ == '__main__':
     import sys
     if len(sys.argv) != 4 or sys.argv[1] != '--download-check' or not is_youtube(sys.argv[2]):
         raise SystemExit(2)
+    safe_environment = child_environment()
+    os.environ.clear()
+    os.environ.update(safe_environment)
+    diagnostics = {'provider_loaded': False, 'token_generated': False, 'login_required': False}
     try:
         import claude_real_video.core as core
-        with youtube_context():
-            video = core.fetch_video(sys.argv[2], sys.argv[3], ytdlp_args=['-S', 'res:1080'])
+        original_run = core._run
+        def observed_run(command, *args, **kwargs):
+            result = original_run(command, *args, **kwargs)
+            if command and Path(str(command[0])).stem == 'yt-dlp':
+                detail = (result.stderr or '') + (result.stdout or '')
+                diagnostics['provider_loaded'] |= 'bgutil:script-node-2.0.2 (external)' in detail
+                diagnostics['token_generated'] |= 'via bgutil script' in detail and 'Generating a' in detail
+                diagnostics['login_required'] |= 'LOGIN_REQUIRED' in detail or 'not a bot' in detail
+            return result
+        with youtube_context(), patch.object(core, '_run', observed_run):
+            video = core.fetch_video(sys.argv[2], sys.argv[3], ytdlp_args=['-S', 'res:1080', '--verbose'])
         probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type:format=duration', '-of', 'json', video],
                                capture_output=True, text=True, timeout=30, check=True, env=child_environment())
         data = json.loads(probe.stdout)
@@ -158,5 +175,6 @@ if __name__ == '__main__':
                           'duration_seconds': float(data['format']['duration']),
                           'audio': any(s.get('codec_type') == 'audio' for s in data['streams'])}), flush=True)
     except Exception as error:
+        print(json.dumps(diagnostics), flush=True)
         print(error_code(error), file=sys.stderr, flush=True)
         raise SystemExit(1)
