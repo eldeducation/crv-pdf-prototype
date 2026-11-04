@@ -54,6 +54,20 @@ class DiagnosisTests(unittest.TestCase):
         self.assertEqual(report['error_code'], 'timeout')
         fake_os.killpg.assert_called_once_with(55, 9)
 
+    def test_timeout_keeps_stage_results_already_printed(self):
+        folder = MagicMock(); folder.__enter__.return_value = '/fresh'
+        partial = json.dumps({'stage': 'browser', 'browser_watch_status': 'LOGIN_REQUIRED', 'cookie': 'secret-must-not-appear'})
+        proc = Mock(pid=56); proc.communicate.side_effect = [subprocess.TimeoutExpired('x', 1), (partial + '\n', None)]
+        with patch.object(diag.tempfile, 'TemporaryDirectory', return_value=folder), \
+                patch.object(diag.subprocess, 'Popen', return_value=proc), \
+                patch.object(diag, 'os', SimpleNamespace(name='posix', killpg=Mock())), \
+                patch.object(diag.signal, 'SIGKILL', 9, create=True), patch('builtins.print') as output:
+            report = diag.run_probe(URL, ROOT)
+        self.assertEqual(report['error_code'], 'timeout')
+        self.assertEqual(report['stage'], 'browser')
+        self.assertEqual(report['browser_watch_status'], 'LOGIN_REQUIRED')
+        self.assertNotIn('secret-must-not-appear', str(output.call_args_list))
+
     def test_verdicts(self):
         self.assertEqual(diag.verdict({'success': True}), 'downloaded')
         self.assertEqual(diag.verdict({'client_ios': 'ok'}), 'client_ok_download_failed')

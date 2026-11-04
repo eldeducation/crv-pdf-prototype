@@ -27,15 +27,16 @@ from security import normalized_video_url, child_environment
 from youtube_support import is_youtube, error_code, youtube_args, POT_PLUGINS
 from youtube_browser import CHROME, worker_environment, ready_chromium
 
-CLIENTS = ('web', 'web_safari', 'mweb', 'tv', 'tv_simply', 'web_embedded', 'android_vr', 'ios', 'android')
+# Clients that returned formats from a residential connection come first.
+CLIENTS = ('android_vr', 'web_embedded', 'mweb', 'tv', 'web_safari', 'web', 'tv_simply', 'ios', 'android')
 PLAYABILITY = ('OK', 'LOGIN_REQUIRED', 'UNPLAYABLE', 'ERROR', 'CONTENT_CHECK_REQUIRED', 'AGE_CHECK_REQUIRED', 'LIVE_STREAM_OFFLINE')
 RESULTS = ('ok', 'bot_check', 'no_formats', 'youtube_client', 'access_restricted', 'download_failed', 'timeout')
 SAFE_FIELDS = frozenset(
     ['success', 'verdict', 'egress_colo', 'egress_ip_version', 'ipv6_reachable', 'ipv6_mweb', 'browser_started',
      'browser_watch_status', 'browser_watch_bot', 'browser_watch_played', 'browser_consent_page',
      'embed_status', 'embed_bot', 'embed_played', 'download_client', 'bytes', 'duration_seconds',
-     'height', 'audio', 'error_code'] + ['client_' + c for c in CLIENTS])
-CHILD_TIMEOUT = 420
+     'height', 'audio', 'error_code', 'stage'] + ['client_' + c for c in CLIENTS])
+CHILD_TIMEOUT = 600  # Render Free has 0.1 CPU; every stage reports as it finishes.
 
 
 def video_id(source):
@@ -196,12 +197,13 @@ def browser_check(source, folder, report):
         # isolation, certificate checks, fresh profile, loopback-only debugging).
         config = Config(browser_executable_path=str(CHROME), headless=False, sandbox=True,
                         browser_args=['--autoplay-policy=no-user-gesture-required'])
-        loop.run_until_complete(ready_chromium(config, folder, report, processes))
-        browser = loop.run_until_complete(nodriver.start(config=config))
+        bounded = lambda step, seconds: loop.run_until_complete(asyncio.wait_for(step, seconds))
+        bounded(ready_chromium(config, folder, report, processes), 90)
+        browser = bounded(nodriver.start(config=config), 60)
         vid = video_id(source)
-        loop.run_until_complete(watch(browser, 'https://www.youtube.com/watch?v=' + vid, report, 'browser_watch'))
-        loop.run_until_complete(watch(browser, 'https://www.youtube-nocookie.com/embed/' + vid + '?autoplay=1&mute=1',
-                                      report, 'embed'))
+        bounded(watch(browser, 'https://www.youtube.com/watch?v=' + vid, report, 'browser_watch'), 90)
+        bounded(watch(browser, 'https://www.youtube-nocookie.com/embed/' + vid + '?autoplay=1&mute=1',
+                      report, 'embed'), 90)
     finally:
         for proc in processes:
             if proc.returncode is None:
@@ -227,26 +229,37 @@ def verdict(report):
     return 'inconclusive'
 
 
+def emit(report, stage):
+    """Progress line after every stage, so a timeout still leaves evidence."""
+    report['stage'] = stage
+    report['verdict'] = verdict(report)
+    print(json.dumps(safe_report(report)), flush=True)
+
+
 def diagnose(source, folder):
     report = {'success': False}
     egress(report)
+    emit(report, 'egress')
     # Browser first (and closed) so Chromium and yt-dlp never share the 512 MB.
     try:
         browser_check(source, folder, report)
     except Exception:
         report.setdefault('error_code', 'browser_check_failed')
+    emit(report, 'browser')
     for client in CLIENTS:
         report['client_' + client] = probe_client(source, client)
+        emit(report, 'client_' + client)
         time.sleep(2)  # pace one request per client; no retry loop
     if report.get('ipv6_reachable'):
         report['ipv6_mweb'] = probe_client(source, 'mweb', ['--force-ipv6'])
     working = next((c for c in CLIENTS if report.get('client_' + c) == 'ok'), None)
     if working:
+        emit(report, 'download_started')
         try:
             download(source, working, folder, report)
         except Exception as error:
             report['error_code'] = error_code(error)
-    report['verdict'] = verdict(report)
+    emit(report, 'done')
     return report
 
 
@@ -270,22 +283,24 @@ def run_probe(source, work):
                        sys.executable, str(Path(__file__).resolve()), '--diagnose', source, folder]
             proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
                                     encoding='utf-8', env=env, start_new_session=True)
+            timed_out = False
             try:
                 stdout, _ = proc.communicate(timeout=CHILD_TIMEOUT)
             except subprocess.TimeoutExpired:
+                timed_out = True
                 if os.name != 'nt':
                     os.killpg(proc.pid, signal.SIGKILL)
                 else:
                     proc.kill()
-                proc.communicate(timeout=10)
-                raise
-            lines = [x for x in stdout.strip().splitlines() if x.startswith('{')]
+                # Retrying communicate() keeps the stage lines already printed.
+                stdout, _ = proc.communicate(timeout=10)
+            lines = [x for x in (stdout or '').strip().splitlines() if x.startswith('{')]
             if lines:
                 report.update(safe_report(json.loads(lines[-1])))
-            elif proc.returncode:
+            if timed_out:
+                report['error_code'] = 'timeout'
+            elif not lines and proc.returncode:
                 report['error_code'] = 'diagnosis_worker_failed'
-    except subprocess.TimeoutExpired:
-        report['error_code'] = 'timeout'
     except Exception:
         report['error_code'] = 'diagnosis_failed'
     report['seconds'] = round(time.monotonic() - started, 1)
