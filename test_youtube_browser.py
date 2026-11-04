@@ -22,6 +22,19 @@ class BrowserImportTests(unittest.TestCase):
         self.assertFalse(any('cookies' in v or 'proxy' in v or 'no-sandbox' in v for v in args))
         self.assertEqual(args[-3:],['--write-auto-subs','--sub-langs','ja'])
 
+    def test_python_api_explicitly_loads_only_selected_plugin_directory(self):
+        from yt_dlp.globals import plugin_dirs
+        original=plugin_dirs.value
+        try:
+            with patch.object(browser,'PLUGINS',ROOT), patch('yt_dlp.plugins.load_all_plugins') as load:
+                opts=browser.ydl_options(URL,ROOT,Mock())
+            load.assert_called_once()
+            self.assertEqual(plugin_dirs.value,[str(ROOT)])
+            self.assertIsNone(opts.get('cookiefile'))
+            self.assertIsNone(opts.get('cookiesfrombrowser'))
+        finally:
+            plugin_dirs.value=original
+
     def test_probe_isolated_profile_sanitized_env_and_safe_logs(self):
         folder=MagicMock();folder.__enter__.return_value='/fresh-ephemeral-profile'
         proc=Mock(returncode=1);proc.communicate.return_value=(json.dumps({'success':False,'provider_loaded':True,'error_code':'youtube_verification','cookie':'secret-must-not-appear'}),'private details')

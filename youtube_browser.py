@@ -74,6 +74,19 @@ def browser_probe(source, work):
     return report
 
 
+
+def ydl_options(source, folder, logger):
+    import yt_dlp
+    parsed = yt_dlp.parse_options(browser_args(source, folder))
+    # parse_options alone does not apply CLI plugin directories to the API.
+    from yt_dlp.globals import plugin_dirs
+    from yt_dlp.plugins import load_all_plugins
+    plugin_dirs.value = parsed.options.plugin_dirs
+    load_all_plugins()
+    opts = parsed.ydl_opts
+    opts.update(logger=logger, noprogress=True)
+    return opts
+
 def download_check(source, folder):
     report = dict(success=False, provider_loaded=False, browser_started=False,
                   token_generated=False, login_required=False, browser_failed=False)
@@ -93,8 +106,7 @@ def download_check(source, folder):
                     report['login_required'] = True
                 if 'failed to start browser' in text:
                     report['browser_failed'] = True
-        opts = yt_dlp.parse_options(browser_args(source, folder)).ydl_opts
-        opts.update(logger=PrivateLogger(), noprogress=True)
+        opts = ydl_options(source, folder, PrivateLogger())
         with yt_dlp.YoutubeDL(opts) as ydl:
             plugin = sys.modules.get('yt_dlp_plugins.extractor.getpot_wpc')
             if plugin is None:
