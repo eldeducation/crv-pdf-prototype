@@ -126,6 +126,12 @@ def deployment_probe(source, work):
         if not is_youtube(source):
             raise ValueError('Only a YouTube URL can be checked.')
         work = Path(work);work.mkdir(parents=True, exist_ok=True)
+        queue = home_fetch.queue_dir()
+        if queue:
+            # A fresh instance may boot before the PC's next poll reaches it.
+            deadline = time.monotonic() + 180
+            while not home_fetch.agent_online(queue) and time.monotonic() < deadline:
+                time.sleep(5)
         with tempfile.TemporaryDirectory(prefix='youtube-check-', dir=work) as folder:
             command = [sys.executable, str(Path(__file__).resolve()), '--download-check', source, folder]
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
