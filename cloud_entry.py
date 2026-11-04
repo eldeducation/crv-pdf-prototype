@@ -3,12 +3,14 @@ import hashlib
 import http.server
 import json
 import os
+import re
 import secrets
 import threading
 import time
 import urllib.parse
 from http.cookies import SimpleCookie
 import share_gateway as gateway
+from home_fetch import HomeFetchQueue, QUEUE_ENV, token_digest
 from security import response_headers
 
 def external_origin(value):
@@ -32,6 +34,47 @@ class CloudHandler(gateway.Handler):
     login_attempts = []
     login_lock = threading.Lock()
     login_seconds = 8 * 3600
+    fetch_queue = None
+    fetch_digest = b''
+    fetch_failures = []
+
+    def home_fetch(self):
+        """Endpoints for the home-PC fetcher. Bearer token only; no cookies."""
+        now = time.monotonic()
+        with self.login_lock:
+            self.fetch_failures[:] = [t for t in self.fetch_failures if now - t < 60]
+            if len(self.fetch_failures) >= 20:
+                return self.send(429, {'error': 'Too many attempts.'}, extra_headers={'Retry-After': '60'})
+        auth = self.headers.get('Authorization', '')
+        supplied = auth[7:] if auth.startswith('Bearer ') else ''
+        if (not self.fetch_queue or self.command != 'POST' or not supplied or len(supplied) > 256
+                or not secrets.compare_digest(token_digest(supplied), self.fetch_digest)):
+            with self.login_lock:
+                self.fetch_failures.append(now)
+            return self.send(401, {'error': 'Unauthorized.'})
+        parts = urllib.parse.urlsplit(self.path)
+        route = parts.path[len('/home-fetch/'):]
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if self.headers.get('Transfer-Encoding') or length < 0:
+                return self.send(411, {'error': 'Content-Length required.'})
+            if route == 'next':
+                return self.send(200, {'job': self.fetch_queue.next()})
+            match = re.fullmatch(r'upload/([a-f0-9]{24})/([A-Za-z0-9.-]{1,48})', route)
+            if match:
+                offset = int(urllib.parse.parse_qs(parts.query).get('offset', ['-1'])[0])
+                size = self.fetch_queue.append(match[1], match[2], offset, self.rfile.read, length)
+                return self.send(200, {'size': size})
+            match = re.fullmatch(r'done/([a-f0-9]{24})', route)
+            if match and 0 < length <= 1024:
+                data = json.loads(self.rfile.read(length))
+                self.fetch_queue.finish(match[1], data.get('ok') is True, data.get('error_code'))
+                return self.send(200, {'accepted': True})
+        except KeyError:
+            return self.send(404, {'error': 'Unknown request.'})
+        except (ValueError, TypeError, AttributeError):
+            return self.send(400, {'error': 'Invalid request.'})
+        return self.send(404, {'error': 'Not found.'})
 
     def valid_host(self):
         return self.headers.get('Host', '') == urllib.parse.urlsplit(self.public_origin).netloc
@@ -110,6 +153,8 @@ class CloudHandler(gateway.Handler):
             return self.send(200, {'status': 'ok'})
         if not self.valid_host():
             return self.send(403, {'error': 'Invalid host.'})
+        if self.path.startswith('/home-fetch/'):
+            return self.home_fetch()
         if self.command == 'POST' and self.path == '/login':
             return self.login()
         if not self.authenticated():
@@ -133,6 +178,15 @@ def main():
     CloudHandler.public_origin = origin
     password = ''
     (gateway.ROOT / 'work').mkdir(exist_ok=True)
+    fetch_token = os.environ.pop('VIDEO_PDF_FETCH_TOKEN', '')
+    if fetch_token:
+        if len(fetch_token) < 32:
+            raise ValueError('VIDEO_PDF_FETCH_TOKEN must have at least 32 characters.')
+        CloudHandler.fetch_digest = token_digest(fetch_token)
+        CloudHandler.fetch_queue = HomeFetchQueue(gateway.ROOT / 'work' / 'fetch-queue')
+        # Sessions and CRV inherit only the queue location, never the token.
+        os.environ[QUEUE_ENV] = str(CloudHandler.fetch_queue.root)
+    fetch_token = ''
     server = http.server.ThreadingHTTPServer(('0.0.0.0', int(os.getenv('PORT', '7860'))), CloudHandler)
     server.daemon_threads = True
     record = {'pid': os.getpid(), 'port': server.server_port, 'path': '/' + gateway.TOKEN + '/', 'public_url': origin}

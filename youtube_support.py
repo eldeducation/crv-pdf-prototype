@@ -16,6 +16,7 @@ import tempfile
 import time
 
 from security import normalized_video_url, child_environment
+import home_fetch
 
 
 def is_youtube(source):
@@ -65,6 +66,15 @@ def error_code(error):
 def youtube_context():
     import claude_real_video.core as core
     original_fetch = core.fetch_video
+    original_subtitle_lang = core.remote_subtitle_lang
+    # Set only on the cloud host when the home-PC fetcher is configured.
+    queue = home_fetch.queue_dir()
+
+    def subtitle_lang(source, lang=None):
+        # The PC applies CRV's own caption-track choice on its connection.
+        if queue and is_youtube(source):
+            return 'agent:' + (lang if lang and lang != 'auto' and home_fetch.SUB_REQUEST.fullmatch('agent:' + lang) else 'auto')
+        return original_subtitle_lang(source, lang)
 
     @functools.lru_cache(maxsize=2)
     def remote_info(source):
@@ -84,6 +94,8 @@ def youtube_context():
             return original_fetch(source, out_dir, cookies, cookies_from_browser, ytdlp_args, sub_lang)
         if cookies or cookies_from_browser:
             raise ValueError('Personal YouTube cookies are not accepted by the shared importer.')
+        if queue:
+            return home_fetch.request_download(queue, normalized_video_url(source), out_dir, sub_lang)
         last_error = None
         for client in (None, 'android_vr', 'web_embedded'):
             try:
@@ -101,6 +113,7 @@ def youtube_context():
     with ExitStack() as stack:
         stack.enter_context(patch.object(core, 'fetch_video', fetch))
         stack.enter_context(patch.object(core, '_remote_info', remote_info))
+        stack.enter_context(patch.object(core, 'remote_subtitle_lang', subtitle_lang))
         yield
 
 
@@ -119,7 +132,9 @@ def deployment_probe(source, work):
                                        text=True, encoding='utf-8', env=child_environment(),
                                        start_new_session=os.name != 'nt')
             try:
-                stdout, stderr = process.communicate(timeout=300)
+                # The home-PC route includes the PC's download and upload time.
+                limit = home_fetch.RESULT_SECONDS + 120 if home_fetch.queue_dir() else 300
+                stdout, stderr = process.communicate(timeout=limit)
             except subprocess.TimeoutExpired:
                 if os.name != 'nt':
                     os.killpg(process.pid, signal.SIGKILL)
@@ -165,7 +180,9 @@ if __name__ == '__main__':
                 diagnostics['login_required'] |= 'LOGIN_REQUIRED' in detail or 'not a bot' in detail
             return result
         with youtube_context(), patch.object(core, '_run', observed_run):
-            video = core.fetch_video(sys.argv[2], sys.argv[3], ytdlp_args=['-S', 'res:1080', '--verbose'])
+            # Same order as CRV: choose the caption track, then download.
+            sub_lang = core.remote_subtitle_lang(sys.argv[2])
+            video = core.fetch_video(sys.argv[2], sys.argv[3], ytdlp_args=['-S', 'res:1080', '--verbose'], sub_lang=sub_lang)
         probe = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type:format=duration', '-of', 'json', video],
                                capture_output=True, text=True, timeout=30, check=True, env=child_environment())
         data = json.loads(probe.stdout)
@@ -173,7 +190,10 @@ if __name__ == '__main__':
             raise RuntimeError('Downloaded file has no video stream.')
         print(json.dumps({'success': True, 'bytes': Path(video).stat().st_size,
                           'duration_seconds': float(data['format']['duration']),
-                          'audio': any(s.get('codec_type') == 'audio' for s in data['streams'])}), flush=True)
+                          'audio': any(s.get('codec_type') == 'audio' for s in data['streams']),
+                          'via_home_pc': bool(home_fetch.queue_dir()),
+                          'subtitles': any(home_fetch.SUBTITLE_NAME.fullmatch(p.name) for p in Path(video).parent.iterdir())}),
+              flush=True)
     except Exception as error:
         print(json.dumps(diagnostics), flush=True)
         print(error_code(error), file=sys.stderr, flush=True)

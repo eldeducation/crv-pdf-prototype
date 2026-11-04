@@ -10,3 +10,4 @@
 **/server.local.json
 **/sharing.local.json
 .git
+**/home_fetch.local.json

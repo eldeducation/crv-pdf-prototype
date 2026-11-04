@@ -10,3 +10,4 @@ __pycache__/
 *.log
 server.local.json
 sharing.local.json
+home_fetch.local.json
