@@ -1,5 +1,5 @@
 from pathlib import Path
-import sys,json,unittest,subprocess
+import sys,json,unittest,subprocess,http.cookiejar
 from types import SimpleNamespace
 from unittest.mock import patch,Mock,MagicMock
 ROOT=Path(__file__).resolve().parent
@@ -58,6 +58,14 @@ class BrowserImportTests(unittest.TestCase):
         self.assertEqual(config.user_data_dir,str(ROOT/'anonymous-chrome-profile'))
         self.assertFalse(any('no-sandbox' in x or 'disable-features' in x or 'ignore-certificate-errors' in x for x in command))
         self.assertIn('--remote-debugging-address=127.0.0.1',command)
+
+    def test_only_anonymous_youtube_cookie_names_are_copied_in_memory(self):
+        def cookie(name,domain):
+            return SimpleNamespace(name=name,domain=domain,value='test-only-value',expires=-1,path='/',secure=True)
+        jar=http.cookiejar.CookieJar()
+        count=browser.copy_guest_cookies(jar,[cookie('VISITOR_INFO1_LIVE','.youtube.com'),cookie('YSC','youtube.com'),cookie('SID','.youtube.com'),cookie('LOGIN_INFO','.youtube.com'),cookie('YSC','.evil.invalid'),cookie('YSC','.google.com')])
+        self.assertEqual(count,2)
+        self.assertEqual({x.name for x in jar},{'VISITOR_INFO1_LIVE','YSC'})
 
     def test_probe_isolated_profile_sanitized_env_and_safe_logs(self):
         folder=MagicMock();folder.__enter__.return_value='/fresh-ephemeral-profile'

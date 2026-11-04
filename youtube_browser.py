@@ -2,6 +2,7 @@
 from pathlib import Path
 import json
 import asyncio
+import http.cookiejar
 import socket
 import urllib.request
 import os
@@ -17,7 +18,7 @@ from youtube_support import is_youtube, error_code
 CHROME = Path('/opt/youtube-chromium')
 PLUGINS = Path('/opt/wpc-plugins')
 SAFE_FIELDS = ('success', 'provider_loaded', 'browser_started', 'token_generated',
-               'login_required', 'browser_failed', 'browser_start_reason', 'bytes', 'duration_seconds', 'audio', 'error_code')
+               'login_required', 'browser_failed', 'browser_start_reason', 'anonymous_cookie_count', 'matched_user_agent', 'bytes', 'duration_seconds', 'audio', 'error_code')
 
 
 
@@ -173,6 +174,25 @@ async def ready_chromium(config, folder, report, processes):
     report['browser_start_reason']='chromium_ready_timeout'
     raise RuntimeError('Chromium startup timed out.')
 
+
+GUEST_COOKIES = frozenset(('VISITOR_INFO1_LIVE','VISITOR_PRIVACY_METADATA','YSC','PREF','CONSENT','SOCS','__Secure-YEC'))
+
+def copy_guest_cookies(jar, cookies):
+    count=0
+    for cookie in cookies:
+        if cookie.name not in GUEST_COOKIES or cookie.domain.lstrip('.') != 'youtube.com':
+            continue
+        if len(cookie.value)>4096:
+            continue
+        expiry=int(cookie.expires) if cookie.expires and cookie.expires>0 else None
+        jar.set_cookie(http.cookiejar.Cookie(version=0,name=cookie.name,value=cookie.value,
+            port=None,port_specified=False,domain=cookie.domain,domain_specified=True,
+            domain_initial_dot=cookie.domain.startswith('.'),path=cookie.path or '/',path_specified=True,
+            secure=bool(cookie.secure),expires=expiry,discard=expiry is None,comment=None,
+            comment_url=None,rest={},rfc2109=False))
+        count+=1
+    return count
+
 def download_check(source, folder):
     report = dict(success=False, provider_loaded=False, browser_started=False,
                   token_generated=False, login_required=False, browser_failed=False)
@@ -215,7 +235,20 @@ def download_check(source, folder):
                 if token:
                     print(json.dumps({'event':'youtube_browser_stage', 'stage':'token_generated'}), flush=True)
                 return token
-            with patch.object(plugin, 'launch_browser', observed_launch), patch.object(plugin, 'mint_po_token', observed_mint):
+            # Warm a new anonymous browser before the extractor makes requests,
+            # then reuse precisely this browser for the matching PO Tokens.
+            loop=plugin.loop()
+            config=plugin.nodriver.core.config.Config(browser_executable_path=str(CHROME),headless=False,sandbox=True)
+            browser=loop.run_until_complete(observed_launch(config))
+            cookies=loop.run_until_complete(browser.cookies.get_all())
+            report['anonymous_cookie_count']=copy_guest_cookies(ydl.cookiejar,cookies)
+            agent=loop.run_until_complete(browser.main_tab.evaluate('navigator.userAgent'))
+            if isinstance(agent,str) and agent.startswith('Mozilla/5.0') and len(agent)<512 and not re.search(r'[\r\n]',agent):
+                ydl.params['http_headers']['User-Agent']=agent
+                report['matched_user_agent']=True
+            async def reuse_browser(_config):
+                return browser
+            with patch.object(plugin, 'launch_browser', reuse_browser), patch.object(plugin, 'mint_po_token', observed_mint):
                 ydl.extract_info(source, download=True)
         videos = [p for p in Path(folder).glob('source.*') if p.suffix.lower() in ('.mp4','.mkv','.webm','.mov')]
         if not videos:
