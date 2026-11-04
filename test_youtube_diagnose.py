@@ -74,6 +74,18 @@ class DiagnosisTests(unittest.TestCase):
         self.assertEqual(diag.verdict({'browser_watch_status': 'LOGIN_REQUIRED', 'browser_watch_bot': True,
                                        'embed_played': False}), 'network_refused_even_for_real_browser')
         self.assertEqual(diag.verdict({'browser_watch_played': True}), 'real_browser_plays_only_ytdlp_refused')
+        # Observed on Render Free (Oregon), 2026-11-04.
+        self.assertEqual(diag.verdict({'browser_watch_page': 'google_sorry', 'embed_played': False,
+                                       'client_mweb': 'bot_check'}), 'network_refused_even_for_real_browser')
+
+    def test_page_kind_and_flags(self):
+        self.assertEqual(diag.page_kind('www.google.com', 'ok'), 'google_sorry')
+        self.assertEqual(diag.page_kind('consent.youtube.com', 'ok'), 'consent')
+        self.assertEqual(diag.page_kind('anything', 'eval_error'), 'eval_error')
+        logger = diag.QuietLogger()
+        logger.observe('ERROR: [youtube] x: Sign in to confirm you’re not a bot. secret-token-value')
+        self.assertTrue(logger.bot)
+        self.assertEqual(diag.describe(logger, None), 'none+login')
 
     def test_playable_ignores_storyboards(self):
         self.assertFalse(diag.playable({'formats': [{'vcodec': 'none', 'ext': 'mhtml', 'url': 'x'}]}))

@@ -276,7 +276,9 @@ def verdict(report):
         return 'downloaded'
     if any(report.get('client_' + c) == 'ok' for c in CLIENTS):
         return 'client_ok_download_failed'
-    browser_bot = report.get('browser_watch_bot') or report.get('browser_watch_status') == 'LOGIN_REQUIRED'
+    # google_sorry = Google's "unusual traffic from your computer network" CAPTCHA.
+    browser_bot = (report.get('browser_watch_bot') or report.get('browser_watch_status') == 'LOGIN_REQUIRED'
+                   or report.get('browser_watch_page') == 'google_sorry')
     if browser_bot and not report.get('browser_watch_played') and not report.get('embed_played'):
         return 'network_refused_even_for_real_browser'
     if report.get('browser_watch_played') or report.get('embed_played'):
