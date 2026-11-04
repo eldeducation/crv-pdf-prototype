@@ -1,6 +1,9 @@
 """Isolated anonymous Chromium/WPC experiment. No AI calls or personal profile."""
 from pathlib import Path
 import json
+import asyncio
+import socket
+import urllib.request
 import os
 import re
 import signal
@@ -121,9 +124,59 @@ def browser_start_diagnostic(folder):
     except Exception:
         return 'chromium_check_failed'
 
+
+def chromium_command(config, folder):
+    config.sandbox = True
+    config.user_data_dir = str(Path(folder)/'anonymous-chrome-profile')
+    # nodriver defaults disable site isolation; restore Chrome's protections.
+    blocked = ('--disable-features=', '--disable-site-isolation-trials',
+               '--no-sandbox', '--disable-web-security', '--ignore-certificate-errors',
+               '--allow-running-insecure-content', '--remote-allow-origins=')
+    args = [x for x in config() if not x.startswith(blocked)]
+    return [str(CHROME), *args, '--remote-debugging-address=127.0.0.1']
+
+
+async def ready_chromium(config, folder, report, processes):
+    with socket.socket() as sock:
+        sock.bind(('127.0.0.1',0))
+        port=sock.getsockname()[1]
+    config.host='127.0.0.1';config.port=port
+    proc=await asyncio.create_subprocess_exec(*chromium_command(config,folder),
+            stdin=asyncio.subprocess.DEVNULL,stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE)
+    processes.append(proc)
+    def ready():
+        try:
+            with urllib.request.urlopen('http://127.0.0.1:'+str(port)+'/json/version',timeout=1) as response:
+                return bool(json.load(response).get('webSocketDebuggerUrl'))
+        except Exception:
+            return False
+    deadline=time.monotonic()+60
+    while time.monotonic()<deadline:
+        if proc.returncode is not None:
+            text=(await proc.stderr.read()).decode('utf-8',errors='replace').lower()
+            if any(x in text for x in ('no usable sandbox','failed to move to new namespace','sandbox_linux','zygote_host_impl_linux')):
+                report['browser_start_reason']='sandbox_unavailable'
+            elif 'cannot open shared object file' in text:
+                report['browser_start_reason']='browser_library_missing'
+            elif 'missing x server' in text or 'authorization required' in text:
+                report['browser_start_reason']='display_unavailable'
+            else:
+                report['browser_start_reason']='chromium_exited'
+            raise RuntimeError('Chromium did not start.')
+        if await asyncio.to_thread(ready):
+            report['browser_started']=True
+            report['browser_start_reason']='ready'
+            print(json.dumps({'event':'youtube_browser_stage','stage':'browser_started'}),flush=True)
+            return
+        await asyncio.sleep(1)
+    report['browser_start_reason']='chromium_ready_timeout'
+    raise RuntimeError('Chromium startup timed out.')
+
 def download_check(source, folder):
     report = dict(success=False, provider_loaded=False, browser_started=False,
                   token_generated=False, login_required=False, browser_failed=False)
+    processes = []
     try:
         import yt_dlp
         from unittest.mock import patch
@@ -148,27 +201,14 @@ def download_check(source, folder):
             report['provider_loaded'] = True
             launch = plugin.launch_browser
             mint = plugin.mint_po_token
-            async def observed_launch(*args, **kwargs):
+            async def observed_launch(config):
                 try:
-                    browser = await launch(*args, **kwargs)
+                    await ready_chromium(config,folder,report,processes)
+                    # host+port attach to the browser already ready on loopback.
+                    return await launch(config)
                 except Exception:
-                    report['browser_start_reason'] = browser_start_diagnostic(folder)
-                    # A functioning sandboxed headless browser is a safe fallback
-                    # for a display-only failure. Do not disable the sandbox.
-                    config = args[0] if args else kwargs.get('config')
-                    if report['browser_start_reason'] == 'blank_page_ok' and config is not None:
-                        config.headless = True
-                        try:
-                            browser = await launch(config)
-                        except Exception:
-                            report['browser_failed'] = True
-                            raise
-                    else:
-                        report['browser_failed'] = True
-                        raise
-                report['browser_started'] = True
-                print(json.dumps({'event':'youtube_browser_stage', 'stage':'browser_started'}), flush=True)
-                return browser
+                    report['browser_failed']=True
+                    raise
             async def observed_mint(*args, **kwargs):
                 token = await mint(*args, **kwargs)
                 report['token_generated'] |= bool(token)
@@ -191,6 +231,13 @@ def download_check(source, folder):
                       audio=any(x.get('codec_type')=='audio' for x in data['streams']))
     except Exception as error:
         report['error_code'] = 'browser_start_failed' if report['browser_failed'] else 'youtube_verification' if report['login_required'] else error_code(error)
+    finally:
+        for proc in processes:
+            if proc.returncode is None:
+                try:
+                    proc.terminate()
+                except ProcessLookupError:
+                    pass
     print(json.dumps(report),flush=True)
     return 0 if report['success'] else 1
 

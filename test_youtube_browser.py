@@ -51,6 +51,14 @@ class BrowserImportTests(unittest.TestCase):
             self.assertNotIn('DISPLAY',env)
             self.assertNotIn('XAUTHORITY',env)
 
+    def test_chromium_command_restores_security_and_private_profile(self):
+        config=Mock(return_value=['--disable-features=IsolateOrigins,site-per-process','--no-sandbox','--ignore-certificate-errors','--user-data-dir=temporary','--remote-debugging-port=123'])
+        command=browser.chromium_command(config,ROOT)
+        self.assertTrue(config.sandbox)
+        self.assertEqual(config.user_data_dir,str(ROOT/'anonymous-chrome-profile'))
+        self.assertFalse(any('no-sandbox' in x or 'disable-features' in x or 'ignore-certificate-errors' in x for x in command))
+        self.assertIn('--remote-debugging-address=127.0.0.1',command)
+
     def test_probe_isolated_profile_sanitized_env_and_safe_logs(self):
         folder=MagicMock();folder.__enter__.return_value='/fresh-ephemeral-profile'
         proc=Mock(returncode=1);proc.communicate.return_value=(json.dumps({'success':False,'provider_loaded':True,'error_code':'youtube_verification','cookie':'secret-must-not-appear'}),'private details')
