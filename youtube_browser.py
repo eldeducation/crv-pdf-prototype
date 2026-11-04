@@ -106,26 +106,6 @@ def ydl_options(source, folder, logger):
     return opts
 
 
-def browser_start_diagnostic(folder):
-    # Launch only about:blank with the default sandbox, not a logged-in profile.
-    try:
-        result = subprocess.run([str(CHROME),'--headless=new','--dump-dom',
-                                 '--user-data-dir='+str(Path(folder)/'startup-check'),'about:blank'],
-                                capture_output=True,text=True,timeout=12,env=child_environment())
-        detail=(result.stderr or '').lower()
-        if any(x in detail for x in ('no usable sandbox','failed to move to new namespace','operation not permitted','sandbox_linux','zygote_host_impl_linux')):
-            return 'sandbox_unavailable'
-        if 'cannot open shared object file' in detail:
-            return 'browser_library_missing'
-        if 'missing x server' in detail or 'display' in detail and 'error' in detail:
-            return 'display_unavailable'
-        return 'blank_page_ok' if result.returncode==0 and '<html' in result.stdout else 'chromium_start_failed'
-    except subprocess.TimeoutExpired:
-        return 'chromium_start_timeout'
-    except Exception:
-        return 'chromium_check_failed'
-
-
 def chromium_command(config, folder):
     config.sandbox = True
     config.user_data_dir = str(Path(folder)/'anonymous-chrome-profile')

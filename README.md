@@ -150,3 +150,21 @@ Dockerビルド・起動・招待ログイン・6秒の無音アップロード�
 - 同じ公開URL `https://www.youtube.com/watch?v=Q2w4-mluYo0` をRender実行環境で2回確認しました。JS設定後・PO Token対応追加後とも `youtube_verification` で失敗しました。後者は74.9秒、AI呼び出しは0回です。これは動画の内容解析やモデルの問題ではありません。現環境でYouTube URLが利用可能になったとは主張しません。
 - 自動ダウンロードテストは通常起動では無効です。管理者が `VIDEO_PDF_VERIFY_YOUTUBE` を明示設定したときだけ、最大300秒・一時ファイル削除付きの取得検査を行います。結果ログは成否などに限定し、認証情報やトークン本体は出力しません。
 - 依存元：[yt-dlp EJS](https://github.com/yt-dlp/yt-dlp/wiki/EJS)、[PO Token Guide](https://github.com/yt-dlp/yt-dlp/wiki/PO-Token-Guide)、[bgutil provider 2.0.2](https://github.com/Brainicism/bgutil-ytdlp-pot-provider/tree/2.0.2)。bgutilはGPL-3.0-onlyで、コンテナに元ライセンスを含めています。プロバイダーの説明にも、トークンはIP単位のログイン制限を解除するものではないと明記されています。
+
+
+### 個人ログインを使わないChromium方式の検証（2026-11-04）
+
+Render内の一時ChromiumとWPC provider 1.1.2 / nodriver 0.50.3を使い、同じクレーム動画URLで検証しました。ブラウザー起動待ち、仮想画面の限定的な環境変数受け渡し、プラグイン登録、共有する非同期ループを調整しました。
+
+| 実機テスト | ブラウザー起動 | トークン作成 | 動画取得 | 時間 |
+| --- | --- | --- | --- | --- |
+| 匿名ブラウザー方式（`cdb319d`） | 成功 | 成功 | YouTubeが認証を要求 | 60.5秒 |
+| 新規匿名セッション・User-Agentも一致（`e2bb283`） | 成功 | 成功 | YouTubeが認証を要求 | 58.5秒 |
+
+**ブラウザー方式は動作しましたが、動画本体の取得は未解決です。** Renderでブラウザーを動かせないという結果ではありません。認証要求の内部条件までは特定しておらず、RenderのIPだけが原因だと断定しません。通常の生成処理へこの実験方式を接続していません。
+
+- 個人のGoogleログイン・既存ブラウザープロファイル・個人Cookie・プロキシ・AI APIを使っていません。匿名セッション方式では、新しく作ったブラウザー由来の匿名Cookie名だけを許可し、取得処理のメモリ内で使いました。Cookie値・トークン値はログに出しません。
+- ブラウザーのsandbox・証明書検証・サイト分離を維持しました。起動用のループバック接続を待ち、準備後に取得ライブラリを接続します。
+- 実験は管理者専用の起動フラグ `VIDEO_PDF_VERIFY_YOUTUBE_BROWSER` で実行します。通常のDocker起動では無効です。子プロセスの待機は240秒、時間切れにはプロセス群を終了させます。一時ファイルの後処理は別に行います。
+- ソースは `youtube_browser.py`、入力制限・匿名Cookieの限定・環境変数の除外・保護設定・停止処理のオフラインテストは `test_youtube_browser.py`（8件成功）です。モデル・プロンプト・抽出画像・字幕／音声・PDF組版は変更していません。
+- 依存元：[WPC provider](https://github.com/coletdjnz/yt-dlp-getpot-wpc)（MIT）。これは取得方式の実験記録で、一般公開に向けた安全性監査やPDF生成成功の記録ではありません。

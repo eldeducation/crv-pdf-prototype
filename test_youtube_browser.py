@@ -35,13 +35,6 @@ class BrowserImportTests(unittest.TestCase):
         finally:
             plugin_dirs.value=original
 
-    def test_browser_diagnostic_preserves_sandbox_and_redacts_stderr(self):
-        with patch.object(browser.subprocess,'run',return_value=Mock(returncode=1,stderr='No usable sandbox! secret-do-not-log',stdout='')) as run:
-            result=browser.browser_start_diagnostic(ROOT)
-        self.assertEqual(result,'sandbox_unavailable')
-        self.assertNotIn('--no-sandbox',run.call_args.args[0])
-        self.assertNotIn('secret-do-not-log',result)
-
     def test_only_temporary_xvfb_display_survives_environment_filter(self):
         env=browser.worker_environment(ROOT,{'DISPLAY':':123','XAUTHORITY':str(ROOT/'xvfb/Xauthority'),'OPENROUTER_API_KEY':'secret'})
         self.assertEqual(env['DISPLAY'],':123')
