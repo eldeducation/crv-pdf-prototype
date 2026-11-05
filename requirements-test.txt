@@ -1,0 +1,8 @@
+# Packages the automated tests need. Same as requirements.txt + the Dockerfile's
+# yt-dlp pin, minus the [whisper] extra: no test runs speech-to-text, and that
+# extra pulls in PyTorch (gigabytes) on every CI run. Keep the pins in step.
+Pillow>=10
+pypdf>=5
+pypdfium2>=4
+claude-real-video==0.10.7
+yt-dlp[default]==2026.10.26

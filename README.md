@@ -134,6 +134,17 @@ APIキーの値はREADME・ソース・スクリーンショット・公開デ�
 - `security.py`：入力URL・API接続先・出力ヘッダーなどの検査。
 - `Dockerfile` / `render.yaml`：FFmpeg・CPU Whisper・Chromium・日本語フォントを含むRender Free向けの候補設定。
 
+### 変更の進め方と自動テスト（2026-11-05）
+
+Codex・Claude Code・人が並行して変更するため、GitHubの`main`を唯一の正本とします。
+
+1. 作業前に`git pull`で最新の`main`を取り込む。ファイル単位のコピーで上書きしない（古いコピーで他の人の変更を戻す事故が実際に起きたため）。
+2. 変更はコミットし、`main`へのpushかプルリクエストで反映する。
+3. pushとプルリクエストごとに、GitHub Actions（`.github/workflows/tests.yml`）がPythonテストとアップロード画面のJavaScriptテストを自動で実行する。結果はGitHubの「Actions」タブで確認できる。APIキー・動画のダウンロード・AI呼び出しは使わない。
+4. Renderへのデプロイは、テストが通った`main`を「Deploy latest commit」で行う（自動デプロイは無効）。
+
+テスト用の依存は`requirements-test.txt`です。音声認識（PyTorch）を除いた構成で、`requirements.txt`とDockerfileのyt-dlp固定と版をそろえます。
+
 ### 配置状況
 
 Dockerビルド・起動・招待ログイン・6秒の無音アップロード動画からの画像抽出・日本語PDFとMarkdownの保存を確認しました。APIなしの手動応答テストで、有料API・音声認識・長い動画・Xのクラウド取得は未検証です。YouTube URL取得は実機検証で認証要求が残り、未解決です。Renderの通信元自体がGoogleに拒否されていることを確認済みです（下記「原因の切り分け」）。Free枠のメモリ・休止・一時ディスク、クラウドIPでの動画取得制限に注意してください。一般公開の安全性を承認したものではなく、招待した相手と使う試験用です。
