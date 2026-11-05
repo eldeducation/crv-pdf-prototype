@@ -176,6 +176,17 @@ class EndpointTests(unittest.TestCase):
         self.assertEqual(Path(result['video']).read_bytes(), (folder / 'source.mp4').read_bytes())
 
 
+class OriginTests(unittest.TestCase):
+    def test_platform_addresses(self):
+        import cloud_entry
+        self.assertEqual(cloud_entry.configured_origin({'RENDER_EXTERNAL_URL': 'https://crv.onrender.com'}), 'https://crv.onrender.com')
+        self.assertEqual(cloud_entry.configured_origin({'SPACE_HOST': 'owner-crv.hf.space'}), 'https://owner-crv.hf.space')
+        self.assertEqual(cloud_entry.configured_origin({'PUBLIC_BASE_URL': 'https://a.example', 'SPACE_HOST': 'b.hf.space'}), 'https://a.example')
+        for bad in ({}, {'SPACE_HOST': 'x.hf.space/path'}, {'PUBLIC_BASE_URL': 'http://insecure.example'}):
+            with self.assertRaises(ValueError):
+                cloud_entry.configured_origin(bad)
+
+
 class CrvHookTests(unittest.TestCase):
     def test_youtube_context_routes_to_home_pc_only_when_enabled(self):
         import youtube_support

@@ -20,6 +20,15 @@ def external_origin(value):
         raise ValueError('PUBLIC_BASE_URL must be an HTTPS origin without a path.')
     return 'https://' + parsed.netloc
 
+
+def configured_origin(environ):
+    """Explicit PUBLIC_BASE_URL, else the address the host platform provides:
+    Render's RENDER_EXTERNAL_URL or Hugging Face Spaces' SPACE_HOST."""
+    value = environ.get('PUBLIC_BASE_URL') or environ.get('RENDER_EXTERNAL_URL', '')
+    if not value and environ.get('SPACE_HOST'):
+        value = 'https://' + environ['SPACE_HOST']
+    return external_origin(value)
+
 LOGIN_HTML = '''<!doctype html><html lang="ja"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>CRV PDF - Sign in</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#f0f5e9;color:#203627;font:16px/1.7 system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:24px}main{width:min(100%,480px);padding:36px;background:#fffdf7;border:1px solid #b7caa8;box-shadow:7px 7px #cfe3bb}small{color:#576a4e}h1{font-size:28px;margin:12px 0}label{font-size:14px;font-weight:700;display:block;margin-top:24px}input{display:block;width:100%;padding:13px;border:1px solid #91aa7d;font:inherit;margin:8px 0 18px}button{padding:13px;background:#2b4b32;color:white;border:0;width:100%;font:inherit;font-weight:700;cursor:pointer}p{font-size:13px}</style>
@@ -171,7 +180,7 @@ def main():
     password = os.environ.pop('VIDEO_PDF_ACCESS_PASSWORD', '')
     if len(password) < 24:
         raise ValueError('Set an invitation password with at least 24 characters.')
-    origin = external_origin(os.getenv('PUBLIC_BASE_URL') or os.getenv('RENDER_EXTERNAL_URL', ''))
+    origin = configured_origin(os.environ)
     for name in ('ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'OPENAI_API_KEY'):
         os.environ.pop(name, None)
     CloudHandler.password_digest = hashlib.sha256(password.encode()).digest()
