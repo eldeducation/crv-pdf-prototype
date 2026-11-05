@@ -180,7 +180,8 @@ class CatalogSessionTests(unittest.TestCase):
         self.assertIsNone(server.STATE['catalog'])
         self.assertEqual(server.STATE['key_revision'], 2)
         with self.assertRaises(catalog.CatalogError): server.model_catalog()
-        server.STATE.update(api_key=FAKE, key_used_at=0, catalog=self.result())
+        # Relative to now: a fresh CI machine's monotonic clock can be under 30 minutes.
+        server.STATE.update(api_key=FAKE, key_used_at=time.monotonic() - server.KEY_IDLE_SECONDS - 1, catalog=self.result())
         with server.LOCK: server.expire_key()
         self.assertFalse(server.STATE['api_key'])
         self.assertIsNone(server.STATE['catalog'])
