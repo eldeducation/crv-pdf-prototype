@@ -98,9 +98,17 @@ themeで題材に合う配色を選べる：green/red/blue/amber/purple/slate。
 開始状態・操作・確認を必要な分だけ自然にまとめ、同義の文を反復しない。紙面を埋めるために説明や写真を増やさない。
 共通クラス：.lead .muted .callout .row2 .row3 .card .stat .steps .caption .flow
 デザイン重視には.section-index（章番号）、.pullquote（重要な発言）、.feature（主役の情報）も使える。すべてのページに機械的に並べない。
+デザイン重視では次の雑誌風の部品も使える。中身・出典span・キャプションは通常どおり付け、内容に合う部品だけを選ぶ（全部を使わない）。
+- 表紙（1ページ目）：<div class="cover"><span class="kicker">SEMINAR DIGEST ／ セミナー要約</span><h1>題名<em>強調語</em></h1><p class="sub">副題</p></div>、その下に<div class="cover-media">（主役の写真と補助の写真の2列）、<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">結論の1文。<mark>要点</mark></p></div>、<div class="keypoints">に3つの要点（各<div><p class="no">01</p><h3>見出し</h3><p>1文</p></div>）。表紙だけで全体の主張が分かるようにする。
+- 章の始まり：<div class="chapter"><p class="no">01</p><div><p class="meta">PART 1　02:00 – 08:35</p><h2>見出し</h2></div></div>。時刻は内容案の区間と一致させ、本文には出典spanも付ける。
+- 流れ・変化：<div class="chevrons"><div>段階<small>説明</small></div>…<div class="on">到達点</div></div>（2～6段）。順序のない並列には使わない。
+- 写真：<figure class="shot"><img src="assets/…"><figcaption><strong>07:06</strong>　説明</figcaption></figure>。画面・スライドの文字が根拠なら文字が読める大きさ（本文幅の半分以上、細字なら全幅近く）で載せる。
+- 強調：.quote-xl（<p>発言の要旨</p><p class="by">― 講演者（要旨）</p>。話していない言い回しを発言として作らない）、.bigstat（<span class="num">87</span><span class="unit">%</span><span class="label">意味と母数</span>）、.tiles（数値の並び。各<div><span class="num">90</span><br>意味</div>）、.point（<span class="tag">POINT</span><p>読者にとっての意味。<mark>要点</mark></p>）、.versus（2列の対比。各列に<h3>と<p class="tagline">）、.qa（<div class="q"><small>QUESTION</small><strong>問い</strong></div><span class="arrow">→</span><div class="a"><strong>答え</strong>補足</div>）、.lede（章の導入文）、<mark>（1ページに1～2か所）。数値・引用・強調語は内容案の根拠にあるものだけを使う。
+- 各ページに主役を1つ（大きな写真・大きな数字・引用・図のいずれか）決め、補助要素を添える。各ページの充填は70～95%を目安にする。前のページが55%未満なら、次の章を同じページに続けるか主役を大きくし、改ページのためだけに大きな余白を残さない。文章を水増しして埋めない。
 imgは幅100%・高さauto、row2/row3の中にfigureを置けば横並びになる。
 紙面チェックの結果が返ったら、全ページのプレビューとエラーを確認する。
 design_diagnosticsは実測値に基づく注意点で、美しさの採点でも自動承認でもない。余白が大きい・構造が反復するなどの注意が、内容上必要か完成画像で判断する。
+warningがあるページは修正して再提出するか、残す理由をdesign_reviewのそのページのcompositionまたはreadabilityに具体的に書く。
 デザイン重視のapprove_documentではdesign_reviewに全ページの視覚確認を記録する。これは編集者自身による完成画像の確認で、独立レビューとは呼ばない。
 design_review.pagesの各要素にはpage、preview（今回のpreviews/page-XX.png）、observed_excerpt（そのページで確認した本文の原文）、以下の4観点を記録する。
 hierarchy：最初に読ませたいメッセージが目立ち、読む順序が自然か。

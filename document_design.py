@@ -52,6 +52,8 @@ def editorial_brief(selection):
     return {'presentation_selection': selection, 'structure_guidance': structure,
             'arrangement_guidance': [PRESENTATION_MODES[mode] for mode in normalize_modes(selection.get('presentation_modes', ()))],
             'style_guidance': ('デザイン重視。見出し・重要数値・引用・配色・余白にメリハリをつける。ページの主役を決め、内容に応じて段組みと大小・配置を変える。図解を増やすこと自体を目的にしない。'
+                               '表紙は.cover・.tldr（ひとことで言うと）・.keypoints（3つの要点）で全体の主張を示し、章は.chapter（番号と時刻）で始める。'
+                               '写真は.shotで読める大きさに、流れは.chevrons、強調は.quote-xl・.bigstat・.point・.versus・.qaから内容に合うものだけを選ぶ。各ページの充填は70～95%を目安にする。'
                                if selection['design'] in {'visual', 'editorial'} else
                                '静かな配色・明確な見出し・整った余白で整理する。図解の量は独立した設定に従う。内容・条件・必要な中間操作は維持する。'),
             'visual_density_guidance': {'auto': '理解に役立つ箇所だけ図表を使う。', 'more': '理解に役立つ図表を優先し、重複を避ける。', 'fewer': '文章・写真・表を中心に、必要な図だけ残す。'}[selection.get('visual_density', 'auto')],
@@ -95,6 +97,65 @@ blockquote { font-weight: bold; color: var(--heading-color); }
 .section-index { font-size: 28pt; line-height: 1.2; color: var(--heading-color); font-weight: bold; }
 .pullquote { border-left: 1.2mm solid var(--heading-color); padding: 3mm 4mm; margin: 4mm 0; font-size: 16pt; line-height: 1.5; font-weight: bold; }
 .feature { background: var(--accent-soft); padding: 4mm 5mm; margin: 4mm 0; }
+''' + EDITORIAL_KIT_CSS
+
+
+# Magazine-style parts the editor can compose freely (see editor.txt). They only
+# style ordinary HTML; content, captions and source spans stay the editor's job.
+EDITORIAL_KIT_CSS = '''
+mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); color: inherit; padding: 0 .3mm; }
+.cover { background: var(--heading-color); color: #fff; border-radius: 2.5mm; padding: 9mm 9mm 8mm; margin: 0 0 6mm; }
+.cover .kicker { display: inline-block; border: .3mm solid rgba(255,255,255,.6); border-radius: 1mm; padding: .8mm 3mm; font-size: 8.5pt; letter-spacing: .14em; font-weight: bold; margin-bottom: 5mm; }
+.cover h1 { color: #fff; font-size: 30pt; line-height: 1.28; margin: 0 0 4mm; }
+.cover h1 em { font-style: normal; color: var(--accent-mark); }
+.cover .sub { font-size: 12pt; line-height: 1.6; margin: 0; opacity: .92; }
+.cover-media { display: grid; grid-template-columns: 1.7fr 1fr; gap: 5mm; align-items: end; margin: 0 0 6mm; }
+.shot { margin: 0 0 4mm; }
+.shot img { border: 1mm solid var(--accent-strong); border-radius: 2mm; box-shadow: 0 1.2mm 3mm rgba(0,0,0,.18); }
+.shot figcaption strong, .shot figcaption b { color: var(--accent-strong); }
+.tldr { margin: 2mm 0 6mm; }
+.tldr .label { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
+.tldr .line { font-size: 16pt; line-height: 1.55; font-weight: bold; margin: 1.5mm 0 0; }
+.keypoints { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 5mm; margin: 4mm 0; }
+.keypoints > div { border-top: 1mm solid var(--accent-strong); padding-top: 2.5mm; }
+.keypoints .no { font-family: Arial, sans-serif; font-size: 22pt; line-height: 1.1; font-weight: bold; color: var(--accent-strong); margin: 0; }
+.keypoints h3 { margin: 1.5mm 0 1mm; font-size: 12pt; }
+.keypoints p { font-size: 9.5pt; margin: 0; }
+.chapter { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4mm; align-items: end; margin: 0 0 5mm; }
+.chapter .no { font-family: Arial, sans-serif; font-size: 44pt; line-height: .95; font-weight: bold; color: var(--accent-strong); margin: 0; }
+.chapter .meta { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
+.chapter h2 { margin: 1mm 0 0; font-size: 20pt; }
+.chevrons { display: flex; margin: 4mm 0 6mm; }
+.chevrons > div { flex: 1; min-width: 0; background: var(--accent-soft); color: var(--heading-color); font-weight: bold; font-size: 9.5pt; line-height: 1.4; text-align: center; padding: 3mm 5mm 3mm 7mm; margin-left: -2mm; clip-path: polygon(0 0, calc(100% - 4mm) 0, 100% 50%, calc(100% - 4mm) 100%, 0 100%, 4mm 50%); }
+.chevrons > div:first-child { margin-left: 0; padding-left: 4mm; clip-path: polygon(0 0, calc(100% - 4mm) 0, 100% 50%, calc(100% - 4mm) 100%, 0 100%); }
+.chevrons > .on { background: var(--accent-strong); color: #fff; }
+.chevrons small { display: block; font-weight: normal; font-size: 8pt; }
+.quote-xl { border-left: 1.6mm solid var(--accent-strong); padding: 2mm 0 2mm 6mm; margin: 6mm 0; }
+.quote-xl p { font-size: 20pt; line-height: 1.45; font-weight: bold; margin: 0; color: #14231e; }
+.quote-xl .by { font-size: 9pt; font-weight: normal; color: #5c7168; margin-top: 2mm; }
+.bigstat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2mm; margin: 2mm 0; }
+.bigstat .num { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1; font-weight: bold; color: var(--accent-strong); }
+.bigstat .unit { font-size: 14pt; font-weight: bold; }
+.bigstat .label { flex-basis: 100%; font-size: 10pt; font-weight: bold; }
+.point { display: grid; grid-template-columns: 7mm minmax(0,1fr); gap: 5mm; align-items: center; background: var(--heading-color); color: #fff; border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.point .tag { writing-mode: vertical-rl; letter-spacing: .3em; font-size: 8pt; font-weight: bold; border-left: .3mm solid rgba(255,255,255,.5); padding-left: 2mm; }
+.point p { margin: 0; font-size: 12pt; line-height: 1.7; font-weight: bold; }
+.point mark { background: none; color: var(--accent-mark); }
+.versus { display: grid; grid-template-columns: 1fr 1fr; border: .3mm solid #dce4df; border-radius: 2mm; overflow: hidden; margin: 4mm 0; }
+.versus > div { padding: 4mm 5mm; }
+.versus > div + div { background: var(--accent-soft); }
+.versus h3 { margin: 0 0 1mm; font-size: 12pt; }
+.versus .tagline { color: var(--accent-strong); font-weight: bold; margin: 0 0 2mm; }
+.qa { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1.3fr); gap: 5mm; align-items: center; background: var(--accent-soft); border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.qa .q small { display: block; font-size: 8pt; letter-spacing: .14em; font-weight: bold; color: #5c7168; }
+.qa .q strong { font-size: 13pt; }
+.qa .arrow { font-size: 20pt; font-weight: bold; color: var(--accent-strong); }
+.qa .a strong { display: block; font-size: 15pt; line-height: 1.45; color: var(--accent-strong); }
+.lede { font-size: 12pt; line-height: 1.75; font-weight: bold; }
+.tiles { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-top: .6mm solid #14231e; margin: 3mm 0 5mm; }
+.tiles > div { padding: 3mm 3mm 2mm; border-right: .3mm solid #dce4df; }
+.tiles > div:last-child { border-right: 0; }
+.tiles .num { font-family: Arial, sans-serif; font-size: 26pt; line-height: 1.1; font-weight: bold; color: var(--accent-strong); }
 '''
 
 

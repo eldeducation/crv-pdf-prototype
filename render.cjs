@@ -97,6 +97,14 @@ async function render() {
           const warnings = [];
           if (ratio !== null && ratio < 1.25) warnings.push('見出しと本文の大きさが近い。実画像で主役と読み順を確認。');
           if (occupied < 40 && idx > 0) warnings.push('下部の余白が大きい。意図的な構成か、分割しすぎか確認。');
+          else if (occupied < 55 && idx > 0 && idx < pages.length - 1)
+            warnings.push('ページの半分近くが空いている。次の章を続けるか主役を大きくできないか確認。');
+          const small = images.filter(el => el.naturalWidth > el.naturalHeight * 1.2
+            && el.getBoundingClientRect().width < bounds.width * 0.45).length;
+          if (small) warnings.push(`横長の画面・スライド画像${small}枚が本文幅の45%未満。文字が根拠なら読める大きさか確認。`);
+          if (idx === 0 && pages.length > 2 && document.body.dataset.documentPurpose !== 'procedure'
+              && !main.querySelector('.cover,.tldr,.keypoints'))
+            warnings.push('1ページ目に表紙・要旨（.cover/.tldr/.keypoints）がない。全体の主張が最初に伝わるか確認。');
           const structure = [...main.children].map(el=>el.tagName.toLowerCase()+'.'+el.className).join('|');
           designDiagnostics.push({page:idx+1, heading_body_ratio:ratio, occupied_height_percent:occupied,
             structure, warnings});

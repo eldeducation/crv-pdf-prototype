@@ -10,18 +10,21 @@ from html.parser import HTMLParser
 ROLES = ('materials', 'tools', 'guides')
 VERDICTS = ('supported', 'revise', 'uncertain')
 VISIBILITY = ('visible', 'not_visible', 'not_applicable')
+# heading (dark: cover band, POINT box), soft (tinted panels), strong (vivid
+# accent: chapter numbers, frames, arrows), mark (highlighter on light/dark).
 THEMES = {
-    'green': ('#164c3b', '#edf6f0'), 'red': ('#913d49', '#f7edef'),
-    'blue': ('#244c78', '#edf3fa'), 'amber': ('#795019', '#faf3e7'),
-    'purple': ('#654780', '#f4eff8'), 'slate': ('#354b5a', '#eff3f5'),
+    'green': ('#164c3b', '#edf6f0', '#2e8a4c', '#bfe5c9'), 'red': ('#913d49', '#f7edef', '#c0485a', '#f3cdd4'),
+    'blue': ('#244c78', '#edf3fa', '#2f6fb5', '#cfe0f4'), 'amber': ('#6f4914', '#faf3e7', '#bf7a17', '#f4dcb1'),
+    'purple': ('#654780', '#f4eff8', '#8a5fb3', '#e2d3f0'), 'slate': ('#2f4350', '#eff3f5', '#4d7389', '#d5e2ea'),
 }
 
 
 def theme_css(theme='green'):
     if not isinstance(theme, str) or theme not in THEMES:
         raise ValueError('themeはgreen・red・blue・amber・purple・slateから選んでください。')
-    heading, soft = THEMES[theme]
-    return f':root {{ --heading-color: {heading}; --accent-soft: {soft}; }}'
+    heading, soft, strong, mark = THEMES[theme]
+    return (f':root {{ --heading-color: {heading}; --accent-soft: {soft}; '
+            f'--accent-strong: {strong}; --accent-mark: {mark}; }}')
 STR = {'type': 'string'}
 VISUAL_SCAN = {'type': 'array', 'minItems': 3, 'maxItems': 3, 'items': {
     'type': 'object', 'required': ['role', 'status', 'finding', 'evidence_files'],
