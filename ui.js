@@ -75,7 +75,7 @@ const translations={
  '今回の費用目安（米ドル）':'Estimated spending limit (USD)',
  '次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。':'Processing stops if the next request is estimated to exceed this amount. This is not a guaranteed billing cap. Up to 12 AI requests; you can stop further requests during generation.',
  'PDFを生成する':'Generate PDF',
- '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。再作成は1回までです。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One revision is allowed. Resuming reuses completed stages, and the spending estimate includes earlier requests.',
+ '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to two extra layout fixes are counted separately). Resuming reuses completed stages, and the spending estimate includes earlier requests.',
  '生成状況':'Generation status',
  '詳しい停止理由':'Technical details',
  '生成が途中で停止しました。':'Generation stopped before completion.',

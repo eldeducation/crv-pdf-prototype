@@ -86,6 +86,15 @@ def create_session(restore_identity=None):
             PENDING_SESSIONS -= 1
 
 
+def copy_prompts(root, folder, restore=False):
+    """Docker builds prompts/; a repository checkout has editor.txt at the top."""
+    if (root / 'prompts').is_dir():
+        shutil.copytree(root / 'prompts', folder / 'prompts', dirs_exist_ok=restore)
+    else:
+        (folder / 'prompts').mkdir(exist_ok=restore)
+        shutil.copy2(root / 'editor.txt', folder / 'prompts' / 'editor.txt')
+
+
 def _launch_session(restore_identity=None):
     identity = restore_identity or secrets.token_urlsafe(24)
     if not re.fullmatch(r'[A-Za-z0-9_-]{32}', identity):
@@ -97,7 +106,7 @@ def _launch_session(restore_identity=None):
     folder.mkdir(parents=True, exist_ok=bool(restore_identity))
     for name in COPY_FILES:
         shutil.copy2(ROOT / name, folder / name)
-    shutil.copytree(ROOT / 'prompts', folder / 'prompts', dirs_exist_ok=bool(restore_identity))
+    copy_prompts(ROOT, folder, bool(restore_identity))
     page = (folder / 'index.html').read_text(encoding='utf-8')
     page, script = page.split('<script>', 1)
     page = page.replace('<html lang="ja">', '<html lang="en" data-default-language="en">')

@@ -62,7 +62,8 @@ class Config:
     effort: str = "xhigh"
     max_frames: int = 96
     max_rounds: int = 5
-    max_revisions: int = 2
+    max_revisions: int = 2          # submissions that reach the content check
+    max_layout_retries: int = 2     # extra submissions rejected only for page layout
     max_tokens: int = 32768
     no_transcribe: bool = False
     external_research: bool = True
@@ -641,9 +642,17 @@ next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['prope
 next(t for t in TOOLS if t['name'] == 'approve_document')['input_schema']['properties']['design_review'] = DESIGN_REVIEW_SCHEMA
 
 
+def editor_prompt_path(root=None):
+    """The Docker image places editor.txt in prompts/; a repository checkout
+    keeps it at the top level. Either layout runs the same prompt."""
+    root = Path(root) if root else ROOT
+    placed = root / 'prompts' / 'editor.txt'
+    return placed if placed.is_file() else root / 'editor.txt'
+
+
 def resume_fingerprint():
     from content_quality import PLANNER, REVIEWER, DOCUMENT_REVIEWER, PLAN_TOOL, REVIEW_TOOL
-    return signature({'editor': (ROOT / 'prompts/editor.txt').read_text(encoding='utf-8'),
+    return signature({'editor': editor_prompt_path().read_text(encoding='utf-8'),
                       'planner': PLANNER, 'reviewer': REVIEWER, 'document_reviewer': DOCUMENT_REVIEWER,
                       'tools': TOOLS, 'plan_tool': PLAN_TOOL, 'review_tool': REVIEW_TOOL,
                       'research_policy': RESEARCH_POLICY, 'research_limits': RESEARCH_LIMITS,
@@ -657,9 +666,20 @@ class Pipeline:
         self.evidence, self.config, self.notify = evidence, config, notify
         self.client = client or GuardedClient(create_client(api_key, config), config, evidence.out, notify)
         self.revisions, self.qa, self.document, self.approved = 0, None, None, False
+        # A pass rejected only for layout (overflow etc.) never reaches the
+        # content check, so it must not use up the content redo.
+        self.layout_failures = 0
         self.content_qa = None
         self.presentation = None
         self.quality = ContentQuality(evidence, self.client, config, notify, TOOLS[0], transcript_text(evidence.folder))
+
+    def can_compose(self):
+        content_passes = self.revisions - self.layout_failures
+        return (content_passes < self.config.max_revisions
+                and self.layout_failures < self.config.max_layout_retries)
+
+    def document_ready(self):
+        return bool(self.qa and not self.qa.get('errors') and self.content_qa and self.content_qa.get('approved'))
 
     def initial_content(self, prompt):
         e = self.evidence
@@ -681,7 +701,7 @@ class Pipeline:
         if not self.quality.plan or (not self.config.efficient and
                 (not self.quality.plan_review or not self.quality.plan_review.get("approved"))):
             raise PrototypeError("先に動画の内容案を作成し、元映像との照合を完了してください。")
-        if self.revisions >= self.config.max_revisions:
+        if not self.can_compose():
             raise PrototypeError("紙面修正の上限に達しました。途中の資料と検査結果を確認してください。", code='revision_limit')
         if self.config.progress:
             self.config.progress.start('document', restart=True)
@@ -706,7 +726,9 @@ class Pipeline:
         self.notify(f"PDFを作成して確認しています（{self.revisions}回目）")
         self.qa = render(out / "document.html", out)
         self.document = doc
-        if not self.qa.get("errors"):
+        if self.qa.get("errors"):
+            self.layout_failures += 1
+        else:
             if self.config.progress:
                 self.config.progress.complete('document')
                 self.config.progress.start('verify', restart=True)
@@ -744,13 +766,14 @@ class Pipeline:
             self.config.progress.complete('analyze')
         self.presentation = select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
         write_json(self.evidence.out / 'presentation.json', self.presentation)
-        system = (ROOT / "prompts/editor.txt").read_text(encoding="utf-8")
+        system = editor_prompt_path().read_text(encoding="utf-8")
         messages = [{"role": "user", "content": self.initial_content(prompt)}]
         checkpoint = Checkpoint(self.evidence.out, 'editor', {'prompt': prompt, 'plan': self.quality.plan, 'system': system})
         saved = checkpoint.load() if self.config.resume else None
         if saved:
             messages = saved['messages']
             self.revisions = saved['revisions']
+            self.layout_failures = saved.get('layout_failures', 0)
             self.document, self.qa, self.content_qa = saved['document'], saved['qa'], saved['content_qa']
             if saved.get('approved'):
                 self.approved = True
@@ -760,12 +783,11 @@ class Pipeline:
                 return self.document
         def save_editor(round_no, pending=None):
             checkpoint.save(messages=messages, round=round_no, pending=pending,
-                revisions=self.revisions, document=self.document, qa=self.qa,
+                revisions=self.revisions, layout_failures=self.layout_failures, document=self.document, qa=self.qa,
                 content_qa=self.content_qa, approved=self.approved)
         json_retries = 0
         for round_no in range(saved.get('round', 0) if saved else 0, self.config.max_rounds):
-            if (self.revisions >= self.config.max_revisions and
-                    (not self.content_qa or not self.content_qa.get("approved") or not self.qa or self.qa.get("errors"))):
+            if not self.can_compose() and not self.document_ready():
                 raise PrototypeError("再作成の上限に達しました。生成済みPDFには確認が必要な指摘が残っています。", code='revision_limit')
             if self.config.progress:
                 if self.document and self.qa and not self.qa.get('errors') and self.content_qa and self.content_qa.get('approved'):
@@ -1082,6 +1104,7 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
     finally:
         report["seconds"] = round(time.monotonic() - start, 2)
         report["revisions"] = pipeline.revisions if pipeline else 0
+        report["layout_failures"] = pipeline.layout_failures if pipeline else 0
         if pipeline and pipeline.presentation:
             report['presentation'] = pipeline.presentation
         report["api_calls"] = pipeline.client.calls if pipeline else []
