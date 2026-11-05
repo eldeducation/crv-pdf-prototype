@@ -305,7 +305,7 @@ const translations={
  '1. 動画を選ぶ':'1. Choose a video',
  '動画ファイル':'Video file',
  'MP4・MOV・WebM・MKV。最初の試作品は30分以内・1GB以内に対応。':'MP4, MOV, WebM or MKV. Up to 30 minutes and 1 GB.',
- 'MP4・MOV・WebM・MKV。最初の試作品は30分以内・200MB以内に対応。':'MP4, MOV, WebM or MKV. Up to 30 minutes and 200 MB.',
+ 'MP4・MOV・WebM・MKV。最初の試作品は30分以内・90MB以内に対応。':'MP4, MOV, WebM or MKV. Up to 30 minutes and 90 MB.',
  'または、YouTube・Xの動画リンク':'Or paste a YouTube or X video link',
  'Xは公開投稿の動画に対応。ログインが必要な投稿は取り込めません。':'X supports videos in public posts. Posts requiring login cannot be imported.',
  'YouTubeまたはXの動画付き投稿リンクか、動画ファイルを指定してください。':'Use a YouTube or X video-post link, or upload a video file.',
@@ -359,7 +359,7 @@ const translations={
  '最初に上の「AI接続の設定」を開いて設定してください。':'Open AI connection settings above and enter your API key first.',
  '準備しています':'Preparing…',
  '動画は1GB以内で選んでください。':'Choose a video no larger than 1 GB.',
- '動画は200MB以内で選んでください。':'Choose a video no larger than 200 MB.',
+ '動画は90MB以内で選んでください。':'Choose a video no larger than 90 MB.',
  '動画を処理用のPCへアップロードしています':'Uploading the video to the processing PC…',
  'AI接続：設定済み':'AI connection: key set',
  'AI接続：未設定':'AI connection: not configured',
@@ -411,7 +411,7 @@ const translations={
  'YouTubeリンクかアップロードした動画を指定してください':'Use a YouTube link or an uploaded video.',
  '別のサイトから操作できません':'Requests from another website are not allowed.',
  'この共有枠のアップロード容量に達しました':'The upload allowance for this browser session has been reached.',
- 'アップロードは200MB以内、設定は100KB以内です':'Uploads must be no larger than 200 MB; settings must be under 100 KB.',
+ 'アップロードは90MB以内、設定は100KB以内です':'Uploads must be no larger than 90 MB; settings must be under 100 KB.',
  '費用目安は0.10～20ドルで指定してください。':'Enter an estimated spending limit between $0.10 and $20.',
  '処理に失敗しました。入力とローカルの実行環境を確認してください。':'Processing failed. Check the inputs and ask the host to check the runtime.',
 };
@@ -453,6 +453,7 @@ const reasonNames={
  round_limit:['今回の処理回数の上限に達しました','The processing limit for this run was reached'],revision_limit:['修正回数の上限に達しました','The revision limit was reached'],token_limit:['設定されたトークン上限に達しました','The configured token limit was reached'],
  auth:['APIキーの認証・利用権限を確認してください','Check API key authentication and access'],credit:['APIの残高またはキーの利用上限が不足しています','Insufficient API balance or key allowance'],rate_limit:['APIの利用が一時的に制限されています','The API is temporarily rate limited'],
  output_limit:['AIの応答が出力上限で途切れました','The AI response reached its output limit'],response_format:['生成結果を読み取れませんでした','The generated response could not be read'],network:['APIとの接続を確認できませんでした','The API connection failed'],quality:['内容の確認が必要です','Content needs review'],
+ prepare_timeout:['動画の準備が時間内に終わりませんでした（AIは未使用・料金なし）','Video preparation did not finish in time (no AI used, no charge)'],video_import:['動画を取得できませんでした','The video could not be imported'],
  request:['生成の受付を確認できませんでした','The generation request could not be confirmed'],error:['生成が途中で停止しました','Generation stopped before completion']
 };
 const actionNames={
@@ -722,24 +723,6 @@ $('restyle').onclick=async()=>{
  }catch(e){message(e.message,true);}
  finally{submitting=false;$('restyle').disabled=false;}
 };
-async function uploadVideo(file,csrfToken,shared){
- if(!file.size||file.size>(shared?200*1024**2:1024**3))throw Error(shared?'動画は200MB以内で選んでください。':'動画は1GB以内で選んでください。');
- const identity=Array.from(crypto.getRandomValues(new Uint8Array(12)),v=>v.toString(16).padStart(2,'0')).join('');
- const chunkSize=8*1024**2;
- let uploadId;
- for(let offset=0;offset<file.size;offset+=chunkSize){
-  const end=Math.min(offset+chunkSize,file.size);
-  message(tr('動画をアップロードしています','Uploading video')+` (${Math.floor(offset/file.size*100)}%)`);
-  const r=await fetch('upload',{method:'POST',headers:{'X-Filename':encodeURIComponent(file.name),'X-CSRF-Token':csrfToken,
-   'X-Upload-ID':identity,'X-Upload-Offset':String(offset),'X-Upload-Size':String(file.size)},body:file.slice(offset,end)});
-  let d;try{d=await r.json();}catch{throw Error(tr('動画のアップロードに失敗しました。再度お試しください。','Video upload failed. Please try again.')+` (HTTP ${r.status})`);}
-  if(!r.ok)throw Error(d.error);
-  if(d.received!==end||d.complete!==(end===file.size))throw Error(tr('動画の転送を確認できませんでした。再度お試しください。','Could not confirm the upload. Please try again.'));
-  if(d.complete)uploadId=d.upload_id;
- }
- if(!uploadId)throw Error(tr('動画の転送を確認できませんでした。再度お試しください。','Could not confirm the upload. Please try again.'));
- return uploadId;
-}
 $('generate').onclick=async()=>{
  if(busy||submitting)return;
  try{
@@ -752,7 +735,10 @@ $('generate').onclick=async()=>{
   // The shared page advertises and enforces a smaller upload size.
   const shared=document.documentElement.dataset.defaultLanguage==='en';
   if(file){
-   upload_id=await uploadVideo(file,lastStatus?.csrf_token||'',shared);
+   if(file.size>(shared?90*1024**2:1024**3))throw Error(shared?'動画は90MB以内で選んでください。':'動画は1GB以内で選んでください。');
+   message('動画を処理用のPCへアップロードしています');
+   const r=await fetch('upload',{method:'POST',headers:{'X-Filename':encodeURIComponent(file.name),'X-CSRF-Token':lastStatus?.csrf_token||''},body:file});
+   const d=await r.json();if(!r.ok)throw Error(d.error);upload_id=d.upload_id;
   }
   const prompt=defaultPrompts[lang];
   await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,external_research:$('externalResearch').checked,budget_usd:Number($('budget').value)});

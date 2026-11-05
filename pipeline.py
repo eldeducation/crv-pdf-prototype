@@ -10,6 +10,7 @@ import math
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -841,6 +842,81 @@ class Pipeline:
         raise PrototypeError("AI処理の回数上限に達しました。途中の資料を保存しました。", code='round_limit')
 
 
+PREPARE_TIMEOUT = 1800
+PREPARE_STEPS = {
+    'fetch': '動画の準備 1/4：動画を取得しています',
+    'frames': '動画の準備 2/4：場面を探して画像を切り出しています',
+    'select': '動画の準備 3/4：似た画像を除いて、資料に使う画像を選んでいます',
+    'captions': '動画の準備 4/4：動画の字幕を確認しています',
+    'transcribe': '動画の準備 4/4：音声を文字に起こしています（CPUの少ない環境では動画の長さ以上かかることがあります）',
+}
+
+
+def minutes_label(seconds):
+    seconds = int(seconds)
+    return f'{seconds // 60}分{seconds % 60:02}秒'
+
+
+def prepare_timeout_message(step):
+    last = PREPARE_STEPS.get(step, '開始直後').split('：', 1)[-1].split('（')[0]
+    return (f'動画の準備（取得・画像の切り出し・文字起こし）が{PREPARE_TIMEOUT // 60}分以内に終わらなかったため停止しました。'
+            f'停止時の段階：{last}。AIはまだ呼び出していないため、API料金は発生していません。'
+            '短い動画で試すか、処理能力の高い実行環境をご検討ください。')
+
+
+def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT):
+    """command_run for the CRV worker, but stdout is read as it arrives so the
+    screen can show which preparation step is running. Same timeout and the
+    same error text on failure; a timeout gets its own stop reason."""
+    import threading
+    process = subprocess.Popen([str(x) for x in args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                               encoding='utf-8', errors='replace', env=child_environment(env),
+                               start_new_session=os.name != 'nt')
+    stderr = []
+    reader = threading.Thread(target=lambda: stderr.extend(process.stderr), daemon=True)
+    reader.start()
+    timed_out = threading.Event()
+
+    def stop():
+        timed_out.set()
+        try:
+            if os.name != 'nt':
+                os.killpg(process.pid, signal.SIGKILL)
+            else:
+                process.kill()
+        except OSError:
+            pass
+    timer = threading.Timer(timeout, stop)
+    timer.start()
+    stdout, step = [], None
+    try:
+        for line in process.stdout:
+            stdout.append(line)
+            if line.startswith('@@crv-progress '):
+                parts = line.split()
+                # Adaptive frame extraction calls the plain one internally.
+                if len(parts) >= 2 and parts[1] in PREPARE_STEPS and parts[1] != step:
+                    step = parts[1]
+                    text = PREPARE_STEPS[step]
+                    if step == 'frames' and len(parts) == 3 and parts[2].isdigit() and int(parts[2]):
+                        text = text + f'（動画の長さ {minutes_label(parts[2])}）'
+                    notify(text)
+        process.wait()
+    finally:
+        timer.cancel()
+        reader.join(timeout=10)
+        process.stdout.close()
+        process.stderr.close()
+    out, err = ''.join(stdout), ''.join(stderr)
+    if log:
+        Path(log).write_text(out + "\n" + err, encoding="utf-8")
+    if timed_out.is_set():
+        raise PrototypeError(prepare_timeout_message(step), code='prepare_timeout')
+    if process.returncode:
+        raise PrototypeError((err or out or "処理に失敗しました")[-2500:])
+    return out
+
+
 def extract(source, folder, config, notify=print):
     for tool in ("crv", "ffmpeg", "ffprobe"):
         if not shutil.which(tool):
@@ -875,7 +951,7 @@ def extract(source, folder, config, notify=print):
         args.append("--no-transcribe")
     notify("動画の画像と文字起こしを準備しています")
     try:
-        command_run(args, env=env, log=folder.parent / "extraction.log")
+        run_preparation(args, env=env, log=folder.parent / "extraction.log", notify=notify)
     except PrototypeError as error:
         # Keep diagnostics in the private extraction log, not a guessing-based
         # message about credentials or an invitation to copy browser cookies.

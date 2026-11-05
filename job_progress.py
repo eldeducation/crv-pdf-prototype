@@ -74,6 +74,10 @@ def stop_code(error):
                          ('前回の料金が未確定', 'billing_pending')):
         if text in message:
             return reason
+    # A local tool that ran past its limit (Python's "Command [...] timed out
+    # after N seconds") is not an API network problem.
+    if message.startswith("Command '") and 'timed out after' in message:
+        return 'prepare_timeout' if 'crv_worker' in message else 'error'
     if 'HTTP 401' in message or 'HTTP 403' in message:
         return 'auth'
     if 'HTTP 402' in message:
