@@ -16,6 +16,7 @@ from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
 from restyle import restyle_source
 from model_catalog import fetch_models, CatalogError
+from video_upload import UploadReceiver, LOCAL_MAX_BYTES, SHARED_MAX_BYTES, SESSION_MAX_BYTES
 
 from pipeline import ROOT, Config, DEFAULT_PROMPT, PrototypeError, load_env, run, provider_for, resume_fingerprint
 
@@ -59,6 +60,7 @@ STATE = {"api_key": os.getenv("OPENROUTER_API_KEY", "") or os.getenv("ANTHROPIC_
 CSRF_TOKEN = secrets.token_urlsafe(32)
 CANCEL = threading.Event()
 UPLOADS = {}
+UPLOAD_RECEIVER = UploadReceiver(ROOT / 'uploads', UPLOADS)
 MANUAL_CLIENT = None
 CATALOG_LOCK = threading.Lock()
 
@@ -245,24 +247,12 @@ class Handler(BaseHTTPRequestHandler):
         try:
             length = int(self.headers.get("Content-Length", 0))
             if route == "upload":
-                if not 0 < length <= 1024**3:
-                    raise PrototypeError("動画は1GB以内で指定してください。")
-                ext = Path(urllib.parse.unquote(self.headers.get("X-Filename", "video.mp4"))).suffix.lower()
-                if ext not in {".mp4", ".mov", ".webm", ".mkv"}:
-                    raise PrototypeError("MP4・MOV・WebM・MKVを選んでください。")
-                uid = secrets.token_hex(12)
-                path = ROOT / "uploads" / (uid + ext)
-                path.parent.mkdir(exist_ok=True)
-                with path.open("xb") as stream:
-                    remaining = length
-                    while remaining:
-                        chunk = self.rfile.read(min(1024*1024, remaining))
-                        if not chunk:
-                            raise PrototypeError("動画の転送が中断されました。")
-                        stream.write(chunk)
-                        remaining -= len(chunk)
-                UPLOADS[uid] = path
-                return self.send(200, {"upload_id": uid})
+                shared = ROOT.parent.name == 'share-sessions'
+                result = UPLOAD_RECEIVER.receive(
+                    self.headers, self.rfile, length,
+                    maximum=SHARED_MAX_BYTES if shared else LOCAL_MAX_BYTES,
+                    quota=SESSION_MAX_BYTES if shared else None)
+                return self.send(200, result)
             if not 0 < length <= (MAX_RESPONSE_BYTES if route == 'manual/respond' else 99_999):
                 raise PrototypeError("入力サイズを確認してください。")
             body = json.loads(self.rfile.read(length))

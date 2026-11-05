@@ -15,6 +15,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from security import response_headers, normalized_video_url, child_environment, public_errors, audit_request
+from video_upload import SHARED_MAX_BYTES, SESSION_MAX_BYTES, CHUNK_HEADERS, upload_metadata, body_chunks
 
 ROOT = Path(__file__).resolve().parent
 TOKEN = secrets.token_urlsafe(32)
@@ -25,7 +26,7 @@ MAX_SESSION_AGE = 8 * 3600
 MAX_SESSION_IDLE = 3600
 UPLOAD_SLOTS = threading.BoundedSemaphore(2)
 COPY_FILES = (
-    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py', 'youtube_support.py', 'home_fetch.py',
+    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py', 'youtube_support.py', 'home_fetch.py', 'video_upload.py',
     'content_quality.py', 'checkpoints.py', 'crv_worker.py', 'render.cjs',
     'layout.css', 'index.html', 'ui.js', 'runtime.local.json', 'security.py',
     'document_options.py', 'document_design.py', 'editorial_quality.py', 'restyle.py', 'source_references.py',
@@ -102,7 +103,7 @@ def _launch_session(restore_identity=None):
     page = page.replace('<html lang="ja">', '<html lang="en" data-default-language="en">')
     page = page.replace('<main>', '<main><div class="panel"><b>共有用の試作品</b><p>ご自身のAPIキーを入力して利用してください。API料金はそのキーの残高から発生します。キーと生成結果はブラウザごとに分離されます。アップロードした動画はクラウドサーバーで処理され、抽出画像は選択したAIサービスへ送信されます。開発中のため、生成が途中停止する場合があります。</p></div>')
     page = page.replace('このPC内の画面', 'この画面').replace('キーは保存せず、起動中だけ保持します。', 'キーはクラウドサーバーのメモリにのみ保持し、共有プロセスの終了時に消えます。')
-    page = page.replace('1GB', '90MB').replace('1024**3', '90*1024**2')
+    page = page.replace('1GB', '200MB').replace('1024**3', '200*1024**2')
     page = page.replace('ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。',
                         'クラウドの試験公開版です。休止・再起動で生成物が消える場合があります。完成したPDFは保存してください。')
     page += '<script>' + script
@@ -235,20 +236,27 @@ class Handler(BaseHTTPRequestHandler):
             if route != 'upload' and self.headers.get('Content-Type', '').split(';')[0].strip() != 'application/json':
                 return self.send(415, {'error': 'Expected application/json.'})
             length = int(self.headers.get('Content-Length', 0))
-            limit = 90*1024**2 if route == 'upload' else 3_000_000 if route == 'manual/respond' else 100000
+            limit = SHARED_MAX_BYTES if route == 'upload' else 3_000_000 if route == 'manual/respond' else 100000
             if self.headers.get('Transfer-Encoding') or not 0 < length <= limit:
-                return self.send(413, {'error': '動画は90MB以内、回答は3MB以内、設定は100KB以内です'})
+                return self.send(413, {'error': '動画は200MB以内、回答は3MB以内、設定は100KB以内です'})
             if route == 'upload':
+                upload_metadata(self.headers, length, SHARED_MAX_BYTES)
                 total = sum(p.stat().st_size for p in (session['folder'] / 'uploads').glob('*') if p.is_file())
-                if total + length > 512*1024**2:
+                if total + length > SESSION_MAX_BYTES:
                     return self.send(413, {'error': 'この共有枠のアップロード容量に達しました'})
-            body = self.rfile.read(length)
-            if len(body) != length:
-                return self.send(400, {'error': '送信が中断されました'})
+                body = body_chunks(self.rfile, length)
+            else:
+                body = self.rfile.read(length)
+                if len(body) != length:
+                    return self.send(400, {'error': '送信が中断されました'})
             headers = {'Content-Type': self.headers.get('Content-Type', 'application/json')}
             headers['X-CSRF-Token'] = self.headers.get('X-CSRF-Token', '')
             if route == 'upload':
                 headers['X-Filename'] = self.headers.get('X-Filename', 'video.mp4')
+                headers['Content-Length'] = str(length)
+                for name in CHUNK_HEADERS:
+                    if self.headers.get(name) is not None:
+                        headers[name] = self.headers[name]
             if route == 'start':
                 data = json.loads(body)
                 error = start_input_error(data)
