@@ -42,11 +42,24 @@ class CountTokensTest(unittest.TestCase):
 
 class EstimateRunTest(unittest.TestCase):
     def test_restyle_estimate_matches_measured_runs(self):
-        # Measured document-stage spend for this video: about $1.9 (no fix) to $3.5 (one fix).
-        result = estimate()
+        # Measured (uncached) document-stage spend for this video: about $1.9 (no fix) to $3.5 (one fix).
+        result = estimate(cache=False)
         self.assertTrue(1.5 <= result['low_usd'] <= 2.5, result)
-        self.assertTrue(3.0 <= result['high_usd'] <= 5.0, result)
+        self.assertTrue(2.8 <= result['high_usd'] <= 5.0, result)
         self.assertGreater(result['high_usd'], result['low_usd'])
+
+    def test_prompt_cache_lowers_the_estimate(self):
+        cached, plain = estimate(model='anthropic/claude-opus-5.5'), estimate(cache=False)
+        self.assertLess(cached['high_usd'], plain['high_usd'])
+        self.assertLess(cached['low_usd'], plain['low_usd'])
+        self.assertTrue(cached['basis']['prompt_cache'])
+
+    def test_session_cost_writes_the_prefix_once_and_reads_it_back(self):
+        rates = (1.0, 0.0)
+        self.assertEqual(cost_estimate.session_cost([(100, 0), (150, 0)], rates), 250)
+        # 1h, prefix 80: write 80 at 2x + 20 full; then read 80 at 0.05x + 70 full.
+        self.assertAlmostEqual(cost_estimate.session_cost([(100, 0), (150, 0)], rates, '1h', 0.05, prefix=80),
+                               160 + 20 + 4 + 70)
 
     def test_full_run_adds_analysis_and_detail_changes_cost(self):
         self.assertGreater(estimate(plan_ready=False)['low_usd'], estimate()['low_usd'])

@@ -79,6 +79,7 @@ class Config:
     budget_usd: float | None = None
     confirm_estimate: bool = False   # the user accepted a high estimate shown before AI use
     expected_output: dict | None = None
+    cache_ttl: str | None = None     # set per request by the usage guard (prompt_cache.TTL_BY_PHASE)
     max_api_calls: int = 12
     max_total_tokens: int | None = None
     cancel_event: object = None
@@ -571,7 +572,9 @@ class ClaudeClient:
                    "thinking": {"type": "adaptive"}, "output_config": {"effort": self.config.effort},
                    "system": system, "messages": messages, "tools": tools, "stream": True}
         from model_catalog import apply_model_options
+        from prompt_cache import anthropic_request
         apply_model_options(payload, self.config.model_options, 'anthropic', self.config.effort)
+        payload = anthropic_request(payload, getattr(self.config, 'cache_ttl', None))
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         if len(data) > 30_000_000:
             raise PrototypeError("AIへの送信量が大きすぎます。解析画像数を減らしてください。")
@@ -646,7 +649,7 @@ TOOLS = [
      "input_schema": {"type": "object", "required": ["review"], "properties": {"review": {"type": "string"}}}},
 ]
 TOOLS.insert(1, INTERVAL_TOOL)
-INSPECTION_CLOSED = ('残りの処理回数が少ないため、追加の映像確認は終了しました。確認済みの画像と内容案だけで'
+INSPECTION_CLOSED = ('追加の映像確認の枠は終了しました（inspect_frames・inspect_intervalは使えません）。確認済みの画像と内容案だけで'
                      'compose_document を提出し、プレビュー確認後に approve_document で完了してください。')
 
 
@@ -910,13 +913,16 @@ class Pipeline:
             self.notify(f"AIが内容と画像を確認しています（処理{round_no + 1}）")
             before = len(self.client.calls)
             pending = saved.get('pending') if saved else None
-            tools = editor_tools(self.config.max_rounds - round_no, self.document is not None, round_no)
-            if tools is not TOOLS and not pending and isinstance(messages[-1]['content'], list) \
+            # The tool list stays identical on every turn: tools are the first part of the
+            # cached prefix, so removing tools would invalidate the cache. Closed inspection
+            # is announced in the conversation and enforced when a call arrives.
+            inspection_open = editor_tools(self.config.max_rounds - round_no, self.document is not None, round_no) is TOOLS
+            if not inspection_open and not pending and isinstance(messages[-1]['content'], list) \
                     and not any(b.get('text') == INSPECTION_CLOSED for b in messages[-1]['content']):
                 messages[-1]['content'].append({'type': 'text', 'text': INSPECTION_CLOSED})
             save_editor(round_no, pending)
             try:
-                content = pending or self.client.send(messages, tools, system)
+                content = pending or self.client.send(messages, TOOLS, system)
             except PrototypeError:
                 if self.client.calls[before:] and self.client.calls[-1].get("invalid_tool_output") and json_retries < 1:
                     json_retries += 1
@@ -940,6 +946,8 @@ class Pipeline:
             for call in calls:
                 try:
                     name, args = call["name"], call["input"]
+                    if name in {"inspect_frames", "inspect_interval"} and not inspection_open:
+                        raise PrototypeError(INSPECTION_CLOSED)
                     if name == "inspect_frames":
                         value = self.evidence.inspect(args)
                     elif name == "inspect_interval":
@@ -1128,7 +1136,7 @@ def apply_cost_estimate(pipeline, prompt, folder, notify):
                             config.presentation_modes)['design'] if quality.plan else config.design)
     estimate = estimate_run(analysis_input=analysis_input, editor_input=editor_input, plan_tokens=plan_tokens,
                             plan_ready=plan_ready, detail_level=config.detail_level, editorial=design == 'editorial',
-                            rates=guard.pricing(), spent=spent)
+                            rates=guard.pricing(), spent=spent, model=config.model)
     estimate['automatic_ceiling'] = config.budget_usd is None
     if config.budget_usd is None:
         config.budget_usd = estimate['ceiling_usd']

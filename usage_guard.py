@@ -141,6 +141,8 @@ class GuardedClient:
         self.notify(f'AI処理 {len(self.calls)+1}/{self.config.max_api_calls}回・確定額 ${used:.3f}')
         old_cap, before = self.config.max_tokens, len(self.calls)
         self.config.max_tokens = cap
+        from prompt_cache import TTL_BY_PHASE
+        self.config.cache_ttl = TTL_BY_PHASE.get(phase)
         try:
             try:
                 result = self.inner.send(messages, tools, system)
@@ -156,7 +158,17 @@ class GuardedClient:
             return result
         finally:
             self.config.max_tokens = old_cap
+            self.config.cache_ttl = None
             if len(self.calls) > before:
-                self.calls[-1].update(phase=phase, input_tokens_estimate=estimated, max_output_tokens=cap)
+                call = self.calls[-1]
+                call.update(phase=phase, input_tokens_estimate=estimated, max_output_tokens=cap,
+                            cache_ttl=TTL_BY_PHASE.get(phase))
+                usage = call.setdefault('usage', {})
+                # Direct Anthropic responses carry no price; compute it from the token
+                # counts (cache reads/writes included) so the run is not stopped as
+                # "cost unconfirmed" after its first call.
+                if 'cost_usd' not in usage and usage.get('output_tokens') is not None and call.get('stop_reason'):
+                    from prompt_cache import call_cost
+                    usage['cost_usd'] = round(call_cost(usage, rates, self.config.model), 8)
                 self.pending = None
             self.snapshot()

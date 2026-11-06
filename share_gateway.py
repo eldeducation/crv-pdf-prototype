@@ -31,7 +31,7 @@ COPY_FILES = (
     'layout.css', 'index.html', 'ui.js', 'runtime.local.json', 'security.py',
     'document_options.py', 'document_design.py', 'editorial_quality.py', 'restyle.py', 'source_references.py',
     'job_progress.py', 'action_grounding.py', 'manual_client.py', 'presentation_quality.py', 'web_research.py',
-    'cost_estimate.py', 'markdown_export.py',
+    'cost_estimate.py', 'markdown_export.py', 'prompt_cache.py',
 )
 
 

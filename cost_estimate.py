@@ -77,32 +77,48 @@ def limits():
     return number('VIDEO_PDF_MAX_RUN_USD', DEFAULT_MAX_RUN_USD), number('VIDEO_PDF_CONFIRM_USD', DEFAULT_CONFIRM_USD)
 
 
-def estimate_run(*, analysis_input, editor_input, plan_tokens, plan_ready, detail_level, editorial, rates, spent=0.0):
+def session_cost(calls, rates, ttl=None, read_multiplier=0.1, prefix=0):
+    """Cost of one conversation's calls, in order. With caching, the stable prefix is
+    written once (first call) and read back by later calls; the rest is full price."""
+    from prompt_cache import WRITE_MULTIPLIER
+    rate_in, rate_out = rates
+    total = 0.0
+    for index, (tokens_in, tokens_out) in enumerate(calls):
+        cached = min(prefix, tokens_in) if ttl else 0
+        factor = (WRITE_MULTIPLIER[ttl] if index == 0 else read_multiplier) if ttl else 1.0
+        total += cached * rate_in * factor + (tokens_in - cached) * rate_in + tokens_out * rate_out
+    return total
+
+
+def estimate_run(*, analysis_input, editor_input, plan_tokens, plan_ready, detail_level, editorial, rates,
+                 spent=0.0, model='', cache=True):
     """Return low/high cost of the remaining work and the run's automatic ceiling.
 
     low: no extra inspection, one submission, one content check, approval.
-    high: two inspections in each stage, one full fix, two content checks."""
+    high: two inspections in each stage, one page-level fix, two content checks."""
+    from prompt_cache import TTL_BY_PHASE, read_multiplier
     detail = detail_level if detail_level in DOCUMENT_OUTPUT else 'standard'
-    rate_in, rate_out = rates
-    cost = lambda calls: sum(i * rate_in + o * rate_out for i, o in calls)
     plan_out = PLAN_OUTPUT[detail]
     document_out = round(DOCUMENT_OUTPUT[detail] * (1.0 if editorial else 0.8))
     previews = max(3, round(document_out / OUTPUT_TOKENS_PER_PAGE)) * TOKENS_PER_PREVIEW_PAGE
     plan = plan_tokens if plan_ready else plan_out
-    low, high = [], []
-    if not plan_ready:
-        a = analysis_input
-        low += [(a, plan_out)]
-        high += [(a, INSPECT_OUTPUT), (a + INSPECT_GROWTH, INSPECT_OUTPUT), (a + 2 * INSPECT_GROWTH, plan_out)]
-    b, g, d = editor_input, INSPECT_GROWTH, document_out
+    a, b, g, d = analysis_input, editor_input, INSPECT_GROWTH, document_out
     review_in = analysis_input + plan + d
-    low += [(b, INSPECT_OUTPUT), (b + g, d), (review_in, REVIEW_OUTPUT), (b + g + d + previews, APPROVE_OUTPUT)]
-    # A fix now resends only the changed pages (revise_pages); assume up to 60% of the document.
-    high += [(b, INSPECT_OUTPUT), (b + g, INSPECT_OUTPUT), (b + 2 * g, d),
-             (b + 2 * g + d + previews, round(d * FIX_SHARE)), (review_in, REVIEW_OUTPUT), (review_in, REVIEW_OUTPUT),
-             (b + 2 * g + 2 * d + 2 * previews, APPROVE_OUTPUT)]
+    plan_calls = {'low': [] if plan_ready else [(a, plan_out)],
+                  'high': [] if plan_ready else [(a, INSPECT_OUTPUT), (a + g, INSPECT_OUTPUT), (a + 2 * g, plan_out)]}
+    editor_calls = {'low': [(b, INSPECT_OUTPUT), (b + g, d), (b + g + d + previews, APPROVE_OUTPUT)],
+                    # A fix resends only the changed pages (revise_pages); assume up to 60% of the document.
+                    'high': [(b, INSPECT_OUTPUT), (b + g, INSPECT_OUTPUT), (b + 2 * g, d),
+                             (b + 2 * g + d + previews, round(d * FIX_SHARE)),
+                             (b + 2 * g + 2 * d + 2 * previews, APPROVE_OUTPUT)]}
+    review_calls = {'low': [(review_in, REVIEW_OUTPUT)], 'high': [(review_in, REVIEW_OUTPUT)] * 2}
+    reads = read_multiplier(model)
+    ttl = (lambda phase: TTL_BY_PHASE.get(phase)) if cache else (lambda phase: None)
+    total = lambda case: (session_cost(plan_calls[case], rates, ttl('content_plan'), reads, prefix=a)
+                          + session_cost(editor_calls[case], rates, ttl('document_edit'), reads, prefix=b)
+                          + session_cost(review_calls[case], rates, None))
     max_run, confirm = limits()
-    low_usd, high_usd = cost(low), cost(high)
+    low_usd, high_usd = total('low'), total('high')
     ceiling = min(max_run, spent + max(0.5, high_usd * CEILING_FACTOR))
     return {'low_usd': round(low_usd, 2), 'high_usd': round(high_usd, 2), 'ceiling_usd': round(ceiling, 2),
             'confirm_above_usd': confirm, 'needs_confirmation': high_usd > confirm,
@@ -110,4 +126,4 @@ def estimate_run(*, analysis_input, editor_input, plan_tokens, plan_ready, detai
             'expected_output': {'content_plan': plan_out, 'content_review': REVIEW_OUTPUT,
                                 'document_edit': round(d * 1.2)},
             'basis': {'analysis_input_tokens': analysis_input, 'editor_input_tokens': editor_input,
-                      'plan_ready': plan_ready, 'detail_level': detail, 'editorial': editorial}}
+                      'plan_ready': plan_ready, 'detail_level': detail, 'editorial': editorial, 'prompt_cache': cache}}

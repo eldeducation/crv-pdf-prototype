@@ -88,7 +88,9 @@ class OpenRouterClient:
                    'reasoning': {'effort': self.config.effort}, 'max_tokens': self.config.max_tokens,
                    'provider': {'require_parameters': True}, 'stream': True, 'stream_options': {'include_usage': True}}
         from model_catalog import apply_model_options
+        from prompt_cache import openrouter_request
         apply_model_options(payload, self.config.model_options, 'openrouter', self.config.effort)
+        payload = openrouter_request(payload, getattr(self.config, 'cache_ttl', None))
         data = json.dumps(payload, ensure_ascii=False).encode('utf-8')
         if len(data) > 30_000_000:
             raise self.error_type('AIへの送信量が大きすぎます。解析画像数を減らしてください。')
@@ -112,6 +114,13 @@ class OpenRouterClient:
                     if event.get('usage'):
                         u = event['usage']
                         usage.update(input_tokens=u.get('prompt_tokens', 0), output_tokens=u.get('completion_tokens', 0))
+                        details = u.get('prompt_tokens_details') or {}
+                        # prompt_tokens is the total; record it the Anthropic way
+                        # (input_tokens = uncached remainder) so totals never double-count.
+                        read, write = details.get('cached_tokens') or 0, details.get('cache_write_tokens') or 0
+                        if read or write:
+                            usage.update(input_tokens=max(0, usage['input_tokens'] - read - write),
+                                         cache_read_input_tokens=read, cache_creation_input_tokens=write)
                         if u.get('cost') is not None:
                             usage['cost_usd'] = u['cost']
                         if (u.get('completion_tokens_details') or {}).get('reasoning_tokens') is not None:
