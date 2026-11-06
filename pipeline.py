@@ -28,7 +28,7 @@ from usage_guard import GuardedClient, BudgetStop
 from checkpoints import Checkpoint, signature
 from job_progress import Progress, stop_code
 from document_options import build_prompt, validate_options, normalize_modes, validate_notes
-from document_design import select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA
+from document_design import select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA, split_kit_rules
 from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
                                validate_design_plan, validate_design_review)
 from source_references import citation_html, write_index, source_link, markdown_references
@@ -533,7 +533,10 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
         raise PrototypeError(str(error)) from None
     # Defaults provide a starting point. Safe, authored CSS has the final say so
     # the editor can actually change typography, spacing and page composition.
-    css = palette + ('\n'+style_css(design) if design != 'auto' else '') + '\n' + check_css(doc.get("css", ""))
+    authored = check_css(doc.get("css", ""))
+    if design == 'editorial':
+        authored, _ = split_kit_rules(authored)
+    css = palette + ('\n'+style_css(design) if design != 'auto' else '') + '\n' + authored
     title = html.escape(doc["title"])
     source_url = source_link(evidence.source)
     source = (f'<a href="{html.escape(source_url, quote=True)}">'+('Source video' if language == 'en' else '元動画')+'</a>') if source_url else ('Uploaded video' if language == 'en' else 'アップロード動画')
@@ -749,6 +752,10 @@ class Pipeline:
                 self.config.progress.complete('verify')
         result = [{"type": "text", "text": json.dumps({"layout": self.qa, "content": self.content_qa}, ensure_ascii=False) +
                    "\n全ページを確認し、問題があればcompose_documentで修正。問題がなければapprove_documentを呼ぶ。"}]
+        removed = split_kit_rules(doc.get('css', ''))[1] if doc['presentation']['design'] == 'editorial' else []
+        if removed:
+            result.append({"type": "text", "text": "部品クラスはスタイル定義済みのため、cssの次のルールは使っていません："
+                           + ' / '.join(removed[:20]) + "。部品は指示の例と同じHTML構造で書き、独自の装飾は別のクラス名で指定してください。"})
         if self.content_qa and not self.content_qa["approved"]:
             result.append({"type": "text", "text": "内容の照合で問題があります。検証指摘に対応し、Markdown・本文・キャプションを一緒に修正して再提出してください。"})
             names = {f for c in self.content_qa["unit_checks"] if c["verdict"] != "supported" for f in c["evidence_files"]}

@@ -6,7 +6,7 @@ from document_design import style_css
 from presentation_quality import THEMES, theme_css
 
 ROOT = Path(__file__).resolve().parent
-KIT_CLASSES = ['cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
+KIT_CLASSES_EXPECTED = KIT_CLASSES = ['cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
                'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles']
 
 
@@ -23,6 +23,21 @@ class EditorialKitTest(unittest.TestCase):
             self.assertIn(name, prompt)
         for name in set(re.findall(r'class="([a-z-]+)', prompt)):
             self.assertRegex(css, r'\.' + re.escape(name) + r'[\s,{.:>]', name)
+
+    def test_authored_rules_for_kit_classes_are_dropped(self):
+        from document_design import KIT_CLASSES, split_kit_rules
+        self.assertEqual(sorted(KIT_CLASSES), sorted(KIT_CLASSES_EXPECTED))
+        kept, removed = split_kit_rules('.chapter .num{font-size:24pt}\n.cover-sub{color:#444}'
+                                        '.point{display:grid}.my-box,.tldr p{margin:0}.grid3{display:grid}')
+        self.assertEqual(removed, ['.chapter .num', '.point', '.my-box,.tldr p'])
+        self.assertIn('.cover-sub{color:#444}', kept)
+        self.assertIn('.grid3{display:grid}', kept)
+        self.assertNotIn('.point', kept)
+
+    def test_flexible_kit_boxes_do_not_squeeze_unexpected_children(self):
+        css = style_css('editorial')
+        for name in ('point', 'chapter', 'qa'):
+            self.assertRegex(css, r'\.' + name + r' \{ display: flex;')
 
     def test_every_theme_sets_kit_colors(self):
         for theme in THEMES:

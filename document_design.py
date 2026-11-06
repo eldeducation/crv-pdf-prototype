@@ -102,6 +102,26 @@ blockquote { font-weight: bold; color: var(--heading-color); }
 
 # Magazine-style parts the editor can compose freely (see editor.txt). They only
 # style ordinary HTML; content, captions and source spans stay the editor's job.
+KIT_CLASSES = ('cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
+               'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles')
+_KIT_SELECTOR = re.compile(r'\.(?:' + '|'.join(map(re.escape, KIT_CLASSES)) + r')(?![\w-])')
+
+
+def split_kit_rules(css):
+    """Drop authored rules that restyle the kit, so kit markup always renders as designed.
+
+    Mixing an editor's own rules for these class names with the kit produced
+    unreadable covers and collapsed boxes. Authored CSS has no @-blocks, so
+    rules are flat. Returns (kept_css, removed_selectors)."""
+    kept, removed = [], []
+    for match in re.finditer(r'([^{}]*)\{[^{}]*\}', css or ''):
+        if _KIT_SELECTOR.search(match.group(1)):
+            removed.append(' '.join(match.group(1).split()))
+        else:
+            kept.append(match.group(0))
+    return ''.join(kept), removed
+
+
 EDITORIAL_KIT_CSS = '''
 mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); color: inherit; padding: 0 .3mm; }
 .cover { background: var(--heading-color); color: #fff; border-radius: 2.5mm; padding: 9mm 9mm 8mm; margin: 0 0 6mm; }
@@ -121,7 +141,9 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .keypoints .no { font-family: Arial, sans-serif; font-size: 22pt; line-height: 1.1; font-weight: bold; color: var(--accent-strong); margin: 0; }
 .keypoints h3 { margin: 1.5mm 0 1mm; font-size: 12pt; }
 .keypoints p { font-size: 9.5pt; margin: 0; }
-.chapter { display: grid; grid-template-columns: auto minmax(0,1fr); gap: 4mm; align-items: end; margin: 0 0 5mm; }
+.chapter { display: flex; gap: 4mm; align-items: flex-end; margin: 0 0 5mm; }
+.chapter > :not(.no) { flex: 1 1 0; min-width: 0; }
+.chapter > .no { flex: none; }
 .chapter .no { font-family: Arial, sans-serif; font-size: 44pt; line-height: .95; font-weight: bold; color: var(--accent-strong); margin: 0; }
 .chapter .meta { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
 .chapter h2 { margin: 1mm 0 0; font-size: 20pt; }
@@ -137,7 +159,9 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .bigstat .num { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1; font-weight: bold; color: var(--accent-strong); }
 .bigstat .unit { font-size: 14pt; font-weight: bold; }
 .bigstat .label { flex-basis: 100%; font-size: 10pt; font-weight: bold; }
-.point { display: grid; grid-template-columns: 7mm minmax(0,1fr); gap: 5mm; align-items: center; background: var(--heading-color); color: #fff; border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.point { display: flex; gap: 5mm; align-items: center; background: var(--heading-color); color: #fff; border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.point > :not(.tag) { flex: 1 1 0; min-width: 0; }
+.point > .tag { flex: none; }
 .point .tag { writing-mode: vertical-rl; letter-spacing: .3em; font-size: 8pt; font-weight: bold; border-left: .3mm solid rgba(255,255,255,.5); padding-left: 2mm; }
 .point p { margin: 0; font-size: 12pt; line-height: 1.7; font-weight: bold; }
 .point mark { background: none; color: var(--accent-mark); }
@@ -146,7 +170,10 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .versus > div + div { background: var(--accent-soft); }
 .versus h3 { margin: 0 0 1mm; font-size: 12pt; }
 .versus .tagline { color: var(--accent-strong); font-weight: bold; margin: 0 0 2mm; }
-.qa { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1.3fr); gap: 5mm; align-items: center; background: var(--accent-soft); border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.qa { display: flex; gap: 5mm; align-items: center; background: var(--accent-soft); border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
+.qa > * { flex: 1 1 0; min-width: 0; }
+.qa > .a { flex-grow: 1.3; }
+.qa > .arrow { flex: none; }
 .qa .q small { display: block; font-size: 8pt; letter-spacing: .14em; font-weight: bold; color: #5c7168; }
 .qa .q strong { font-size: 13pt; }
 .qa .arrow { font-size: 20pt; font-weight: bold; color: var(--accent-strong); }
