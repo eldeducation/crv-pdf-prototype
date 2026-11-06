@@ -216,7 +216,9 @@ class GatewayHTTPTests(unittest.TestCase):
         root = Path(__file__).resolve().parent
         html = (root / 'index.html').read_text(encoding='utf-8')
         script = html.split('<script>', 1)[1].split('</script>', 1)[0]
-        self.assertEqual(script.strip(), (root / 'ui.js').read_text(encoding='utf-8').strip())
+        # The CSP hash covers '\n' + ui.js + '\n' exactly (browsers normalize CRLF), so
+        # surrounding whitespace matters: a trimmed copy is blocked and the page does nothing.
+        self.assertEqual(script.replace('\r\n', '\n'), '\n' + (root / 'ui.js').read_text(encoding='utf-8') + '\n')
         self.assertIn('video_upload.py', gateway.COPY_FILES)
 
 

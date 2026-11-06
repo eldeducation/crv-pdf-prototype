@@ -716,9 +716,9 @@ $('stop').onclick=async()=>{try{const d=await api('stop',{});message(d.message);
 $('restyle').onclick=async()=>{
  if(busy||submitting||!lastJob||lastJob.status!=='complete')return;
  try{
-  if(!lastJob.manual_mode&&!configured)throw Error(tr('最初にAI接続を設定してください。','Set up the AI connection first.'));
+  if($('executionMode').value==='api'&&!configured)throw Error(tr('最初にAI接続を設定してください。','Set up the AI connection first.'));
   submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('restyle').disabled=true;
-  await api('start',{restyle_from:lastJob.folder,...arrangementPayload(),budget_usd:Number($('budget').value)});
+  await api('start',{restyle_from:lastJob.folder,execution_mode:$('executionMode').value,model:$('model').value,effort:$('effort').value,...arrangementPayload(),budget_usd:Number($('budget').value)});
   submitting=false;await refresh();
  }catch(e){message(e.message,true);}
  finally{submitting=false;$('restyle').disabled=false;}
@@ -812,7 +812,7 @@ function paintStatus(d){
   if(presentation.presentation_modes?.length)$('presentationSummary').textContent+=' / '+presentation.presentation_modes.map(mode=>pair(modeNames[mode])).filter(Boolean).join(' · ');
  }
  $('restylePanel').hidden=j.status!=='complete'||!j.report.content_verified;
- $('restyleHelp').textContent=tr('動画・画像・内容案を再利用して、新しいPDFを作ります。元のPDFは残ります。','Reuse the video, images and content plan to create a new PDF. The original PDF is preserved.')+' '+(j.manual_mode?tr('APIなしのテストは、チャットでの回答作成が必要です。','Manual mode requires chat responses.'):tr('AIによる再編集と確認にはAPI料金がかかります。','AI editing and review incur API charges.'));
+ $('restyleHelp').textContent=tr('動画・画像・内容案を再利用して、新しいPDFを作ります。元のPDFは残ります。','Reuse the video, images and content plan to create a new PDF. The original PDF is preserved.')+' '+($('executionMode').value==='manual'?tr('APIなしのテストは、チャットでの回答作成が必要です。','Manual mode requires chat responses.'):tr('AIによる再編集と確認にはAPI料金がかかります。','AI editing and review incur API charges.'));
  const files=[['document.pdf',j.status==='needs_review'?'PDFを保存（要確認）':'PDFを保存'],['document.md','編集用Markdown'],['run.json','生成記録']];
  if(!j.manual_mode&&['focused-evidence-v2','quality-first-v3'].includes(j.report.quality_pipeline))files.push(['usage.json','API使用量']);
  if(j.status==='needs_review')files.push(['review-notes.txt','確認が必要な点']);

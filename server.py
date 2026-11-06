@@ -308,10 +308,16 @@ class Handler(BaseHTTPRequestHandler):
                         raise ValueError('途中再開とデザイン変更は同時に実行できません。')
                     if restyle_from:
                         _, previous, _ = restyle_source(ROOT, restyle_from)
-                        manual_mode = bool(previous.get('manual_mode'))
+                        # The page's current execution mode and model apply, so a chat-made run can be
+                        # re-edited through the API (and vice versa). Older clients omit them.
+                        chosen = 'execution_mode' in body
+                        if not chosen:
+                            manual_mode = bool(previous.get('manual_mode'))
+                        use_previous_model = not chosen or manual_mode or not str(body.get('model', '')).strip()
                         body = {**body, 'url': previous['source'], 'upload_id': None,
                                 'prompt': previous.get('request_prompt', previous['prompt']),
-                                'model': previous['model'], 'effort': previous['effort'],
+                                'model': previous['model'] if use_previous_model else body['model'],
+                                'effort': previous['effort'] if use_previous_model else body.get('effort', 'xhigh'),
                                 'purpose': previous.get('purpose', 'auto'), 'detail_level': previous.get('detail_level', 'standard'),
                                 'output_language': previous.get('output_language', 'auto'),
                                 'presentation_modes': body.get('presentation_modes', previous.get('presentation_modes', [])),
@@ -352,7 +358,9 @@ class Handler(BaseHTTPRequestHandler):
                     selected = next((m for m in (STATE.get('catalog') or {}).get('models', []) if m['id'] == model_id), None)
                     if not manual_mode and selected and selected['compatibility'] == 'unsupported':
                         raise PrototypeError('選択したモデルは画像の読み取り・文章作成・ツール利用の要件を満たしていません。')
-                    options = (previous.get('model_options') if resume_folder or restyle_from else None) or selected
+                    reuse_options = resume_folder or (restyle_from and model_id == previous.get('model')
+                                                      and not previous.get('manual_mode'))
+                    options = (previous.get('model_options') if reuse_options else None) or selected
                     if not manual_mode and options and 'efforts' in options and options.get('reasoning') is not False and effort != 'auto' and effort not in options['efforts']:
                         raise PrototypeError('選択したモデルでは、この推論設定を使えません。')
                     config = Config(model=model_id, effort=effort, model_options=None if manual_mode else options,
