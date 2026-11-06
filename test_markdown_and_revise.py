@@ -32,6 +32,18 @@ class MarkdownExportTest(unittest.TestCase):
         self.assertIn('](assets/1.jpg)', text)
         self.assertIn('](assets/2.jpg)', text)
 
+    def test_captions_and_sentences_stay_out_of_lists(self):
+        # Found in a full run: a caption, a label and a summary sentence were merged into one list.
+        text = page_markdown(
+            '<figure><img src="assets/a.jpg"><figcaption><strong>00:11</strong>　登壇者</figcaption></figure>'
+            '<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">短い指示では状況を取り違える。</p></div>'
+            '<div class="chevrons"><div>v1<small>誤解</small></div><div>v2<small>認識</small></div>'
+            '<div class="on">最終版<small>タグで判定</small></div></div>')
+        self.assertIn('*00:11　登壇者*', text)
+        self.assertNotIn('- *00:11', text)
+        self.assertNotIn('- 短い指示', text)
+        self.assertIn('- v1 誤解\n- v2 認識\n- 最終版 タグで判定', text)
+
     def test_svg_content_is_skipped(self):
         self.assertNotIn('path', page_markdown('<p>図</p><svg><text>path</text></svg>'))
 

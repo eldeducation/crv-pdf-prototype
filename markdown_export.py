@@ -129,7 +129,8 @@ class _Converter(HTMLParser):
         if tag in HEADINGS or tag in {'li', 'p', 'figure', 'section', 'dt', 'dd'}:
             self.blank() if tag not in {'li', 'dt', 'dd'} else self.flush()
         elif tag == 'figcaption':
-            self.text = self.text.rstrip() + '*'
+            # Italic caption; bold inside it ("**07:06**") would nest markers, so drop it.
+            self.text = '*' + self.text.lstrip('*').replace('**', '').strip() + '*'
             self.blank()
         elif tag in {'ul', 'ol'}:
             if self.lists:
@@ -185,7 +186,7 @@ PLAIN_LINE = re.compile(r'^(?![#!>|-]|\*(?!\*)|\d+\. |---)')  # bold-led lines c
 
 def _tidy(text):
     """Fold chapter numbers/times into the heading and turn runs of short blocks into lists."""
-    blocks = [b for b in text.split('\n\n') if b.strip()]
+    blocks = [b.strip() for b in text.split('\n\n') if b.strip()]
     merged = []
     for block in blocks:
         if block.startswith('## ') or block.startswith('### '):
@@ -209,8 +210,13 @@ def _tidy(text):
         else:
             out.extend(run)
         run.clear()
+    def list_item(block):
+        # Grid/flow items: a bold-led label line, or a short phrase that is not a sentence.
+        if '\n' in block or len(block) > 90 or not PLAIN_LINE.match(block) or BOLD_TITLE.match(block):
+            return False
+        return block.startswith('**') or (len(block) <= 40 and not block.rstrip().endswith('。'))
     for block in merged:
-        if '\n' not in block and len(block) <= 90 and PLAIN_LINE.match(block) and not BOLD_TITLE.match(block):
+        if list_item(block):
             run.append(block)
         else:
             close_run()
