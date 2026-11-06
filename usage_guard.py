@@ -9,6 +9,9 @@ import urllib.request
 from PIL import Image
 
 
+ACCOUNT_STATUSES = {401, 402, 403}
+
+
 class BudgetStop(RuntimeError):
     def __init__(self, message, *, code=None):
         super().__init__(message)
@@ -138,7 +141,14 @@ class GuardedClient:
         old_cap, before = self.config.max_tokens, len(self.calls)
         self.config.max_tokens = cap
         try:
-            result = self.inner.send(messages, tools, system)
+            try:
+                result = self.inner.send(messages, tools, system)
+            except Exception as error:
+                # Key rejected, balance/limit exhausted, or access denied: retrying or
+                # letting the editor take another turn cannot help, so stop the run here.
+                if len(self.calls) > before and self.calls[-1].get('http_status') in ACCOUNT_STATUSES:
+                    raise BudgetStop(str(error), code='provider_account') from None
+                raise
             if self.config.cancel_event is not None and self.config.cancel_event.is_set():
                 raise BudgetStop('現在のAPI応答を記録して停止しました。追加のAPI呼び出しは行いません。', code='cancelled')
             return result

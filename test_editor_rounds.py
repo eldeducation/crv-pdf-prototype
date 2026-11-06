@@ -90,6 +90,29 @@ class EditorRoundReserveTest(unittest.TestCase):
         self.assertEqual(inner.seen, 65536)
         self.assertEqual(config.max_tokens, 65536)
 
+    def test_exhausted_balance_stops_the_run_instead_of_another_turn(self):
+        import tempfile
+        from pathlib import Path
+        from usage_guard import BudgetStop, GuardedClient
+
+        class Inner:
+            calls = []
+
+            def send(self, messages, tools, system):
+                self.calls.append({'usage': {'cost_usd': 0.0}, 'http_status': 402})
+                raise pipeline.PrototypeError('OpenRouter HTTP 402: 残高またはキーの利用上限が不足しています。')
+
+        config = pipeline.Config()
+        config.budget_usd = 100
+        with tempfile.TemporaryDirectory() as folder:
+            guard = GuardedClient(Inner(), config, Path(folder))
+            guard.rates = (0.0, 0.0)
+            with self.assertRaises(BudgetStop) as caught:
+                guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
+            self.assertEqual(caught.exception.code, 'provider_account')
+            self.assertIn('402', str(caught.exception))
+            self.assertIsNone(guard.pending)
+
 
 if __name__ == '__main__':
     unittest.main()

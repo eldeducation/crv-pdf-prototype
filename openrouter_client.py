@@ -140,6 +140,10 @@ class OpenRouterClient:
                     if time.monotonic() - start > 1800:
                         raise self.error_type('1回のAI処理が30分を超えたため終了しました。')
         except urllib.error.HTTPError as error:
+            # Rejected before any generation: nothing was billed, and the status
+            # tells the guard whether retrying can help (401/402/403 cannot).
+            usage['cost_usd'] = 0.0
+            self.http_status = error.code
             hints = {401: 'APIキーが認証されませんでした。', 402: '残高またはキーの利用上限が不足しています。',
                      403: 'このキー・地域・アカウントでは利用できません。', 404: '指定したモデルが利用できません。',
                      429: '利用上限です。時間をおいて再実行してください。', 400: 'モデル名・推論設定・入力容量を確認してください。'}
@@ -148,6 +152,9 @@ class OpenRouterClient:
             raise self.error_type('OpenRouterに接続できません。ネットワーク接続を確認してください。') from None
         finally:
             self.calls.append({'seconds': round(time.monotonic()-start, 2), 'usage': usage, 'stop_reason': stop, 'provider': 'openrouter'})
+            if getattr(self, 'http_status', None):
+                self.calls[-1]['http_status'] = self.http_status
+                self.http_status = None
         self.calls[-1]['output_shape'] = {'text_characters': len(text),
             'tool_argument_characters': sum(len(t['arguments']) for t in tool_calls.values()),
             'tool_count': len(tool_calls)}
