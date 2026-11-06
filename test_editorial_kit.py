@@ -50,6 +50,16 @@ class EditorialKitTest(unittest.TestCase):
         self.assertIn('occupied < 55', source)
         self.assertIn('bounds.width * 0.45', source)
         self.assertIn('.cover,.tldr,.keypoints', source)
+        # Large digits with a tight line-height must not fail layout without visible overflow,
+        # and an overflow error must say which element and text to fix.
+        self.assertIn('parseFloat(style.fontSize) * 0.25', source)
+        self.assertIn('文字「${text.slice(0,20)}」', source)
+
+    def test_big_numbers_have_line_height_for_their_glyph_box(self):
+        css = style_css('editorial')
+        for selector in ('.chapter .no', '.bigstat .num', '.keypoints .no', '.tiles .num'):
+            rule = css[css.index(selector + ' {'):]
+            self.assertIn('line-height: 1.15;', rule[:rule.index('}')], selector)
 
 
 if __name__ == '__main__':

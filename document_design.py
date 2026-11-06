@@ -138,13 +138,13 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .tldr .line { font-size: 16pt; line-height: 1.55; font-weight: bold; margin: 1.5mm 0 0; }
 .keypoints { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 5mm; margin: 4mm 0; }
 .keypoints > div { border-top: 1mm solid var(--accent-strong); padding-top: 2.5mm; }
-.keypoints .no { font-family: Arial, sans-serif; font-size: 22pt; line-height: 1.1; font-weight: bold; color: var(--accent-strong); margin: 0; }
+.keypoints .no { font-family: Arial, sans-serif; font-size: 22pt; line-height: 1.15; font-weight: bold; color: var(--accent-strong); margin: 0; }
 .keypoints h3 { margin: 1.5mm 0 1mm; font-size: 12pt; }
 .keypoints p { font-size: 9.5pt; margin: 0; }
 .chapter { display: flex; gap: 4mm; align-items: flex-end; margin: 0 0 5mm; }
 .chapter > :not(.no) { flex: 1 1 0; min-width: 0; }
 .chapter > .no { flex: none; }
-.chapter .no { font-family: Arial, sans-serif; font-size: 44pt; line-height: .95; font-weight: bold; color: var(--accent-strong); margin: 0; }
+.chapter .no { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1.15; font-weight: bold; color: var(--accent-strong); margin: 0; }
 .chapter .meta { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
 .chapter h2 { margin: 1mm 0 0; font-size: 20pt; }
 .chevrons { display: flex; margin: 4mm 0 6mm; }
@@ -156,7 +156,7 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .quote-xl p { font-size: 20pt; line-height: 1.45; font-weight: bold; margin: 0; color: #14231e; }
 .quote-xl .by { font-size: 9pt; font-weight: normal; color: #5c7168; margin-top: 2mm; }
 .bigstat { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2mm; margin: 2mm 0; }
-.bigstat .num { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1; font-weight: bold; color: var(--accent-strong); }
+.bigstat .num { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1.15; font-weight: bold; color: var(--accent-strong); }
 .bigstat .unit { font-size: 14pt; font-weight: bold; }
 .bigstat .label { flex-basis: 100%; font-size: 10pt; font-weight: bold; }
 .point { display: flex; gap: 5mm; align-items: center; background: var(--heading-color); color: #fff; border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
@@ -182,7 +182,7 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .tiles { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); border-top: .6mm solid #14231e; margin: 3mm 0 5mm; }
 .tiles > div { padding: 3mm 3mm 2mm; border-right: .3mm solid #dce4df; }
 .tiles > div:last-child { border-right: 0; }
-.tiles .num { font-family: Arial, sans-serif; font-size: 26pt; line-height: 1.1; font-weight: bold; color: var(--accent-strong); }
+.tiles .num { font-family: Arial, sans-serif; font-size: 26pt; line-height: 1.15; font-weight: bold; color: var(--accent-strong); }
 '''
 
 

@@ -63,15 +63,27 @@ async function render() {
           if (style.display === 'none') continue;
           if (parseFloat(style.fontSize) < 10) errors.push(`${idx+1}ページ: 小さすぎる文字 ${node.textContent.trim().slice(0,30)}`);
           const range = document.createRange(); range.selectNodeContents(node);
+          // A glyph box is taller than the visible ink (about 1.15em for Latin digits,
+          // more for CJK), so a large number set with a tight line-height reaches a
+          // few px past the area without any ink outside. Allow a quarter of the size.
+          const slack = Math.max(4, parseFloat(style.fontSize) * 0.25);
           for (const rect of range.getClientRects()) {
             if (rect.width < 1 || rect.height < 1) continue;
-            textRects.push({r: rect, parent: node.parentElement});
+            textRects.push({r: rect, parent: node.parentElement, slack, text: node.textContent.trim()});
           }
         }
-        const imageRects = images.map(el => ({r: el.getBoundingClientRect(), el}));
-        for (const {r} of [...textRects, ...imageRects]) {
-          if (r.left < bounds.left - 2 || r.right > bounds.right + 2 || r.top < bounds.top - 4 || r.bottom > bounds.bottom + 4)
-            errors.push(`${idx+1}ページ: 本文または画像が有効領域からはみ出しています (left=${Math.round(r.left-bounds.left)}, right=${Math.round(r.right-bounds.right)}, top=${Math.round(r.top-bounds.top)}, bottom=${Math.round(r.bottom-bounds.bottom)})`);
+        const imageRects = images.map(el => ({r: el.getBoundingClientRect(), el, slack: 4}));
+        const label = el => el.tagName.toLowerCase() + (el.className && typeof el.className === 'string'
+          ? '.' + el.className.trim().split(/\s+/).join('.') : '');
+        for (const {r, parent, el, slack, text} of [...textRects, ...imageRects]) {
+          const side = r.left < bounds.left - 2 ? `左に${Math.round(bounds.left-r.left)}px`
+            : r.right > bounds.right + 2 ? `右に${Math.round(r.right-bounds.right)}px`
+            : r.top < bounds.top - slack ? `上に${Math.round(bounds.top-r.top)}px`
+            : r.bottom > bounds.bottom + slack ? `下に${Math.round(r.bottom-bounds.bottom)}px` : '';
+          if (side) {
+            const what = el ? `画像 ${el.getAttribute('src')}（${label(el)}）` : `文字「${text.slice(0,20)}」（${label(parent)}）`;
+            errors.push(`${idx+1}ページ: ${what}が有効領域から${side}はみ出しています。余白・行の高さ・大きさを調整してください。`);
+          }
         }
         for (const {r:a, parent} of textRects) for (const {r:b, el} of imageRects) {
           if (parent.contains(el)) continue;
