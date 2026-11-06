@@ -34,6 +34,29 @@ class EditorRoundReserveTest(unittest.TestCase):
         self.assertEqual(converted[3]['role'], 'user')
         self.assertIn(pipeline.INSPECTION_CLOSED, [b.get('text') for b in converted[3]['content']])
 
+    def test_document_edit_gets_room_for_reasoning_and_an_editorial_document(self):
+        import tempfile
+        from pathlib import Path
+        from usage_guard import GuardedClient
+
+        class Inner:
+            calls = []
+
+            def send(self, messages, tools, system):
+                self.seen = config.max_tokens
+                self.calls.append({'usage': {'cost_usd': 0.0}})
+                return []
+
+        config = pipeline.Config()
+        config.budget_usd = 100
+        with tempfile.TemporaryDirectory() as folder:
+            inner = Inner()
+            guard = GuardedClient(inner, config, Path(folder))
+            guard.rates = (0.0, 0.0)
+            guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
+        self.assertEqual(inner.seen, 65536)
+        self.assertEqual(config.max_tokens, 65536)
+
 
 if __name__ == '__main__':
     unittest.main()

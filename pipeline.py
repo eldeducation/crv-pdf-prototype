@@ -64,7 +64,7 @@ class Config:
     max_rounds: int = 5
     max_revisions: int = 2          # submissions that reach the content check
     max_layout_retries: int = 2     # extra submissions rejected only for page layout
-    max_tokens: int = 32768
+    max_tokens: int = 65536
     no_transcribe: bool = False
     external_research: bool = True
     quality_rounds: int = 2

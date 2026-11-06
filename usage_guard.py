@@ -112,8 +112,10 @@ class GuardedClient:
                  'content_review' if 'submit_content_review' in names else 'document_edit')
         # Reasoning and structured arguments share the provider's output cap.
         # 8192 truncated real plans even with modest visible explanations.
+        # 32768 truncated an editorial document (18k reasoning + 23k chars of pages);
+        # apply_model_options still clamps this to the selected model's own limit.
         cap = min(self.config.max_tokens, {'content_plan': 24576,
-                  'content_review': 16384, 'document_edit': 32768}[phase])
+                  'content_review': 16384, 'document_edit': 65536}[phase])
         estimated = input_estimate(messages, tools, system)
         used_tokens = sum(sum(c.get('usage', {}).get(k, 0) for k in ('input_tokens', 'output_tokens')) for c in self.calls)
         if self.config.max_total_tokens is not None and used_tokens + estimated + cap > self.config.max_total_tokens:
