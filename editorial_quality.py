@@ -61,17 +61,28 @@ def validate_design_plan(document, plan):
     _text(design.get('reader_goal'), '読者の目的')
     _text(design.get('visual_direction'), '配色・文字・余白の方針')
     known = {u['id'] for u in plan['units']}
+    # Report every page's problem at once: each rejected submission costs a full
+    # document-length response, so one-error-per-round wastes rounds and money.
+    problems = []
     for record, page in zip(_pages(design.get('pages'), len(document['pages']), '紙面設計'), document['pages']):
-        for key in ('message', 'layout', 'focus_excerpt', 'rationale'):
-            _text(record.get(key), '紙面設計の'+key)
+        try:
+            for key in ('message', 'layout', 'focus_excerpt', 'rationale'):
+                _text(record.get(key), '紙面設計の'+key)
+        except ValueError as error:
+            problems.append(f'{record["page"]}ページ: {error}')
+            continue
         if normalized(record['focus_excerpt']) not in body_text(page):
-            raise ValueError(f'{record["page"]}ページ: focus_excerptは実際の本文・見出しから引用してください。')
+            problems.append(f'{record["page"]}ページ: focus_excerpt「{record["focus_excerpt"][:40]}」がページ本文にありません。'
+                            'そのページの見出しか本文の連続した文字列をそのまま写してください（要約・言い換え不可）。')
         refs = record.get('source_units')
         if not isinstance(refs, list) or not refs or any(not isinstance(i, str) or i not in known for i in refs):
-            raise ValueError('紙面設計のsource_unitsに内容案のidを指定してください。')
+            problems.append(f'{record["page"]}ページ: 紙面設計のsource_unitsに内容案のidを指定してください。')
+            continue
         assigned = page.get('source_units', [])
         if assigned and not set(refs) <= set(assigned):
-            raise ValueError('紙面設計と実際のページのsource_unitsが一致しません。')
+            problems.append(f'{record["page"]}ページ: 紙面設計と実際のページのsource_unitsが一致しません。')
+    if problems:
+        raise ValueError('\n'.join(problems))
     return design
 
 
