@@ -75,7 +75,7 @@ const translations={
  '作り直す元の資料':'Result to rebuild', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
- '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to two extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
+ '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to three extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
  '生成状況':'Generation status',
  '詳しい停止理由':'Technical details',
  '生成が途中で停止しました。':'Generation stopped before completion.',
@@ -405,6 +405,7 @@ function paintExecutionMode(){
  paintConnection();
  $('generate').textContent=tr(manual?'テストを開始する':'PDFを生成する');
  if(manual&&!configured)$('settings').open=false;
+ if(typeof paintRestyleSources==='function')paintRestyleSources();  // help text follows the mode at once
 }
 $('executionMode').onchange=paintExecutionMode;
 $('manualSubmit').onclick=async()=>{

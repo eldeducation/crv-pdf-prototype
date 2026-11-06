@@ -32,6 +32,20 @@ class ContrastCheckTest(unittest.TestCase):
         self.assertNotIn('opacity', rule)
 
 
+class PromptTagsAllowedTest(unittest.TestCase):
+    def test_every_tag_the_editor_prompt_shows_passes_the_html_filter(self):
+        # The prompt recommended <mark> while the filter rejected it (found in a full manual run).
+        import pipeline
+        prompt = (ROOT / 'editor.txt').read_text(encoding='utf-8')
+        tags = set(re.findall(r'<([a-z][a-z0-9]*)[\s>]', prompt))
+        self.assertTrue(tags)
+        self.assertEqual(tags - pipeline.ALLOWED_TAGS, set())
+
+    def test_three_layout_only_fixes_are_allowed(self):
+        import pipeline
+        self.assertEqual(pipeline.Config().max_layout_retries, 3)
+
+
 class ContentCheckPayloadTest(unittest.TestCase):
     def test_document_check_does_not_resend_generated_markdown(self):
         from content_quality import ContentQuality

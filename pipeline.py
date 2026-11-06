@@ -67,7 +67,10 @@ class Config:
     # cost estimate still stop a run before it overspends.
     max_rounds: int = 7
     max_revisions: int = 2          # submissions that reach the content check
-    max_layout_retries: int = 2     # extra submissions rejected only for page layout
+    # Extra submissions rejected only for page layout. Page-level fixes (revise_pages)
+    # are small, and fixing one page can shift another, so allow three; the round
+    # limit and the cost ceiling still bound the run.
+    max_layout_retries: int = 3
     max_tokens: int = 65536
     no_transcribe: bool = False
     external_research: bool = True
@@ -382,7 +385,7 @@ class Evidence:
         return result
 
 
-ALLOWED_TAGS = set("h1 h2 h3 h4 p div section article figure img figcaption span strong b em i ul ol li table thead tbody tr th td blockquote br hr small svg g path rect circle ellipse line polyline polygon text tspan defs lineargradient stop".split())
+ALLOWED_TAGS = set("h1 h2 h3 h4 p div section article figure img figcaption span strong b em i mark ul ol li table thead tbody tr th td blockquote br hr small svg g path rect circle ellipse line polyline polygon text tspan defs lineargradient stop".split())
 VOID_TAGS = {"img", "br", "hr"}
 ALLOWED_ATTRS = set("class style alt title colspan rowspan viewbox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width opacity transform font-size font-weight text-anchor offset stop-color id".split())
 
