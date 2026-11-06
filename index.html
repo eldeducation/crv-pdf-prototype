@@ -255,7 +255,7 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 <button type="button" class="mode-button glass-lilac" data-mode="photos" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>写真多め</strong><small>実際の場面を見やすく</small></span></button>
 <button type="button" class="mode-button glass-amber" data-mode="comparison" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>比較で整理</strong><small>違いや選択肢を並べて理解</small></span></button>
 </div><p class="small mode-summary" id="modeSummary" role="status" aria-live="polite"></p>
-<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><label for="budget">今回の費用目安（米ドル）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" value="3"><p class="small">次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。</p></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。</p></section>
+<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><details id="advancedCost"><summary>詳細設定（費用の上限）</summary><label for="budget">費用の上限（米ドル・任意）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" placeholder="自動"><p class="small">通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。</p></details></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。</p></section>
 <section class="panel" id="statusPanel" aria-live="polite"><h2>生成状況</h2><p id="message">動画とAI接続を設定すると生成できます。</p><a id="manualJump" class="download" href="#manualPanel" hidden>次の操作へ</a><p id="stageSummary" class="small"></p><ol id="stageList" class="stage-list" aria-live="polite"></ol><p id="lastUpdate" class="small" aria-live="off"></p><div id="stopNotice" class="stop-notice" hidden><strong id="stopTitle"></strong><p id="stopAction"></p><details><summary>詳しい停止理由</summary><pre id="stopDetails"></pre></details></div><button id="resume" class="secondary hidden">途中から再開する</button><button id="stop" class="secondary hidden">追加処理を止める</button><div id="bar" class="progress"></div><p class="small" id="usage"></p><p id="presentationSummary" class="small"></p><div id="results"></div><div id="restylePanel" hidden><h3>内容を保って仕上がりを変更</h3><p class="small">上のアレンジと追加の希望を使って、新しいPDFを作ります。</p><p class="small" id="restyleHelp"></p><button id="restyle" class="secondary">この設定で作り直す</button></div></section>
 <section class="panel" id="manualPanel" hidden><h2>APIなしテスト：回答の取り込み</h2><p id="manualSequence" class="small"></p><a id="manualPacket" class="download" download="manual-request.zip">1. 指示・画像をまとめて保存</a><h3>2. チャットで回答を作る</h3><p class="small">保存したZIPを展開し、README.txtの案内に従ってください。このチャットで作った回答JSONを読み込むと、検査して次の依頼へ進みます。</p><label for="manualAnswer">3. 回答JSONを選ぶ</label><input id="manualAnswer" type="file" accept=".json,application/json"><button id="manualSubmit" style="margin-top:16px">回答を読み込んで続ける</button><p id="manualError" class="error" role="alert"></p></section>
 <section class="panel" id="referencePanel" hidden><h2>内容の根拠を確認</h2><p class="small">各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。</p><p class="small">動画の解析内容です。PDF本文の表現と異なる場合があります。</p><p id="referenceSummary"></p><div id="referenceGaps"></div><video id="sourcePlayer" controls preload="metadata" playsinline hidden style="width:100%;max-height:480px;margin:14px 0"></video><div id="referenceList"></div></section><footer>ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。</footer>
@@ -335,10 +335,10 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '今回の費用目安（米ドル）':'Estimated spending limit (USD)',
- '次の送信が目安を超える見込みなら停止します。料金は推定のため厳密な請求上限ではありません。最大12回のAI呼び出しまで。生成途中でも停止できます。':'Processing stops if the next request is estimated to exceed this amount. This is not a guaranteed billing cap. Up to 12 AI requests; you can stop further requests during generation.',
+ '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
- '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用目安は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to two extra layout fixes are counted separately). Resuming reuses completed stages, and the spending estimate includes earlier requests.',
+ '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to two extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
  '生成状況':'Generation status',
  '詳しい停止理由':'Technical details',
  '生成が途中で停止しました。':'Generation stopped before completion.',
@@ -448,7 +448,8 @@ let settingMessage='';
 let submitting=false,submissionStarted=0,clientError=null,stageSignature='';
 const stageNames={prepare:['動画の準備','Prepare video'],analyze:['内容の整理','Analyze content'],document:['資料・PDFの作成','Create document'],verify:['元動画との照合','Check against video'],finish:['最終確認・保存','Finalize and save']};
 const reasonNames={
- cancelled:['操作により停止しました','Stopped at your request'],budget:['費用目安を超える見込みのため停止しました','Stopped before exceeding the estimated spending limit'],
+ cancelled:['操作により停止しました','Stopped at your request'],budget:['想定より処理が多かったため一時停止しました','Paused: this video needed more processing than estimated'],
+ estimate_confirm:['AIを使う前に費用の目安を確認してください','Please confirm the cost estimate before AI use'],estimate_limit:['費用の目安が1回の生成の上限を超えています','The estimate exceeds the per-run limit'],
  billing_pending:['前回のAPI料金が未確定です','The previous API cost is unconfirmed'],call_limit:['今回のAI呼び出し回数の上限に達しました','The API request limit for this run was reached'],
  round_limit:['今回の処理回数の上限に達しました','The processing limit for this run was reached'],revision_limit:['修正回数の上限に達しました','The revision limit was reached'],token_limit:['設定されたトークン上限に達しました','The configured token limit was reached'],
  auth:['APIキーの認証・利用権限を確認してください','Check API key authentication and access'],credit:['APIの残高またはキーの利用上限が不足しています','Insufficient API balance or key allowance'],rate_limit:['APIの利用が一時的に制限されています','The API is temporarily rate limited'],
@@ -457,7 +458,9 @@ const reasonNames={
  request:['生成の受付を確認できませんでした','The generation request could not be confirmed'],error:['生成が途中で停止しました','Generation stopped before completion']
 };
 const actionNames={
- budget:['「今回の費用目安」を見直してから再開してください。金額は再開前からの累計です。','Review the estimated spending limit before resuming. Earlier charges remain included.'],
+ budget:['続きから再開できます。再開時に残りの費用の目安を計算し直し、上限を自動で設定します。','You can resume. The remaining cost is re-estimated and the limit is set automatically.'],
+ estimate_confirm:['この先のAI処理はまだ行っていません（追加の料金なし）。この目安で進める場合は「この目安で続ける」を押してください。','No further AI processing has run (no additional charge). Press “Continue with this estimate” to proceed.'],
+ estimate_limit:['この先のAI処理はまだ行っていません（追加の料金なし）。詳しさを「標準」か「簡潔」にするか、短い動画でお試しください。','No further AI processing has run (no additional charge). Choose a lower level of detail or a shorter video.'],
  billing_pending:['プロバイダー側で前回の利用状況を確認してください。料金が未確定の保存状態では、追加の課金を伴う再開を停止しています。','Check the previous request in your provider dashboard. Paid resumption is blocked while the saved cost is unconfirmed.'],
  call_limit:['同じ保存位置からは追加実行できません。作成済みPDFや確認事項があれば確認してください。','This run cannot make more requests. Check any saved PDF and review notes.'],
  round_limit:['この保存位置では処理回数が残っていません。途中の成果物を確認し、必要なら新しく生成してください。','No processing rounds remain at this saved position. Review partial results before starting a new generation.'],
@@ -705,10 +708,14 @@ $('disconnect').onclick=async()=>{
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
  finally{connectionOperation=false;paintConnection();}
 };
+// Blank = automatic limit from the pre-run estimate; a number is an advanced override.
+function budgetValue(){const value=$('budget').value.trim();return value?Number(value):null;}
 $('resume').onclick=async()=>{
  if(busy||submitting||!lastJob)return;
  submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('resume').disabled=true;
- try{await api('start',{resume_folder:lastJob.folder,budget_usd:Number($('budget').value)});$('results').replaceChildren();submitting=false;await refresh();}
+ // Pressing resume after a cost pause is the user's OK for the estimate shown.
+ const confirm_estimate=['estimate_confirm','budget'].includes(lastJob.progress?.resume?.reason);
+ try{await api('start',{resume_folder:lastJob.folder,budget_usd:budgetValue(),confirm_estimate});$('results').replaceChildren();submitting=false;await refresh();}
  catch(e){message(e.message,true);}
  finally{submitting=false;$('resume').disabled=false;}
 };
@@ -718,7 +725,7 @@ $('restyle').onclick=async()=>{
  try{
   if($('executionMode').value==='api'&&!configured)throw Error(tr('最初にAI接続を設定してください。','Set up the AI connection first.'));
   submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('restyle').disabled=true;
-  await api('start',{restyle_from:lastJob.folder,execution_mode:$('executionMode').value,model:$('model').value,effort:$('effort').value,...arrangementPayload(),budget_usd:Number($('budget').value)});
+  await api('start',{restyle_from:lastJob.folder,execution_mode:$('executionMode').value,model:$('model').value,effort:$('effort').value,...arrangementPayload(),budget_usd:budgetValue()});
   submitting=false;await refresh();
  }catch(e){message(e.message,true);}
  finally{submitting=false;$('restyle').disabled=false;}
@@ -756,11 +763,19 @@ $('generate').onclick=async()=>{
    upload_id=await uploadVideo(file,lastStatus?.csrf_token||'',shared);
   }
   const prompt=defaultPrompts[lang];
-  await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,external_research:$('externalResearch').checked,budget_usd:Number($('budget').value)});
+  await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,external_research:$('externalResearch').checked,budget_usd:budgetValue()});
   submitting=false;
   await refresh();
  }catch(e){submitting=false;busy=false;clientError={message:e.message,folder:lastJob?.folder};$('generate').disabled=false;message(e.message,true);paintProgress({status:'failed',message:e.message,report:{},progress:{available:true,current:'prepare',stages:Object.keys(stageNames).map(id=>({id,state:id==='prepare'?'stopped':'pending'})),completed_count:0,total_stages:5,stop_code:'request',resume:{available:false,reason:'request'}}});}
 };
+function usageLine(u){
+ const e=u.estimate,money=v=>'$'+Number(v).toFixed(2);
+ const range=e?(lang==='en'?`Estimate ${money(e.low_usd)}–${money(e.high_usd)} / `:`目安 ${money(e.low_usd)}〜${money(e.high_usd)} / `):'';
+ const limit=typeof u.budget_usd==='number'?(lang==='en'?` / Limit ${money(u.budget_usd)}${e?.automatic_ceiling?' (auto)':''}`:` / 上限 ${money(u.budget_usd)}${e?.automatic_ceiling?'（自動）':''}`):'';
+ return lang==='en'
+  ?`${range}API ${u.call_count}/${u.max_calls} calls / Confirmed $${u.known_cost_usd.toFixed(3)}${limit}${u.cost_complete?'':' (some costs unconfirmed)'}`
+  :`${range}API ${u.call_count}/${u.max_calls}回 / 確定額 $${u.known_cost_usd.toFixed(3)}${limit}${u.cost_complete?'':'（未確定分あり）'}`;
+}
 function paintStatus(d){
  $('restylePanel').hidden=true;
  $('presentationSummary').textContent='';
@@ -789,9 +804,7 @@ function paintStatus(d){
  if(j.references_available)loadReferences(j);
  else{$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;}
  $('resume').className=((j.status==='failed'||j.status==='needs_review')&&(j.progress?j.progress.resume.available:j.report?.quality_pipeline==='quality-first-v3'))?'secondary':'secondary hidden';
- $('usage').textContent=j.usage?(lang==='en'
-  ?`API ${j.usage.call_count}/${j.usage.max_calls} calls / Confirmed $${j.usage.known_cost_usd.toFixed(3)} / Estimated limit $${j.usage.budget_usd.toFixed(2)}${j.usage.cost_complete?'':' (some costs unconfirmed)'}`
-  :`API ${j.usage.call_count}/${j.usage.max_calls}回 / 確定額 $${j.usage.known_cost_usd.toFixed(3)} / 費用目安 $${j.usage.budget_usd.toFixed(2)}${j.usage.cost_complete?'':'（未確定分あり）'}`):'';
+ $('usage').textContent=j.usage?usageLine(j.usage):'';
  if(j.manual_mode)$('usage').textContent=tr('API呼び出しなし。このチャット側の利用量は集計対象外です。');
  busy=j.status==='running';
  $('stop').className=busy?'secondary':'secondary hidden';$('generate').disabled=busy;
@@ -860,12 +873,16 @@ function paintProgress(job){
  const reason=progress?.stop_code||'error';
  $('stopTitle').textContent=pair(reasonNames[reason]||reasonNames.error);
  const resume=progress?.resume||{};
- const action=pair(actionNames[resume.reason]||actionNames[reason]);
+ let action=pair(actionNames[resume.reason]||actionNames[reason]);
+ if(resume.estimate&&resume.reason==='estimate_confirm')
+  action=(lang==='en'?`Estimated cost for this video: $${Number(resume.estimate.low_usd).toFixed(2)}–$${Number(resume.estimate.high_usd).toFixed(2)}. `
+   :`この動画の費用の目安：約$${Number(resume.estimate.low_usd).toFixed(2)}〜$${Number(resume.estimate.high_usd).toFixed(2)}。`)+action;
  const saved=resume.available?(resume.saved_checkpoint
   ?tr('保存済みの内容を使い、','Use saved content and resume from ')+pair(stageNames[resume.from_stage])+(lang==='ja'?'から再開できます。':' (local PDF rendering may be repeated).')
   :tr('再開時に保存状態を確認します。再利用できない工程は再処理されます。','Saved data will be checked on resume. Stages that cannot be reused will be processed again.')):'';
  $('stopAction').textContent=[action,saved].filter(Boolean).join(' ');
- $('resume').textContent=resume.available&&resume.saved_checkpoint?tr('続きを再開：','Resume: ')+pair(stageNames[resume.from_stage]):tr('途中から再開する');
+ $('resume').textContent=resume.reason==='estimate_confirm'?tr('この目安で続ける','Continue with this estimate')
+  :resume.available&&resume.saved_checkpoint?tr('続きを再開：','Resume: ')+pair(stageNames[resume.from_stage]):tr('途中から再開する');
  $('stopDetails').textContent=job.report?.review_note||job.report?.error||job.message||'';
 }
 function timeLabel(value){const seconds=Math.max(0,Math.floor(Number(value)||0));return String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');}

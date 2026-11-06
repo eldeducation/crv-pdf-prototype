@@ -109,7 +109,7 @@ class EditorRoundReserveTest(unittest.TestCase):
             guard.rates = (0.0, 0.0)
             with self.assertRaises(BudgetStop) as caught:
                 guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
-            self.assertEqual(caught.exception.code, 'provider_account')
+            self.assertEqual(caught.exception.code, 'credit')
             self.assertIn('402', str(caught.exception))
             self.assertIsNone(guard.pending)
 

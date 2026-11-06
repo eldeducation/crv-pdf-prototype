@@ -19,21 +19,12 @@ class BudgetStop(RuntimeError):
 
 
 def input_estimate(messages, tools, system):
-    """Conservative planning estimate, not a provider billing tokenizer."""
-    images = []
-    def scrub(value):
-        if isinstance(value, dict):
-            if value.get('type') == 'image' and 'source' in value:
-                with Image.open(io.BytesIO(base64.b64decode(value['source']['data']))) as img:
-                    images.append(math.ceil(img.width * img.height / 400) + 256)
-                return '[image]'
-            return {k: scrub(v) for k, v in value.items()}
-        if isinstance(value, list):
-            return [scrub(v) for v in value]
-        return value
-    clean = scrub({'messages': messages, 'tools': tools, 'system': system})
-    # One token per UTF-8 byte is deliberately conservative for text.
-    return len(json.dumps(clean, ensure_ascii=False).encode('utf-8')) + sum(images)
+    """Planning estimate, not a provider billing tokenizer.
+
+    Counting one token per UTF-8 byte overstated a real 39k-token request as
+    104k, which forced users to raise the spending limit for ordinary runs."""
+    from cost_estimate import count_tokens
+    return count_tokens(messages, tools, system)
 
 
 class GuardedClient:
@@ -43,6 +34,7 @@ class GuardedClient:
         self.rates = None
         self.pending = None
         self.blocked = None
+        self.estimate = None
         self.started = time.monotonic()
         if config.resume and (folder / 'usage.json').exists():
             old = json.loads((folder / 'usage.json').read_text(encoding='utf-8'))
@@ -79,7 +71,8 @@ class GuardedClient:
                 'known_cost_usd': round(sum(x for x in costs if x is not None), 8),
                 'cost_complete': all(x is not None for x in costs) and self.pending is None,
                 'pending': self.pending, 'blocked_request': self.blocked, 'budget_usd': self.config.budget_usd,
-                'max_calls': self.config.max_api_calls, 'seconds': round(time.monotonic()-self.started, 2)}
+                'max_calls': self.config.max_api_calls, 'seconds': round(time.monotonic()-self.started, 2),
+                'estimate': self.estimate}
         temp = self.folder / 'usage.tmp'
         temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
         temp.replace(self.folder / 'usage.json')
@@ -129,15 +122,23 @@ class GuardedClient:
             raise BudgetStop(f'トークン上限で送信前に停止しました（使用済み {used_tokens:,}、次の入力見積もり {estimated:,}、出力予約 {cap:,}、上限 {self.config.max_total_tokens:,}）。', code='token_limit')
         rates = self.pricing()
         used = sum(c['usage']['cost_usd'] for c in self.calls)
-        reserve = (estimated*rates[0] + cap*rates[1])*1.25
-        if used + reserve > self.config.budget_usd:
+        # Reserve the output this phase is expected to need (from the pre-run
+        # estimate), not the provider maximum: reserving 65k output tokens for
+        # every call stopped ordinary runs. The output cap itself is unchanged.
+        expected = min(cap, (self.config.expected_output or {}).get(phase, cap))
+        reserve = (estimated*rates[0] + expected*rates[1])*1.1
+        budget = self.config.budget_usd
+        if budget is None:
+            from cost_estimate import limits
+            budget = limits()[0]
+        if used + reserve > budget:
             self.blocked = {'reason': 'budget', 'used_usd': used, 'next_request_estimate_usd': reserve}
             self.snapshot()
-            raise BudgetStop(f'次の処理を含めると費用目安 ${self.config.budget_usd:.2f} を超える見込みのため停止しました。確定額 ${used:.3f}。', code='budget')
+            raise BudgetStop(f'この動画は想定より処理が多く、次の処理で費用の上限 ${budget:.2f} を超える見込みのため一時停止しました。確定額 ${used:.3f}。', code='budget')
         self.pending = {'phase': phase, 'input_tokens_estimate': estimated, 'max_output_tokens': cap,
                         'reserved_usd_estimate': round(reserve, 6), 'started_at': time.time()}
         self.snapshot()  # Remains on disk if the process is terminated in flight.
-        self.notify(f'AI処理 {len(self.calls)+1}/{self.config.max_api_calls}回・確定額 ${used:.3f} / 費用目安 ${self.config.budget_usd:.2f}')
+        self.notify(f'AI処理 {len(self.calls)+1}/{self.config.max_api_calls}回・確定額 ${used:.3f}')
         old_cap, before = self.config.max_tokens, len(self.calls)
         self.config.max_tokens = cap
         try:
@@ -146,8 +147,9 @@ class GuardedClient:
             except Exception as error:
                 # Key rejected, balance/limit exhausted, or access denied: retrying or
                 # letting the editor take another turn cannot help, so stop the run here.
-                if len(self.calls) > before and self.calls[-1].get('http_status') in ACCOUNT_STATUSES:
-                    raise BudgetStop(str(error), code='provider_account') from None
+                status = self.calls[-1].get('http_status') if len(self.calls) > before else None
+                if status in ACCOUNT_STATUSES:
+                    raise BudgetStop(str(error), code='credit' if status == 402 else 'auth') from None
                 raise
             if self.config.cancel_event is not None and self.config.cancel_event.is_set():
                 raise BudgetStop('現在のAPI応答を記録して停止しました。追加のAPI呼び出しは行いません。', code='cancelled')

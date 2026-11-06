@@ -136,7 +136,7 @@ def describe(folder, job, fingerprint=None):
             resume['reason'] = 'legacy'
         elif costs_unknown:
             resume['reason'] = 'billing_pending'
-        elif reason in {'call_limit', 'round_limit', 'revision_limit', 'token_limit'}:
+        elif reason in {'call_limit', 'round_limit', 'revision_limit', 'token_limit', 'estimate_limit'}:
             resume['reason'] = reason
         elif usage.get('call_count', 0) >= usage.get('max_calls', 12):
             resume['reason'] = 'call_limit'
@@ -145,7 +145,9 @@ def describe(folder, job, fingerprint=None):
         elif not ready:
             resume.update(reason='video_incomplete', from_stage='prepare')
         else:
-            resume.update(available=True, reason='budget' if reason == 'budget' else None)
+            resume.update(available=True, reason=reason if reason in {'budget', 'estimate_confirm'} else None)
+            if reason in {'budget', 'estimate_confirm'} and usage.get('estimate'):
+                resume['estimate'] = {k: usage['estimate'].get(k) for k in ('low_usd', 'high_usd', 'spent_usd')}
             if not report.get('resume_fingerprint'):
                 resume.update(from_stage='analyze', saved_checkpoint=False)
     now = time.time()

@@ -80,12 +80,24 @@ def public_status():
                 try:
                     usage = json.loads(usage_file.read_text(encoding="utf-8"))
                     job["usage"] = {k: usage[k] for k in ('known_cost_usd', 'cost_complete', 'call_count', 'max_calls', 'budget_usd', 'pending')}
+                    if isinstance(usage.get('estimate'), dict):
+                        job['usage']['estimate'] = {k: usage['estimate'].get(k) for k in ('low_usd', 'high_usd', 'ceiling_usd', 'automatic_ceiling')}
                 except (OSError, ValueError, KeyError):
                     pass
         return {"configured": bool(STATE["api_key"]), "job": job, "csrf_token": CSRF_TOKEN,
                 "key_revision": STATE["key_revision"], "quality_pipeline": "quality-first-v3",
                 "default_model": os.getenv("VIDEO_PDF_MODEL", "anthropic/claude-opus-5.5" if provider_for(STATE["api_key"]) == "openrouter" else "claude-opus-5-5"),
                 "default_effort": os.getenv("VIDEO_PDF_EFFORT", "xhigh"), "provider": provider_for(STATE["api_key"])}
+
+
+def requested_budget(value):
+    """Blank/absent = automatic ceiling from the pre-run estimate (the normal case)."""
+    if value in (None, '', 0):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise PrototypeError('費用の上限は数値で指定するか、空欄（自動）にしてください。') from None
 
 
 def expire_key():
@@ -366,7 +378,8 @@ class Handler(BaseHTTPRequestHandler):
                     config = Config(model=model_id, effort=effort, model_options=None if manual_mode else options,
                                     no_transcribe=bool(body.get("no_transcribe")),
                                     external_research=body.get('external_research', True),
-                                    budget_usd=float(body.get("budget_usd", 3)), cancel_event=CANCEL,
+                                    budget_usd=requested_budget(body.get('budget_usd')), cancel_event=CANCEL,
+                                    confirm_estimate=body.get('confirm_estimate') is True,
                                     resume=bool(resume_folder), purpose=body.get('purpose', 'auto'),
                                     detail_level=body.get('detail_level', 'standard'), output_language=body.get('output_language', 'auto'),
                                     design=body.get('design', 'editorial'), visual_density=body.get('visual_density', 'auto'),

@@ -72,7 +72,11 @@ class Config:
     quality_rounds: int = 2
     quality_attempts: int = 2
     efficient: bool = True
-    budget_usd: float = 3.0
+    # None = automatic: the run sets its own ceiling from the pre-run estimate.
+    # An explicit amount is an operator override (advanced settings).
+    budget_usd: float | None = None
+    confirm_estimate: bool = False   # the user accepted a high estimate shown before AI use
+    expected_output: dict | None = None
     max_api_calls: int = 12
     max_total_tokens: int | None = None
     cancel_event: object = None
@@ -94,8 +98,8 @@ class Config:
         self.presentation_notes = validate_notes(self.presentation_notes)
         if type(self.external_research) is not bool:
             raise ValueError('外部検索の設定は有効・無効で指定してください。')
-        if not math.isfinite(self.budget_usd) or not 0.1 <= self.budget_usd <= 20:
-            raise ValueError("費用目安は0.10～20ドルで指定してください。")
+        if self.budget_usd is not None and (not math.isfinite(self.budget_usd) or not 0.1 <= self.budget_usd <= 20):
+            raise ValueError("費用の上限は0.10～20ドルで指定するか、空欄（自動）にしてください。")
 
 
 class PrototypeError(RuntimeError):
@@ -1051,6 +1055,48 @@ def extract(source, folder, config, notify=print):
         raise
 
 
+def apply_cost_estimate(pipeline, prompt, folder, notify):
+    """Estimate the remaining AI cost before the first call, set the run's own
+    ceiling, and pause for the user's OK when the estimate is unusually high."""
+    from cost_estimate import count_tokens, estimate_run
+    from content_quality import PLANNER, PLAN_TOOL, text_block
+    config, guard = pipeline.config, pipeline.client
+    quality = pipeline.quality
+    analysis_input = count_tokens([{'role': 'user', 'content': [text_block({'request': prompt})] + quality.evidence_content()}],
+                                  [INTERVAL_TOOL, PLAN_TOOL], PLANNER)
+    plan_state = read_json(folder / 'checkpoint-content_plan.state.json') if (folder / 'checkpoint-content_plan.state.json').is_file() else {}
+    plan_ready = bool(quality.plan) or bool(plan_state.get('completed'))
+    if quality.plan:
+        plan_tokens = count_tokens(json.dumps(quality.plan, ensure_ascii=False))
+        editor_input = count_tokens([{'role': 'user', 'content': pipeline.initial_content(prompt)}], TOOLS,
+                                    editor_prompt_path().read_text(encoding='utf-8'))
+    else:
+        # Before a plan exists the editor's input is approximated from the
+        # evidence it will reuse plus a plan of the expected size.
+        plan_tokens = 0
+        editor_input = round(analysis_input * 0.7)
+    spent = sum(c.get('usage', {}).get('cost_usd') or 0 for c in guard.calls)
+    design = (select_design(quality.plan, config.purpose, config.design, config.visual_density,
+                            config.presentation_modes)['design'] if quality.plan else config.design)
+    estimate = estimate_run(analysis_input=analysis_input, editor_input=editor_input, plan_tokens=plan_tokens,
+                            plan_ready=plan_ready, detail_level=config.detail_level, editorial=design == 'editorial',
+                            rates=guard.pricing(), spent=spent)
+    estimate['automatic_ceiling'] = config.budget_usd is None
+    if config.budget_usd is None:
+        config.budget_usd = estimate['ceiling_usd']
+    config.expected_output = estimate['expected_output']
+    guard.estimate = estimate
+    guard.snapshot()
+    notify(f"AI処理の費用目安：約${estimate['low_usd']:.2f}〜${estimate['high_usd']:.2f}")
+    if estimate['exceeds_max'] and estimate['automatic_ceiling']:
+        raise BudgetStop(f"この動画の費用目安（約${estimate['low_usd']:.2f}〜${estimate['high_usd']:.2f}）が、"
+                         "1回の生成の上限を超えるため開始しませんでした。詳しさを下げるか、短い動画でお試しください。", code='estimate_limit')
+    if estimate['needs_confirmation'] and not config.confirm_estimate:
+        raise BudgetStop(f"この動画の費用目安は約${estimate['low_usd']:.2f}〜${estimate['high_usd']:.2f}です。"
+                         "AIを使う前に確認のため一時停止しました。続ける場合は「この目安で続ける」を押してください。", code='estimate_confirm')
+    return estimate
+
+
 def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_key=None, notify=print, run_dir=None, client=None):
     load_env()
     config = config or Config(model=os.getenv("VIDEO_PDF_MODEL", "claude-opus-5-5"),
@@ -1141,6 +1187,9 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
             pipeline.quality.plan = pipeline.quality.validate_plan(reuse_plan)
             write_json(folder / 'content-plan.json', pipeline.quality.plan)
             write_json(folder / 'action-concerns.json', pipeline.quality.plan.get('action_concerns', []))
+        if not manual_mode and isinstance(pipeline.client, GuardedClient):
+            report['cost_estimate'] = apply_cost_estimate(pipeline, prompt, folder, notify)
+            write_json(folder / 'run.json', report)
         pipeline.generate(prompt)
         report.update(status="complete", pdf="document.pdf", markdown="document.md", ai_reviewed=True, content_verified=True,
                       quality_pipeline=report["quality_pipeline"])
