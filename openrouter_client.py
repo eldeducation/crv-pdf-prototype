@@ -64,6 +64,8 @@ def convert_messages(messages, system):
                                 image_followups.append(block)
                 converted.append({'role': 'tool', 'tool_call_id': result['tool_use_id'],
                                   'content': ('Tool error: ' if result.get('is_error') else '') + text})
+            # Plain notes sent alongside tool results (e.g. "submit now") must reach the model too.
+            image_followups += [b for b in content if b['type'] == 'text']
             if image_followups:
                 converted.append({'role': 'user', 'content': image_followups})
         else:

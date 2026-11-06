@@ -632,6 +632,18 @@ TOOLS = [
      "input_schema": {"type": "object", "required": ["review"], "properties": {"review": {"type": "string"}}}},
 ]
 TOOLS.insert(1, INTERVAL_TOOL)
+INSPECTION_CLOSED = ('残りの処理回数が少ないため、追加の映像確認は終了しました。確認済みの画像と内容案だけで'
+                     'compose_document を提出し、プレビュー確認後に approve_document で完了してください。')
+
+
+def editor_tools(rounds_left, has_document):
+    """Keep enough editor rounds to submit, fix once and approve.
+
+    A model that keeps zooming into frames would otherwise spend every round on
+    inspection and stop at the round limit without ever composing a page."""
+    if rounds_left > (2 if has_document else 3):
+        return TOOLS
+    return [t for t in TOOLS if t['name'] not in ('inspect_frames', 'inspect_interval')]
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['pages']['items']['properties']['visual_roles'] = {
     'type': 'array', 'maxItems': 3, 'items': {'enum': ['materials', 'tools', 'guides']},
     'description': 'このページに掲載する材料・道具・位置ガイドの役割。該当する写真を実際に掲載する。'}
@@ -797,9 +809,13 @@ class Pipeline:
             self.notify(f"AIが内容と画像を確認しています（処理{round_no + 1}）")
             before = len(self.client.calls)
             pending = saved.get('pending') if saved else None
+            tools = editor_tools(self.config.max_rounds - round_no, self.document is not None)
+            if tools is not TOOLS and not pending and isinstance(messages[-1]['content'], list) \
+                    and not any(b.get('text') == INSPECTION_CLOSED for b in messages[-1]['content']):
+                messages[-1]['content'].append({'type': 'text', 'text': INSPECTION_CLOSED})
             save_editor(round_no, pending)
             try:
-                content = pending or self.client.send(messages, TOOLS, system)
+                content = pending or self.client.send(messages, tools, system)
             except PrototypeError:
                 if self.client.calls[before:] and self.client.calls[-1].get("invalid_tool_output") and json_retries < 1:
                     json_retries += 1
