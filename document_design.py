@@ -272,13 +272,15 @@ def materialize_visuals(document, plan, language='ja'):
         seen.add(identity)
         marker = f'<!-- visual:{identity} -->'
         pages = [p for p in doc['pages'] if marker in p['html']]
-        if len(pages) != 1 or pages[0]['html'].count(marker) != 1 or doc['markdown'].count(marker) != 1:
-            raise ValueError('各図表の<!-- visual:id -->をPDFとMarkdownに1回ずつ配置してください。')
+        has_markdown = isinstance(doc.get('markdown'), str)
+        if len(pages) != 1 or pages[0]['html'].count(marker) != 1 or (has_markdown and doc['markdown'].count(marker) != 1):
+            raise ValueError('各図表の<!-- visual:id -->をページのHTMLに1回だけ配置してください。')
         page = pages[0]
         if not set(refs) <= set(page.get('source_units', [])):
             raise ValueError('図表の出典idを同じページのsource_unitsにも記録してください。')
         page['html'] = page['html'].replace(marker, markup)
-        doc['markdown'] = doc['markdown'].replace(marker, markdown)
-    if any(re.search(r'<!--\s*visual:', p['html']) for p in doc['pages']) or re.search(r'<!--\s*visual:', doc['markdown']):
+        if has_markdown:
+            doc['markdown'] = doc['markdown'].replace(marker, markdown)
+    if any(re.search(r'<!--\s*visual:', p['html']) for p in doc['pages']) or re.search(r'<!--\s*visual:', doc.get('markdown') or ''):
         raise ValueError('定義されていない図表のプレースホルダーがあります。')
     return doc

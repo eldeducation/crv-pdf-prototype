@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 import html
 import io
 import json
@@ -32,6 +33,7 @@ from document_design import select_design, editorial_brief, style_css, materiali
 from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
                                validate_design_plan, validate_design_review)
 from source_references import citation_html, write_index, source_link, markdown_references
+from markdown_export import document_markdown
 from web_research import WebResearch, POLICY as RESEARCH_POLICY, LIMITS as RESEARCH_LIMITS
 from security import normalized_video_url, X_IMPORT_ERROR, child_environment
 
@@ -476,8 +478,6 @@ class Fragment(HTMLParser):
 def document_html(doc, evidence, units=None, language='auto', visual_requirements=None, design='auto'):
     if not isinstance(doc, dict) or not isinstance(doc.get("title"), str) or not doc["title"].strip():
         raise PrototypeError("資料のタイトルがありません。")
-    if not isinstance(doc.get("markdown"), str) or len(doc["markdown"]) < 50:
-        raise PrototypeError("編集用Markdownの内容が不足しています。")
     pages = doc.get("pages")
     if not isinstance(pages, list) or not 1 <= len(pages) <= 24:
         raise PrototypeError("資料は1～24ページにしてください。")
@@ -513,16 +513,14 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
         validate_visual_pages(visual_requirements, page_images, pages)
     except ValueError as error:
         raise PrototypeError(str(error)) from None
-    markdown_images = set(re.findall(r'!\[[^\]]*\]\(([^)]+)\)', doc["markdown"]))
-    for target in markdown_images | image_names:
+    # Markdown is generated from these pages, so it always carries the same images.
+    for target in image_names:
         evidence.safe_asset(target)
         try:
             with Image.open(evidence.safe_asset(target)) as picture:
                 picture.verify()
         except (OSError, ValueError):
             raise PrototypeError(f"画像を正常に読み込めません: {target}") from None
-    if markdown_images != image_names:
-        raise PrototypeError("MarkdownとPDF本文の画像が一致しません。両方に同じ根拠画像を掲載してください。")
     for unit in (units or []):
         if unit["type"] != "action":
             continue
@@ -635,8 +633,15 @@ class ClaudeClient:
 TOOLS = [
     {"name": "inspect_frames", "description": "動画の指定時刻の画像を取得。cropで拡大確認できる。最大8枚/回。",
      "input_schema": {"type": "object", "required": ["frames"], "properties": {"frames": {"type": "array", "minItems": 1, "maxItems": 8, "items": {"type": "object", "required": ["seconds"], "properties": {"seconds": {"type": "number"}, "crop": {"type": "array", "description": "0～1の [左,上,右,下]。不要なら省略。", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 4, "maxItems": 4}}}}}}},
-    {"name": "compose_document", "description": "Markdownと自由なページ構成を提出し、PDFと全ページの画像・検査結果を受け取る。",
-     "input_schema": {"type": "object", "required": ["title", "summary", "markdown", "css", "pages"], "properties": {"title": {"type": "string"}, "summary": {"type": "string"}, "markdown": {"type": "string"}, "css": {"type": "string"}, "pages": {"type": "array", "minItems": 1, "maxItems": 24, "items": {"type": "object", "required": ["html"], "properties": {"html": {"type": "string"}, "source_units": {"type": "array", "maxItems": 80, "description": "このページで説明する内容案のid", "items": {"type": "string"}}}}}}}},
+    {"name": "compose_document", "description": "資料全体（自由なページ構成）を提出し、PDFと全ページの画像・検査結果を受け取る。編集用Markdownはページから自動で作られる。",
+     "input_schema": {"type": "object", "required": ["title", "summary", "css", "pages"], "properties": {"title": {"type": "string"}, "summary": {"type": "string"}, "css": {"type": "string"}, "pages": {"type": "array", "minItems": 1, "maxItems": 24, "items": {"type": "object", "required": ["html"], "properties": {"html": {"type": "string"}, "source_units": {"type": "array", "maxItems": 80, "description": "このページで説明する内容案のid", "items": {"type": "string"}}}}}}}},
+    {"name": "revise_pages", "description": "直前に提出した資料のうち、指定したページだけを差し替えて再提出する（ページ数は変わらない）。他のページはそのまま使われる。ページの増減や全体の構成変更はcompose_documentで行う。",
+     "input_schema": {"type": "object", "required": ["pages"], "properties": {
+         "pages": {"type": "array", "minItems": 1, "maxItems": 24, "items": {"type": "object", "required": ["page", "html"], "properties": {
+             "page": {"type": "integer", "minimum": 1, "description": "差し替えるページ番号（1始まり）"}, "html": {"type": "string"},
+             "source_units": {"type": "array", "maxItems": 80, "items": {"type": "string"}}}}},
+         "css": {"type": "string", "description": "変更する場合だけ。全体のcssを置き換える"},
+         "title": {"type": "string"}, "summary": {"type": "string"}}}},
     {"name": "approve_document", "description": "全ページの画像と紙面検査を確認し、内容・画像・レイアウトが適切な場合だけ完了を承認する。",
      "input_schema": {"type": "object", "required": ["review"], "properties": {"review": {"type": "string"}}}},
 ]
@@ -678,7 +683,7 @@ def submission_checklist(plan, max_rounds, editorial):
     actions = [u['id'] for u in plan.get('units', []) if u.get('type') == 'action']
     if actions:
         lines.append('- action（' + '、'.join(actions) + '）：それぞれdata-step-unitsのブロックとsource_unitsで対応付け、その区間の根拠画像を同じブロックに掲載する。')
-    lines.append('- markdownとページHTMLには同じ画像ファイルを同じ組み合わせで掲載する。')
+    lines.append('- 編集用Markdownはページから自動で作られるので書かない。修正はrevise_pagesで該当ページだけ差し替えられる。')
     if editorial:
         lines.append('- design_plan.pages[].focus_excerpt：そのページの見出しか本文にある連続した文字列をそのまま写す（要約・言い換え・別ページの文は不可）。')
         lines.append('- design_plan.pagesのsource_unitsは、そのページのsource_unitsに含まれるidだけにする。')
@@ -691,6 +696,37 @@ next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['prope
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['visuals'] = VISUAL_SCHEMA
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['design_plan'] = DESIGN_PLAN_SCHEMA
 next(t for t in TOOLS if t['name'] == 'approve_document')['input_schema']['properties']['design_review'] = DESIGN_REVIEW_SCHEMA
+_REVISE = next(t for t in TOOLS if t['name'] == 'revise_pages')['input_schema']['properties']
+_REVISE['pages']['items']['properties']['visual_roles'] = next(
+    t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['pages']['items']['properties']['visual_roles']
+_REVISE['design_plan_pages'] = {**DESIGN_PLAN_SCHEMA['properties']['pages'],
+                                'description': 'デザイン重視のとき、差し替えたページの紙面設計（page番号つき）。'}
+_REVISE['visuals'] = {**VISUAL_SCHEMA, 'description': '変更する場合だけ。図表の定義全体を置き換える'}
+
+
+def revised_draft(draft, args):
+    """The previous submission with only the named pages (and optional css/title/visuals) replaced."""
+    if not draft:
+        raise PrototypeError('先にcompose_documentで資料全体を提出してください。')
+    doc = copy.deepcopy(draft)
+    count = len(doc['pages'])
+    numbers = [p.get('page') for p in args.get('pages', [])]
+    if not numbers or len(set(numbers)) != len(numbers) or any(type(n) is not int or not 1 <= n <= count for n in numbers):
+        raise PrototypeError(f'差し替えるページ番号は1～{count}の重複のない番号で指定してください。ページ数を変えるときはcompose_documentを使ってください。')
+    for page in args['pages']:
+        # Fields not resent (source_units, visual_roles) keep the page's previous values.
+        previous = doc['pages'][page['page'] - 1]
+        doc['pages'][page['page'] - 1] = {**previous, **{k: page[k] for k in ('html', 'source_units', 'visual_roles') if k in page}}
+    for key in ('css', 'title', 'summary', 'visuals'):
+        if key in args:
+            doc[key] = args[key]
+    if args.get('design_plan_pages'):
+        plan = doc.get('design_plan')
+        if not isinstance(plan, dict) or not isinstance(plan.get('pages'), list):
+            raise PrototypeError('元の提出にdesign_planがありません。compose_documentで全体を提出してください。')
+        replaced = {r.get('page'): r for r in args['design_plan_pages'] if isinstance(r, dict)}
+        plan['pages'] = [replaced.get(r.get('page'), r) for r in plan['pages']]
+    return doc
 
 
 def editor_prompt_path(root=None):
@@ -717,6 +753,7 @@ class Pipeline:
         self.evidence, self.config, self.notify = evidence, config, notify
         self.client = client or GuardedClient(create_client(api_key, config), config, evidence.out, notify)
         self.revisions, self.qa, self.document, self.approved = 0, None, None, False
+        self.draft = None   # last raw submission, for revise_pages
         # A pass rejected only for layout (overflow etc.) never reaches the
         # content check, so it must not use up the content redo.
         self.layout_failures = 0
@@ -759,7 +796,13 @@ class Pipeline:
             raise PrototypeError("紙面修正の上限に達しました。途中の資料と検査結果を確認してください。", code='revision_limit')
         if self.config.progress:
             self.config.progress.start('document', restart=True)
+        # Keep the raw submission so revise_pages can replace single pages of it.
+        self.draft = copy.deepcopy(doc)
+        doc = {k: v for k, v in doc.items() if k != 'markdown'}
         doc = materialize_visuals(doc, self.quality.plan, self.config.output_language)
+        # The PDF is rendered from the pages; the editable Markdown is generated from
+        # the same pages instead of being written a second time by the editor.
+        doc['markdown'] = document_markdown(doc)
         doc['presentation'] = self.presentation or select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
         # Run both independent gates so one rejection lists every problem.
         problems = []
@@ -807,7 +850,7 @@ class Pipeline:
             result.append({"type": "text", "text": "部品クラスはスタイル定義済みのため、cssの次のルールは使っていません："
                            + ' / '.join(removed[:20]) + "。部品は指示の例と同じHTML構造で書き、独自の装飾は別のクラス名で指定してください。"})
         if self.content_qa and not self.content_qa["approved"]:
-            result.append({"type": "text", "text": "内容の照合で問題があります。検証指摘に対応し、Markdown・本文・キャプションを一緒に修正して再提出してください。"})
+            result.append({"type": "text", "text": "内容の照合で問題があります。検証指摘に対応し、該当ページの本文・キャプションを修正して再提出してください（該当ページだけならrevise_pages）。"})
             names = {f for c in self.content_qa["unit_checks"] if c["verdict"] != "supported" for f in c["evidence_files"]}
             for name in sorted(names):
                 result.extend([{"type": "text", "text": name}, self.evidence.image_block(name)])
@@ -844,6 +887,7 @@ class Pipeline:
             self.revisions = saved['revisions']
             self.layout_failures = saved.get('layout_failures', 0)
             self.document, self.qa, self.content_qa = saved['document'], saved['qa'], saved['content_qa']
+            self.draft = saved.get('draft')
             if saved.get('approved'):
                 self.approved = True
                 if self.config.progress:
@@ -853,7 +897,7 @@ class Pipeline:
         def save_editor(round_no, pending=None):
             checkpoint.save(messages=messages, round=round_no, pending=pending,
                 revisions=self.revisions, layout_failures=self.layout_failures, document=self.document, qa=self.qa,
-                content_qa=self.content_qa, approved=self.approved)
+                content_qa=self.content_qa, approved=self.approved, draft=self.draft)
         json_retries = 0
         for round_no in range(saved.get('round', 0) if saved else 0, self.config.max_rounds):
             if not self.can_compose() and not self.document_ready():
@@ -891,7 +935,7 @@ class Pipeline:
                 continue
             results = []
             had_preview = self.document is not None
-            composed_this_turn = any(c["name"] == "compose_document" for c in calls)
+            composed_this_turn = any(c["name"] in {"compose_document", "revise_pages"} for c in calls)
             # Every tool_use must have a tool_result, including validation failures.
             for call in calls:
                 try:
@@ -902,6 +946,10 @@ class Pipeline:
                         value = self.evidence.inspect_interval(args)
                     elif name == "compose_document":
                         value = self.compose(args)
+                    elif name == "revise_pages":
+                        # Unchanged pages are reused as submitted; the whole document is
+                        # still rendered, layout-checked and content-checked again.
+                        value = self.compose(revised_draft(self.draft, args))
                     elif name == "approve_document":
                         if not had_preview or composed_this_turn or not self.document or not self.qa or self.qa.get("errors"):
                             raise PrototypeError("先に資料を提出し、紙面の問題を修正してください。")

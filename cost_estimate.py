@@ -28,6 +28,9 @@ INSPECT_OUTPUT = 500
 INSPECT_GROWTH = 13000          # input added by one inspection round (measured 12k-15k)
 TOKENS_PER_PREVIEW_PAGE = 1500  # page previews returned after each submission
 OUTPUT_TOKENS_PER_PAGE = 2500   # 34k output tokens produced about 14 pages
+FIX_SHARE = 0.6                 # share of a full submission resent by one page-level fix
+# DOCUMENT_OUTPUT still includes the Markdown the editor used to write (about a
+# quarter of a submission); kept until new runs are measured, so estimates stay on the safe side.
 
 CEILING_FACTOR = 1.3
 DEFAULT_MAX_RUN_USD = 10.0
@@ -94,8 +97,9 @@ def estimate_run(*, analysis_input, editor_input, plan_tokens, plan_ready, detai
     b, g, d = editor_input, INSPECT_GROWTH, document_out
     review_in = analysis_input + plan + d
     low += [(b, INSPECT_OUTPUT), (b + g, d), (review_in, REVIEW_OUTPUT), (b + g + d + previews, APPROVE_OUTPUT)]
+    # A fix now resends only the changed pages (revise_pages); assume up to 60% of the document.
     high += [(b, INSPECT_OUTPUT), (b + g, INSPECT_OUTPUT), (b + 2 * g, d),
-             (b + 2 * g + d + previews, round(d * 1.1)), (review_in, REVIEW_OUTPUT), (review_in, REVIEW_OUTPUT),
+             (b + 2 * g + d + previews, round(d * FIX_SHARE)), (review_in, REVIEW_OUTPUT), (review_in, REVIEW_OUTPUT),
              (b + 2 * g + 2 * d + 2 * previews, APPROVE_OUTPUT)]
     max_run, confirm = limits()
     low_usd, high_usd = cost(low), cost(high)

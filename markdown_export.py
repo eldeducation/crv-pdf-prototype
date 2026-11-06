@@ -1,0 +1,235 @@
+"""Editable Markdown generated from the submitted page HTML.
+
+The editor used to write the whole document twice (pages and Markdown), which
+took about a third of every submission and let the two drift apart. The PDF is
+rendered from the pages only, so generating Markdown from those same pages
+keeps it identical in content without changing the PDF.
+"""
+import re
+from html import unescape
+from html.parser import HTMLParser
+
+HEADINGS = {'h1': '# ', 'h2': '## ', 'h3': '### ', 'h4': '#### ', 'h5': '#### ', 'h6': '#### '}
+BLOCKS = {'p', 'div', 'section', 'article', 'header', 'footer', 'main', 'aside', 'figure', 'figcaption',
+          'blockquote', 'ul', 'ol', 'li', 'table', 'tr', 'dl', 'dt', 'dd', 'hr', *HEADINGS}
+SAFE_LINK = re.compile(r'^https://[^\s"<>]+$')
+
+
+def _inline_marker(tag):
+    return {'strong': '**', 'b': '**', 'mark': '**', 'em': '*', 'i': '*', 'code': '`'}.get(tag)
+
+
+class _Converter(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.lines, self.text = [], ''
+        self.prefix = ''            # heading / list / quote prefix for the current block
+        self.lists, self.quote = [], 0
+        self.skip = 0               # inside svg/style/script
+        self.table, self.row, self.cell = None, None, None
+        self.links = []
+        self.label_open = False
+
+    # ---- block helpers -------------------------------------------------
+    def flush(self):
+        text = re.sub(r'[ \t\r\n]+', ' ', self.text).strip()
+        text = re.sub(r'\*\*\s*\*\*', '', text)
+        if text:
+            quote = '> ' * self.quote
+            self.lines.append(quote + self.prefix + text)
+        self.text, self.prefix = '', ''
+
+    def blank(self):
+        self.flush()
+        if self.lines and self.lines[-1] != '':
+            self.lines.append('')
+
+    # ---- parser events -------------------------------------------------
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag in {'svg', 'style', 'script'}:
+            self.skip += 1
+            return
+        if self.skip:
+            return
+        if self.cell is not None:
+            if tag == 'br':
+                self.cell.append(' ')
+            elif tag == 'img':
+                self.cell.append(f'![{attrs.get("alt", "")}]({attrs.get("src", "")})')
+            return
+        if tag == 'table':
+            self.blank()
+            self.table = []
+            return
+        if self.table is not None:
+            if tag == 'tr':
+                self.row = []
+            elif tag in {'td', 'th'}:
+                self.cell = []
+            return
+        if tag in HEADINGS:
+            self.blank()
+            self.prefix = HEADINGS[tag]
+        elif tag in {'ul', 'ol'}:
+            self.flush()
+            self.lists.append([tag, 0])
+        elif tag == 'li':
+            self.flush()
+            depth = max(0, len(self.lists) - 1)
+            kind = self.lists[-1] if self.lists else ['ul', 0]
+            kind[1] += 1
+            self.prefix = '  ' * depth + (f'{kind[1]}. ' if kind[0] == 'ol' else '- ')
+        elif tag == 'blockquote':
+            self.blank()
+            self.quote += 1
+        elif tag == 'hr':
+            self.blank()
+            self.lines.extend(['---', ''])
+        elif tag == 'br':
+            self.text += '  \n'
+        elif tag == 'img':
+            self.blank()
+            alt = attrs.get('alt', '').replace(']', '')
+            self.lines.extend([f'![{alt}]({attrs.get("src", "")})', ''])
+        elif tag == 'a':
+            href = attrs.get('href', '')
+            self.links.append(href if SAFE_LINK.match(href or '') else None)
+            if self.links[-1]:
+                self.text += '['
+        elif tag == 'small':
+            self.text += ' '
+        elif tag in BLOCKS:
+            # Separate blocks by a blank line: Markdown joins consecutive lines into one paragraph.
+            self.blank() if tag not in {'dt', 'dd'} else self.flush()
+            if tag == 'figcaption':
+                self.text += '*'
+        elif _inline_marker(tag):
+            # A bold label opening a block ("<b>v1</b>説明") gets a space after it.
+            self.label_open = _inline_marker(tag) == '**' and not self.text.strip()
+            self.text += _inline_marker(tag)
+
+    def handle_endtag(self, tag):
+        if tag in {'svg', 'style', 'script'}:
+            self.skip = max(0, self.skip - 1)
+            return
+        if self.skip:
+            return
+        if self.table is not None:
+            if tag in {'td', 'th'} and self.cell is not None and self.row is not None:
+                self.row.append(re.sub(r'\s+', ' ', ''.join(self.cell)).strip().replace('|', '\\|'))
+                self.cell = None
+            elif tag == 'tr' and self.row is not None:
+                if self.row:
+                    self.table.append(self.row)
+                self.row = None
+            elif tag == 'table':
+                self.emit_table()
+            return
+        if tag in HEADINGS or tag in {'li', 'p', 'figure', 'section', 'dt', 'dd'}:
+            self.blank() if tag not in {'li', 'dt', 'dd'} else self.flush()
+        elif tag == 'figcaption':
+            self.text = self.text.rstrip() + '*'
+            self.blank()
+        elif tag in {'ul', 'ol'}:
+            if self.lists:
+                self.lists.pop()
+            if not self.lists:
+                self.blank()
+        elif tag == 'blockquote':
+            self.flush()
+            self.quote = max(0, self.quote - 1)
+            self.blank()
+        elif tag == 'a':
+            href = self.links.pop() if self.links else None
+            if href:
+                self.text += f']({href})'
+        elif tag in BLOCKS:
+            self.blank()
+        elif _inline_marker(tag):
+            self.text += _inline_marker(tag)
+            if self.label_open and _inline_marker(tag) == '**':
+                self.text += ' '
+            self.label_open = False
+
+    def handle_data(self, data):
+        if self.skip:
+            return
+        if self.cell is not None:
+            self.cell.append(data)
+        elif self.table is None:
+            self.text += data
+
+    def emit_table(self):
+        rows, self.table = self.table or [], None
+        if rows:
+            width = max(len(r) for r in rows)
+            rows = [r + [''] * (width - len(r)) for r in rows]
+            self.lines.append('| ' + ' | '.join(rows[0]) + ' |')
+            self.lines.append('|' + '---|' * width)
+            self.lines.extend('| ' + ' | '.join(r) + ' |' for r in rows[1:])
+            self.lines.append('')
+
+    def result(self):
+        self.flush()
+        text = '\n'.join(self.lines)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        return unescape(text).strip() + '\n'
+
+
+NUMBER_LABEL = re.compile(r'^(?:\d{1,2}|PART\s*\d+|第\d+章)$', re.I)
+TIME_LABEL = re.compile(r'^(?:PART\s*\d+\s*)?[\d:：〜~–\-／/ 　]+$', re.I)
+BOLD_TITLE = re.compile(r'^\*\*[^*]+\*\*\s*(?:（[^）]*）)?$')  # a bold-only line works as a small heading
+PLAIN_LINE = re.compile(r'^(?![#!>|-]|\*(?!\*)|\d+\. |---)')  # bold-led lines count; captions (*...*) do not
+
+
+def _tidy(text):
+    """Fold chapter numbers/times into the heading and turn runs of short blocks into lists."""
+    blocks = [b for b in text.split('\n\n') if b.strip()]
+    merged = []
+    for block in blocks:
+        if block.startswith('## ') or block.startswith('### '):
+            number = time = None
+            while merged and '\n' not in merged[-1] and len(merged[-1]) <= 30:
+                label = merged[-1].strip()
+                if time is None and TIME_LABEL.match(label) and re.search(r'\d:\d', label):
+                    time = merged.pop()
+                elif number is None and NUMBER_LABEL.match(label):
+                    number = merged.pop()
+                else:
+                    break
+            level, title = block.split(' ', 1)
+            block = level + ' ' + (number + ' ' if number else '') + title + (f'（{time.strip()}）' if time else '')
+        merged.append(block)
+    # Three or more short single-line blocks in a row are grid/flow items: a list.
+    out, run = [], []
+    def close_run():
+        if len(run) >= 3:
+            out.append('\n'.join('- ' + item for item in run))
+        else:
+            out.extend(run)
+        run.clear()
+    for block in merged:
+        if '\n' not in block and len(block) <= 90 and PLAIN_LINE.match(block) and not BOLD_TITLE.match(block):
+            run.append(block)
+        else:
+            close_run()
+            out.append(block)
+    close_run()
+    return '\n\n'.join(out) + '\n'
+
+
+def page_markdown(markup):
+    converter = _Converter()
+    converter.feed(markup)
+    converter.close()
+    return _tidy(converter.result())
+
+
+def document_markdown(document):
+    """Markdown for the whole document, in page order, from the pages actually rendered."""
+    parts = [page_markdown(page['html']) for page in document.get('pages', [])]
+    body = '\n---\n\n'.join(part for part in parts if part.strip())
+    if not re.search(r'^# ', body, re.M):
+        body = '# ' + str(document.get('title', '')).strip() + '\n\n' + body
+    return body
