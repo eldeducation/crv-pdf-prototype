@@ -54,6 +54,24 @@ def last_job():
     return None
 
 
+def restyle_sources(limit=15):
+    """Completed, content-verified runs in this server's own runs folder that can be
+    rebuilt with new settings (newest first). Metadata only; restyle_source re-checks on start."""
+    found = []
+    for path in sorted((ROOT / 'runs').glob('*/run.json'), key=lambda p: p.stat().st_mtime, reverse=True)[:60]:
+        try:
+            folder, report, _ = restyle_source(ROOT, path.parent.name)
+            title = json.loads((folder / 'document.json').read_text(encoding='utf-8')).get('title', '')
+        except (ValueError, OSError, TypeError):
+            continue
+        found.append({'folder': folder.name, 'title': str(title)[:120], 'finished_at': path.stat().st_mtime,
+                      'purpose': report.get('purpose', 'auto'), 'detail_level': report.get('detail_level', 'standard'),
+                      'design': report.get('design', 'auto'), 'manual_mode': bool(report.get('manual_mode'))})
+        if len(found) >= limit:
+            break
+    return found
+
+
 KEY_IDLE_SECONDS = 30 * 60
 STATE = {"api_key": os.getenv("OPENROUTER_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", ""), "job": last_job(),
          "key_used_at": time.monotonic(), "key_revision": 0, "catalog": None, "catalog_attempt": 0}
@@ -195,6 +213,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, (ROOT / "ui.js").read_bytes(), "text/javascript; charset=utf-8")
         if route == "status":
             return self.send(200, public_status())
+        if route == 'restyle-sources':
+            return self.send(200, {'sources': restyle_sources()})
         if re.fullmatch(r'manual/request/[a-f0-9]{24}\.zip', route):
             with LOCK:
                 client = MANUAL_CLIENT if STATE['job'] and STATE['job'].get('manual_mode') and STATE['job']['status'] == 'running' else None

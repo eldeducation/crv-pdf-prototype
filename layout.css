@@ -7,8 +7,11 @@ body { color: #192925; background: #e9eeeb; font-family: "Noto Sans JP", "BIZ UD
 .page-content { width: 180mm; height: 258mm; display: flow-root; }
 .page-foot { position: absolute; bottom: 9mm; left: 15mm; right: 15mm; border-top: .25mm solid #dae4df; padding-top: 2mm; display: flex; gap: 5mm; justify-content: space-between; font-size: 8pt; color: #62786d; }
 .page-foot span:first-child { max-width: 160mm; overflow-wrap: anywhere; }
-.source-ref { font-size: 8pt; font-weight: normal; line-height: 1.5; color: #426e5d; white-space: nowrap; margin-left: 1mm; }
-.source-ref a { color: #235f49; text-decoration: underline; }
+/* Follows the surrounding text colour so the inserted source time stays readable on
+   any box the editor chooses (a fixed green was unreadable on dark boxes, and the
+   editor may not restyle .source-ref). */
+.source-ref { font-size: 8pt; font-weight: normal; line-height: 1.5; color: inherit; white-space: nowrap; margin-left: 1mm; }
+.source-ref a { color: inherit; text-decoration: underline; }
 h1 { font-size: 27pt; line-height: 1.3; margin: 0 0 6mm; color: var(--heading-color, #164c3b); }
 h2 { font-size: 19pt; line-height: 1.4; margin: 0 0 5mm; color: var(--heading-color, #164c3b); }
 h3 { font-size: 13pt; line-height: 1.5; margin: 4mm 0 2mm; }

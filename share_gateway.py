@@ -40,7 +40,8 @@ def allowed_route(method, route):
         return route in ('configure', 'disconnect', 'models', 'upload', 'start', 'stop', 'manual/respond')
     if method != 'GET':
         return False
-    return (route in ('', 'ui.js', 'status') or bool(re.fullmatch(r'manual/request/[a-f0-9]{24}\.zip', route))
+    # restyle-sources lists only the session server's own runs folder.
+    return (route in ('', 'ui.js', 'status', 'restyle-sources') or bool(re.fullmatch(r'manual/request/[a-f0-9]{24}\.zip', route))
             or bool(re.fullmatch(
                 r'files/\d{8}-\d{6}-[a-f0-9]{6}/(?:document\.pdf|document\.md|run\.json|usage\.json|review-notes\.txt|source-index\.json|source-video|assets/[A-Za-z0-9_.-]+\.(?:jpg|jpeg|png))', route)))
 

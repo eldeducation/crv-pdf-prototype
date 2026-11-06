@@ -432,9 +432,11 @@ class ContentQuality:
 
     def review_document(self, document, revision):
         self.notify("完成した本文・写真の説明を元映像と照合しています")
+        # Markdown is generated from these same pages, so sending it too would only
+        # repeat the document (about 10k tokens per check).
         content = [text_block({"content_plan": self.plan, "document": {
             "title": document["title"], "summary": document.get("summary", ""),
-            "markdown": document["markdown"], "pages": document["pages"]}})]+self.evidence_content(
+            "pages": document["pages"]}})]+self.evidence_content(
                 overview=True, include_sequences=True)
         if self.config.efficient:
             # Preparation/guide pictures must be legible to the final reviewer.

@@ -38,6 +38,40 @@ async function render() {
       const counts = [];
       const designDiagnostics = [];
       if (!pages.length) errors.push('ページ枠がありません');
+      // Text/background contrast (WCAG ratio). A background image or gradient makes the
+      // background unknown, so such text is skipped rather than guessed.
+      const parseColor = value => {
+        let m = /^rgba?\(([^)]+)\)$/.exec(value);
+        if (m) { const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
+        m = /^color\(srgb\s+([^)]+)\)$/.exec(value);
+        if (m) { const p = m[1].split(/[\s\/]+/).filter(Boolean).map(Number); return [p[0]*255, p[1]*255, p[2]*255, p.length > 3 ? p[3] : 1]; }
+        return null;
+      };
+      const blend = (top, base) => [0,1,2].map(i => top[i]*top[3] + base[i]*(1-top[3]));
+      const backgroundOf = el => {
+        const layers = [];
+        for (let e = el; e; e = e.parentElement) {
+          const cs = getComputedStyle(e);
+          if (cs.backgroundImage && cs.backgroundImage !== 'none') return null;
+          const c = parseColor(cs.backgroundColor);
+          if (c && c[3] > 0) { layers.push(c); if (c[3] >= 1) break; }
+        }
+        return layers.reverse().reduce((base, layer) => blend(layer, base), [255, 255, 255]);
+      };
+      const luminance = rgb => {
+        const [r, g, b] = rgb.map(v => { v /= 255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
+        return 0.2126*r + 0.7152*g + 0.0722*b;
+      };
+      const contrastOf = el => {
+        const bg = backgroundOf(el);
+        const fg = parseColor(getComputedStyle(el).color);
+        if (!bg || !fg) return null;
+        let alpha = fg[3];
+        for (let e = el; e && e !== document.body; e = e.parentElement) alpha *= Number(getComputedStyle(e).opacity);
+        const text = blend([fg[0], fg[1], fg[2], alpha], bg);
+        const [hi, lo] = [luminance(text), luminance(bg)].sort((a, b) => b - a);
+        return (hi + 0.05) / (lo + 0.05);
+      };
       pages.forEach((page, idx) => {
         const main = page.querySelector('.page-content');
         if (!main) {errors.push(`${idx+1}ページ: 本文枠がありません`); return;}
@@ -57,11 +91,25 @@ async function render() {
         const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT);
         let node;
         const textRects = [];
+        const checkedContrast = new Set(), lowContrast = [];
         while (node = walker.nextNode()) {
           if (!node.textContent.trim() || node.parentElement.closest('svg')) continue;
           const style = getComputedStyle(node.parentElement);
           if (style.display === 'none') continue;
           if (parseFloat(style.fontSize) < 10) errors.push(`${idx+1}ページ: 小さすぎる文字 ${node.textContent.trim().slice(0,30)}`);
+          if (!checkedContrast.has(node.parentElement)) {
+            checkedContrast.add(node.parentElement);
+            const ratio = contrastOf(node.parentElement);
+            if (ratio !== null) {
+              const size = parseFloat(style.fontSize);
+              const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
+              const sample = node.textContent.trim().slice(0, 20), shown = Math.round(ratio * 10) / 10;
+              // Clearly unreadable text blocks approval; merely low contrast is a design note.
+              if (ratio < (large ? 2 : 3))
+                errors.push(`${idx+1}ページ: 文字「${sample}」と背景の色が近く読めません（コントラスト比${shown}、${large ? 3 : 4.5}以上が目安）。文字色か背景色を変えてください。`);
+              else if (ratio < (large ? 3 : 4.5)) lowContrast.push(sample);
+            }
+          }
           const range = document.createRange(); range.selectNodeContents(node);
           // A glyph box is taller than the visible ink (about 1.15em for Latin digits,
           // more for CJK), so a large number set with a tight line-height reaches a
@@ -113,6 +161,8 @@ async function render() {
             warnings.push('ページの半分近くが空いている。次の章を続けるか主役を大きくできないか確認。');
           const small = images.filter(el => el.naturalWidth > el.naturalHeight * 1.2
             && el.getBoundingClientRect().width < bounds.width * 0.45).length;
+          if (lowContrast.length)
+            warnings.push(`文字と背景のコントラストが低い箇所が${lowContrast.length}か所（「${lowContrast[0]}」など）。読みやすさを確認。`);
           if (small) warnings.push(`横長の画面・スライド画像${small}枚が本文幅の45%未満。文字が根拠なら読める大きさか確認。`);
           if (idx === 0 && pages.length > 2 && document.body.dataset.documentPurpose !== 'procedure'
               && !main.querySelector('.cover,.tldr,.keypoints'))

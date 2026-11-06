@@ -132,9 +132,9 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .cover-media { display: grid; grid-template-columns: 1.7fr 1fr; gap: 5mm; align-items: end; margin: 0 0 6mm; }
 .shot { margin: 0 0 4mm; }
 .shot img { border: 1mm solid var(--accent-strong); border-radius: 2mm; box-shadow: 0 1.2mm 3mm rgba(0,0,0,.18); }
-.shot figcaption strong, .shot figcaption b { color: var(--accent-strong); }
+.shot figcaption strong, .shot figcaption b { color: var(--heading-color); }
 .tldr { margin: 2mm 0 6mm; }
-.tldr .label { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
+.tldr .label { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--heading-color); margin: 0; }
 .tldr .line { font-size: 16pt; line-height: 1.55; font-weight: bold; margin: 1.5mm 0 0; }
 .keypoints { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 5mm; margin: 4mm 0; }
 .keypoints > div { border-top: 1mm solid var(--accent-strong); padding-top: 2.5mm; }
@@ -145,12 +145,12 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .chapter > :not(.no) { flex: 1 1 0; min-width: 0; }
 .chapter > .no { flex: none; }
 .chapter .no { font-family: Arial, sans-serif; font-size: 44pt; line-height: 1.15; font-weight: bold; color: var(--accent-strong); margin: 0; }
-.chapter .meta { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--accent-strong); margin: 0; }
+.chapter .meta { font-size: 8.5pt; font-weight: bold; letter-spacing: .12em; color: var(--heading-color); margin: 0; }
 .chapter h2 { margin: 1mm 0 0; font-size: 20pt; }
 .chevrons { display: flex; margin: 4mm 0 6mm; }
 .chevrons > div { flex: 1; min-width: 0; background: var(--accent-soft); color: var(--heading-color); font-weight: bold; font-size: 9.5pt; line-height: 1.4; text-align: center; padding: 3mm 5mm 3mm 7mm; margin-left: -2mm; clip-path: polygon(0 0, calc(100% - 4mm) 0, 100% 50%, calc(100% - 4mm) 100%, 0 100%, 4mm 50%); }
 .chevrons > div:first-child { margin-left: 0; padding-left: 4mm; clip-path: polygon(0 0, calc(100% - 4mm) 0, 100% 50%, calc(100% - 4mm) 100%, 0 100%); }
-.chevrons > .on { background: var(--accent-strong); color: #fff; }
+.chevrons > .on { background: var(--heading-color); color: #fff; }
 .chevrons small { display: block; font-weight: normal; font-size: 8pt; }
 .quote-xl { border-left: 1.6mm solid var(--accent-strong); padding: 2mm 0 2mm 6mm; margin: 6mm 0; }
 .quote-xl p { font-size: 20pt; line-height: 1.45; font-weight: bold; margin: 0; color: #14231e; }
@@ -169,7 +169,7 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .versus > div { padding: 4mm 5mm; }
 .versus > div + div { background: var(--accent-soft); }
 .versus h3 { margin: 0 0 1mm; font-size: 12pt; }
-.versus .tagline { color: var(--accent-strong); font-weight: bold; margin: 0 0 2mm; }
+.versus .tagline { color: var(--heading-color); font-weight: bold; margin: 0 0 2mm; }
 .qa { display: flex; gap: 5mm; align-items: center; background: var(--accent-soft); border-radius: 2mm; padding: 6mm 7mm; margin: 6mm 0; }
 .qa > * { flex: 1 1 0; min-width: 0; }
 .qa > .a { flex-grow: 1.3; }

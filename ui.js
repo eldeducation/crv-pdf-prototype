@@ -72,7 +72,7 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '作り直す元の資料':'Result to rebuild', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
  '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に2回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to two extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
@@ -458,11 +458,12 @@ $('resume').onclick=async()=>{
 };
 $('stop').onclick=async()=>{try{const d=await api('stop',{});message(d.message);await refresh();}catch(e){message(e.message,true);}};
 $('restyle').onclick=async()=>{
- if(busy||submitting||!lastJob||lastJob.status!=='complete')return;
+ const source=$('restyleSource').value;
+ if(busy||submitting||!source)return;
  try{
   if($('executionMode').value==='api'&&!configured)throw Error(tr('最初にAI接続を設定してください。','Set up the AI connection first.'));
   submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('restyle').disabled=true;
-  await api('start',{restyle_from:lastJob.folder,execution_mode:$('executionMode').value,model:$('model').value,effort:$('effort').value,...arrangementPayload(),budget_usd:budgetValue()});
+  await api('start',{restyle_from:source,execution_mode:$('executionMode').value,model:$('model').value,effort:$('effort').value,...arrangementPayload(),budget_usd:budgetValue()});
   submitting=false;await refresh();
  }catch(e){message(e.message,true);}
  finally{submitting=false;$('restyle').disabled=false;}
@@ -513,8 +514,35 @@ function usageLine(u){
   ?`${range}API ${u.call_count}/${u.max_calls} calls / Confirmed $${u.known_cost_usd.toFixed(3)}${limit}${u.cost_complete?'':' (some costs unconfirmed)'}`
   :`${range}API ${u.call_count}/${u.max_calls}回 / 確定額 $${u.known_cost_usd.toFixed(3)}${limit}${u.cost_complete?'':'（未確定分あり）'}`;
 }
+// Past verified results that can be rebuilt with new settings (kept across server restarts).
+let restyleSources=[],restyleSourcesKey='';
+async function loadRestyleSources(){
+ try{const r=await fetch('restyle-sources');if(!r.ok)return;restyleSources=(await r.json()).sources||[];paintRestyleSources();}catch{}
+}
+function paintRestyleSources(){
+ const select=$('restyleSource'),previous=select.value;
+ const purposeNames={auto:['動画に合わせる','Auto'],procedure:['作業手順書','Procedure'],seminar:['セミナー要約','Seminar'],training:['研修資料','Training']};
+ const detailNames={compact:['簡潔','Compact'],standard:['標準','Standard'],detailed:['詳しく','Detailed']};
+ const key=JSON.stringify([restyleSources,lang]);
+ if(key!==restyleSourcesKey){
+  restyleSourcesKey=key;select.replaceChildren();
+  for(const s of restyleSources){
+   const option=document.createElement('option');option.value=s.folder;
+   const when=new Date(s.finished_at*1000).toLocaleString(lang==='en'?'en-US':'ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
+   option.textContent=`${when}　${s.title||s.folder}（${pair(purposeNames[s.purpose]||purposeNames.auto)}・${pair(detailNames[s.detail_level]||detailNames.standard)}）`;
+   select.append(option);
+  }
+ }
+ const preferred=lastJob?.status==='complete'&&restyleSources.some(s=>s.folder===lastJob.folder)?lastJob.folder:previous;
+ if(preferred&&restyleSources.some(s=>s.folder===preferred))select.value=preferred;
+ $('restylePanel').hidden=busy||submitting||!restyleSources.length;
+ $('restyleHelp').textContent=tr('動画・画像・内容案を再利用して、新しいPDFを作ります。元のPDFは残ります。','Reuse the video, images and content plan to create a new PDF. The original PDF is preserved.')+' '+($('executionMode').value==='manual'?tr('APIなしのテストは、チャットでの回答作成が必要です。','Manual mode requires chat responses.'):tr('AIによる再編集と確認にはAPI料金がかかります。','AI editing and review incur API charges.'));
+}
+let restyleSeenStatus=null;
 function paintStatus(d){
- $('restylePanel').hidden=true;
+ // Refresh the list when a run finishes (a new result may have become rebuildable).
+ const statusKey=d.job?d.job.folder+':'+d.job.status:'none';
+ if(statusKey!==restyleSeenStatus){restyleSeenStatus=statusKey;if(d.job?.status!=='running')loadRestyleSources();}
  $('presentationSummary').textContent='';
  if(catalogRevision!==d.key_revision||configured&&!d.configured)resetCatalogue(d.key_revision);
  configured=d.configured;
@@ -534,6 +562,8 @@ function paintStatus(d){
  $('save').disabled=d.job?.status==='running'||submitting;
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();
+ busy=d.job?.status==='running';
+ paintRestyleSources();
  if(submitting){paintSubmission();return;}
  const j=d.job;lastJob=j;
  if(!j){$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;if(clientError)message(clientError.message,true);return;}
@@ -561,8 +591,7 @@ function paintStatus(d){
   $('presentationSummary').textContent=tr('構成：','Structure: ')+pair(names[presentation.purpose])+' / '+tr('デザイン：','Design: ')+pair(names[presentation.design])+(presentation.requested_design==='auto'?tr('（おまかせ）',' (automatic)'):'');
   if(presentation.presentation_modes?.length)$('presentationSummary').textContent+=' / '+presentation.presentation_modes.map(mode=>pair(modeNames[mode])).filter(Boolean).join(' · ');
  }
- $('restylePanel').hidden=j.status!=='complete'||!j.report.content_verified;
- $('restyleHelp').textContent=tr('動画・画像・内容案を再利用して、新しいPDFを作ります。元のPDFは残ります。','Reuse the video, images and content plan to create a new PDF. The original PDF is preserved.')+' '+($('executionMode').value==='manual'?tr('APIなしのテストは、チャットでの回答作成が必要です。','Manual mode requires chat responses.'):tr('AIによる再編集と確認にはAPI料金がかかります。','AI editing and review incur API charges.'));
+ paintRestyleSources();
  const files=[['document.pdf',j.status==='needs_review'?'PDFを保存（要確認）':'PDFを保存'],['document.md','編集用Markdown'],['run.json','生成記録']];
  if(!j.manual_mode&&['focused-evidence-v2','quality-first-v3'].includes(j.report.quality_pipeline))files.push(['usage.json','API使用量']);
  if(j.status==='needs_review')files.push(['review-notes.txt','確認が必要な点']);
