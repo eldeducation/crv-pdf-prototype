@@ -122,6 +122,54 @@ def split_kit_rules(css):
     return ''.join(kept), removed
 
 
+# Short names editors use for the same components (seen in real drafts: chap, chev, kp).
+KIT_ALIASES = {'kp': 'keypoints', 'keypoint': 'keypoints', 'points': 'keypoints', 'chev': 'chevrons',
+               'chevron': 'chevrons', 'arrows': 'chevrons', 'flowbar': 'chevrons', 'chap': 'chapter',
+               'tl-dr': 'tldr', 'summary-box': 'tldr', 'oneline': 'tldr', 'pull': 'quote-xl',
+               'bigquote': 'quote-xl', 'big-quote': 'quote-xl', 'quotexl': 'quote-xl', 'bignum': 'bigstat',
+               'big-number': 'bigstat', 'stat-big': 'bigstat', 'vs': 'versus', 'compare': 'versus',
+               'faq': 'qa', 'hero': 'cover', 'cover-band': 'cover', 'photo': 'shot', 'screenshot': 'shot',
+               'lead-in': 'lede', 'intro': 'lede'}
+_CLASS_ATTR = re.compile(r'class="([^"]*)"')
+_CSS_CLASS = re.compile(r'\.(-?[A-Za-z_][\w-]*)')
+
+
+def _kit_match(name):
+    if name in KIT_ALIASES:
+        return KIT_ALIASES[name]
+    for kit in KIT_CLASSES:
+        # 'chap' -> chapter, 'chevron-row' -> chevrons, 'tile' -> tiles. Three letters is too
+        # loose: real drafts used 'ver' (a table's version cell) and 'big' (large text).
+        if len(name) >= 4 and kit.startswith(name) and name != kit:
+            return kit
+        if name.startswith(kit + '-') and kit not in {'cover'}:
+            return kit
+    return None
+
+
+def kit_lookalikes(pages, authored_css, base_css):
+    """Per page, the editor's own classes that rebuild a kit component, as (own, kit) pairs.
+
+    In real drafts the editor re-created the chapter heading, key points and
+    arrow flow under its own names (.chap, .kp, .chev). Its own CSS for them is
+    what broke layouts (numbers above the page, unreadable text); the kit is
+    styled, themed and checked. Classes the base CSS already defines are fine."""
+    own = set(_CSS_CLASS.findall(authored_css or '')) - set(_CSS_CLASS.findall(base_css or '')) - set(KIT_CLASSES)
+    arrows = {name for name in own
+              if re.search(r'\.' + re.escape(name) + r'(?![\w-])[^{}]*\{[^}]*clip-path\s*:\s*polygon', authored_css or '')}
+    found = {}
+    for index, page in enumerate(pages):
+        used = {c for attr in _CLASS_ATTR.findall(page.get('html', '')) for c in attr.split()}
+        pairs = []
+        for name in sorted(used & own):
+            kit = _kit_match(name) or ('chevrons' if name in arrows else None)
+            if kit and (name, kit) not in pairs:
+                pairs.append((name, kit))
+        if pairs:
+            found[index] = pairs
+    return found
+
+
 EDITORIAL_KIT_CSS = '''
 mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); color: inherit; padding: 0 .3mm; }
 .cover { background: var(--heading-color); color: #fff; border-radius: 2.5mm; padding: 9mm 9mm 8mm; margin: 0 0 6mm; }

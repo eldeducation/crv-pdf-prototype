@@ -1,3 +1,4 @@
+import json
 import re
 import unittest
 from pathlib import Path
@@ -38,6 +39,34 @@ class EditorialKitTest(unittest.TestCase):
         css = style_css('editorial')
         for name in ('point', 'chapter', 'qa'):
             self.assertRegex(css, r'\.' + name + r' \{ display: flex;')
+
+    def test_lookalikes_of_kit_components_are_found_per_page(self):
+        from document_design import kit_lookalikes
+        base = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css('editorial')
+        css = ('.chap{display:flex}.chap .no{font-size:30pt}.kp{display:grid}.vs{display:grid}'
+               '.flowh div{clip-path:polygon(0 0,90% 0,100% 50%,90% 100%,0 100%)}'
+               '.ver{font-weight:700}.big{font-size:18pt}.grid3{display:grid}')
+        pages = [{'html': '<div class="chap"><span class="no">01</span><h2>見出し</h2></div><div class="kp"><div>a</div></div>'},
+                 {'html': '<div class="vs"><div>a</div><div>b</div></div><div class="flowh"><div>1</div></div>'},
+                 {'html': '<table><tr><td class="ver">v1</td></tr></table><p class="big">強調</p><div class="grid3"></div>'
+                          '<div class="chapter"><p class="no">02</p><div><h2>部品</h2></div></div>'}]
+        found = kit_lookalikes(pages, css, base)
+        self.assertEqual(found[0], [('chap', 'chapter'), ('kp', 'keypoints')])
+        self.assertEqual(found[1], [('flowh', 'chevrons'), ('vs', 'versus')])
+        self.assertNotIn(2, found)          # short generic names and real kit usage are not flagged
+
+    def test_lookalike_note_is_added_to_page_diagnostics(self):
+        import tempfile
+        import pipeline
+        qa = {'design_diagnostics': [{'page': 1, 'warnings': []}, {'page': 2, 'warnings': []}]}
+        doc = {'css': '.chev div{clip-path:polygon(0 0,1% 0,0 1%)}',
+               'pages': [{'html': '<p>本文</p>'}, {'html': '<div class="chev"><div>v1</div></div>'}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            pipeline.note_kit_lookalikes(qa, doc, Path(tmp))
+            saved = json.loads((Path(tmp) / 'layout-check.json').read_text(encoding='utf-8'))
+        self.assertEqual(qa['design_diagnostics'][0]['warnings'], [])
+        self.assertIn('.chev→.chevrons', qa['design_diagnostics'][1]['warnings'][0])
+        self.assertEqual(saved, qa)
 
     def test_every_theme_sets_kit_colors(self):
         for theme in THEMES:

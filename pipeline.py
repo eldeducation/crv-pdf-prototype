@@ -29,7 +29,8 @@ from usage_guard import GuardedClient, BudgetStop
 from checkpoints import Checkpoint, signature
 from job_progress import Progress, stop_code
 from document_options import build_prompt, validate_options, normalize_modes, validate_notes
-from document_design import select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA, split_kit_rules
+from document_design import (select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA,
+                             split_kit_rules, kit_lookalikes)
 from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
                                validate_design_plan, validate_design_review)
 from source_references import citation_html, write_index, source_link, markdown_references
@@ -726,6 +727,26 @@ _REVISE['design_plan_pages'] = {**DESIGN_PLAN_SCHEMA['properties']['pages'],
 _REVISE['visuals'] = {**VISUAL_SCHEMA, 'description': '変更する場合だけ。図表の定義全体を置き換える'}
 
 
+def note_kit_lookalikes(qa, doc, out):
+    """Add a design note to pages that rebuild a kit component under the editor's own class names.
+
+    A note, not an error: the editor fixes it or gives its reason in design_review,
+    like other design diagnostics."""
+    base = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css('editorial')
+    found = kit_lookalikes(doc['pages'], doc.get('css', ''), base)
+    if not found:
+        return
+    by_page = {d.get('page'): d for d in qa.get('design_diagnostics', [])}
+    for index, pairs in found.items():
+        entry = by_page.get(index + 1)
+        if entry is None:
+            continue
+        names = '、'.join(f'.{own}→.{kit}' for own, kit in pairs)
+        entry.setdefault('warnings', []).append(
+            f'用意した部品と同じ役割の独自クラスがある（{names}）。部品の例と同じHTML構造に置き換えると、配色と紙面検査に沿って崩れにくい。')
+    (out / 'layout-check.json').write_text(json.dumps(qa, ensure_ascii=False, indent=2), encoding='utf-8')
+
+
 def revised_draft(draft, args):
     """The previous submission with only the named pages (and optional css/title/visuals) replaced."""
     if not draft:
@@ -855,6 +876,8 @@ class Pipeline:
             write_json(out / 'design-plan.json', doc['design_plan'])
         self.notify(f"PDFを作成して確認しています（{self.revisions}回目）")
         self.qa = render(out / "document.html", out)
+        if doc['presentation']['design'] == 'editorial':
+            note_kit_lookalikes(self.qa, doc, out)
         self.document = doc
         if self.qa.get("errors"):
             self.layout_failures += 1
