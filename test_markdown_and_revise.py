@@ -44,6 +44,25 @@ class MarkdownExportTest(unittest.TestCase):
         self.assertNotIn('- 短い指示', text)
         self.assertIn('- v1 誤解\n- v2 認識\n- 最終版 タグで判定', text)
 
+    def test_tag_like_text_stays_visible(self):
+        # A raw "<final_verdict>" would be read as an HTML tag and hidden by Markdown viewers.
+        text = page_markdown('<p>最終判定を&lt;final_verdict&gt;タグで囲む</p><img src="assets/a.jpg" alt="&lt;x&gt;">')
+        self.assertIn('&lt;final_verdict&gt;', text)
+        self.assertNotIn('<final_verdict>', text)
+        self.assertIn('![&lt;x&gt;](assets/a.jpg)', text)
+
+    def test_list_items_with_paragraphs_keep_their_bullets(self):
+        text = page_markdown('<ul><li><p>一つ目</p></li><li><div>二つ目</div></li></ul><ol><li><p>手順</p></li></ol>')
+        self.assertIn('- 一つ目', text)
+        self.assertIn('- 二つ目', text)
+        self.assertIn('1. 手順', text)
+
+    def test_line_breaks_are_kept_and_prefixes_do_not_leak(self):
+        text = page_markdown('<p>1行目<br>2行目</p><h2></h2><p>後の段落</p>')
+        self.assertIn('1行目  \n2行目', text)
+        self.assertIn('\n後の段落', '\n' + text)
+        self.assertNotIn('## 後の段落', text)
+
     def test_svg_content_is_skipped(self):
         self.assertNotIn('path', page_markdown('<p>図</p><svg><text>path</text></svg>'))
 
@@ -79,7 +98,7 @@ class ReviseDraftTest(unittest.TestCase):
         self.assertNotIn('markdown', compose['required'])
         self.assertNotIn('markdown', compose['properties'])
         self.assertIn('revise_pages', {t['name'] for t in pipeline.TOOLS})
-        self.assertIn('revise_pages', {t['name'] for t in pipeline.editor_tools(1, True, 6)})
+        self.assertIn('revise_pages', {t['name'] for t in pipeline.TOOLS})
 
 
 class SharedCopyTest(unittest.TestCase):

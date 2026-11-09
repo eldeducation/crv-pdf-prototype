@@ -117,6 +117,24 @@ class GuardTest(unittest.TestCase):
             self.assertEqual(json.loads((Path(folder) / 'usage.json').read_text(encoding='utf-8'))['estimate']['high_usd'], 2.0)
 
 
+class EncodedImageReuseTest(unittest.TestCase):
+    def test_estimate_and_real_requests_share_encoded_images(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp)
+            (out / 'assets').mkdir()
+            Image.new('RGB', (64, 48), 'red').save(out / 'assets' / 'a.jpg')
+            evidence = pipeline.Evidence.__new__(pipeline.Evidence)
+            evidence.out, evidence.assets = out, (out / 'assets').resolve()
+            first = evidence.image_block('assets/a.jpg')
+            self.assertIs(evidence.image_block('assets/a.jpg'), first)
+            records = [{'file': 'assets/a.jpg', 'seconds': 1.0}]
+            sheet = evidence.contact_content(records)
+            again = evidence.contact_content(records)
+            self.assertEqual(sheet, again)
+            self.assertIsNot(sheet, again)            # callers may extend the returned list
+            self.assertIs(sheet[1], again[1])         # the encoded sheet itself is reused
+
+
 class ServerBudgetTest(unittest.TestCase):
     def test_blank_budget_means_automatic(self):
         import server

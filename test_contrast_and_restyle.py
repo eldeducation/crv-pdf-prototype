@@ -32,6 +32,52 @@ class ContrastCheckTest(unittest.TestCase):
         self.assertNotIn('opacity', rule)
 
 
+class ContrastRenderTest(unittest.TestCase):
+    """Renders real pages (skipped where Node/Playwright/Chrome are not set up, e.g. CI)."""
+
+    def render(self, body, design='editorial'):
+        import pipeline
+        from document_design import style_css
+        from presentation_quality import theme_css
+        css = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css(design) + theme_css('amber')
+        folder = Path(self.tmp.name)
+        (folder / 'document.html').write_text(
+            f'<!doctype html><html lang="ja"><meta charset="utf-8"><style>{css}</style>'
+            f'<body data-document-design="{design}" data-document-purpose="seminar">'
+            f'<section class="page"><main class="page-content">{body}</main><footer class="page-foot"><span>t</span><span>01</span></footer></section>'
+            f'</body></html>', encoding='utf-8')
+        try:
+            return pipeline.render(folder / 'document.html', folder)
+        except Exception as error:   # renderer not available on this machine
+            self.skipTest(f'renderer unavailable: {str(error)[:80]}')
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_unreadable_text_is_an_error_and_low_contrast_a_note(self):
+        result = self.render(
+            '<div style="background:#6f4914;padding:5mm"><p style="color:#44403c">読めない灰色の行</p></div>'
+            '<p style="color:#8a8a8a">やや薄い灰色の本文です</p>'
+            '<p>普通の本文です。</p>')
+        errors = ' '.join(result['errors'])
+        self.assertIn('読めない灰色の行', errors)
+        self.assertNotIn('普通の本文', errors)
+        self.assertNotIn('やや薄い灰色', errors)
+        warnings = ' '.join(w for d in result['design_diagnostics'] for w in d['warnings'])
+        self.assertIn('コントラストが低い', warnings)
+
+    def test_kit_cover_and_source_time_are_readable(self):
+        result = self.render(
+            '<div class="cover"><span class="kicker">SEMINAR</span><h1>題名<em>強調</em></h1>'
+            '<p class="sub">副題 <small class="source-ref">[00:00–00:19]</small></p></div>'
+            '<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">要点の文。</p></div>'
+            '<div class="chapter"><p class="no">01</p><div><p class="meta">PART 1　02:00 – 08:35</p><h2>見出し</h2></div></div>')
+        self.assertEqual([e for e in result['errors'] if 'コントラスト' in e or '読めません' in e], [])
+
+
 class PromptTagsAllowedTest(unittest.TestCase):
     def test_every_tag_the_editor_prompt_shows_passes_the_html_filter(self):
         # The prompt recommended <mark> while the filter rejected it (found in a full manual run).

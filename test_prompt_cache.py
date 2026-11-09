@@ -60,7 +60,7 @@ class StablePrefixTest(unittest.TestCase):
         import inspect
         source = inspect.getsource(pipeline.Pipeline.generate)
         self.assertIn('self.client.send(messages, TOOLS, system)', source)
-        self.assertIn('raise PrototypeError(INSPECTION_CLOSED)', source)
+        self.assertIn('raise PrototypeError(note)', source)
 
 
 class CostTest(unittest.TestCase):

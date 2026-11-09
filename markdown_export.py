@@ -6,8 +6,9 @@ rendered from the pages only, so generating Markdown from those same pages
 keeps it identical in content without changing the PDF.
 """
 import re
-from html import unescape
 from html.parser import HTMLParser
+
+BREAK = ' '   # placeholder for <br> until the line is written
 
 HEADINGS = {'h1': '# ', 'h2': '## ', 'h3': '### ', 'h4': '#### ', 'h5': '#### ', 'h6': '#### '}
 BLOCKS = {'p', 'div', 'section', 'article', 'header', 'footer', 'main', 'aside', 'figure', 'figcaption',
@@ -34,10 +35,18 @@ class _Converter(HTMLParser):
     def flush(self):
         text = re.sub(r'[ \t\r\n]+', ' ', self.text).strip()
         text = re.sub(r'\*\*\s*\*\*', '', text)
+        # <br> is kept as a Markdown hard break (whitespace collapsing above would turn it into a space).
+        text = re.sub(r'\s*' + BREAK + r'\s*', '  \n', text).strip()
         if text:
             quote = '> ' * self.quote
             self.lines.append(quote + self.prefix + text)
-        self.text, self.prefix = '', ''
+            self.prefix = ''
+        # With no text yet, keep the prefix: '<li><p>…' must still become '- …'.
+        self.text = ''
+
+    def end_block(self, blank=True):
+        self.blank() if blank else self.flush()
+        self.prefix = ''
 
     def blank(self):
         self.flush()
@@ -87,10 +96,10 @@ class _Converter(HTMLParser):
             self.blank()
             self.lines.extend(['---', ''])
         elif tag == 'br':
-            self.text += '  \n'
+            self.text += BREAK
         elif tag == 'img':
             self.blank()
-            alt = attrs.get('alt', '').replace(']', '')
+            alt = (attrs.get('alt') or '').replace(']', '').replace('<', '&lt;').replace('>', '&gt;')
             self.lines.extend([f'![{alt}]({attrs.get("src", "")})', ''])
         elif tag == 'a':
             href = attrs.get('href', '')
@@ -127,11 +136,11 @@ class _Converter(HTMLParser):
                 self.emit_table()
             return
         if tag in HEADINGS or tag in {'li', 'p', 'figure', 'section', 'dt', 'dd'}:
-            self.blank() if tag not in {'li', 'dt', 'dd'} else self.flush()
+            self.end_block(blank=tag not in {'li', 'dt', 'dd'})
         elif tag == 'figcaption':
             # Italic caption; bold inside it ("**07:06**") would nest markers, so drop it.
             self.text = '*' + self.text.lstrip('*').replace('**', '').strip() + '*'
-            self.blank()
+            self.end_block()
         elif tag in {'ul', 'ol'}:
             if self.lists:
                 self.lists.pop()
@@ -146,7 +155,7 @@ class _Converter(HTMLParser):
             if href:
                 self.text += f']({href})'
         elif tag in BLOCKS:
-            self.blank()
+            self.end_block()
         elif _inline_marker(tag):
             self.text += _inline_marker(tag)
             if self.label_open and _inline_marker(tag) == '**':
@@ -156,6 +165,9 @@ class _Converter(HTMLParser):
     def handle_data(self, data):
         if self.skip:
             return
+        # Text such as "<final_verdict>" (written &lt;…&gt; in the page) must stay visible:
+        # raw angle brackets would be read as an HTML tag and hidden by Markdown viewers.
+        data = data.replace('<', '&lt;').replace('>', '&gt;')
         if self.cell is not None:
             self.cell.append(data)
         elif self.table is None:
@@ -175,7 +187,9 @@ class _Converter(HTMLParser):
         self.flush()
         text = '\n'.join(self.lines)
         text = re.sub(r'\n{3,}', '\n\n', text)
-        return unescape(text).strip() + '\n'
+        # The parser already decoded character references; decoding again would turn the
+        # escaped &lt;…&gt; back into raw tags.
+        return text.strip() + '\n'
 
 
 NUMBER_LABEL = re.compile(r'^(?:\d{1,2}|PART\s*\d+|第\d+章)$', re.I)

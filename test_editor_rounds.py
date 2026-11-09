@@ -10,19 +10,20 @@ def names(tools):
 
 class EditorRoundReserveTest(unittest.TestCase):
     def test_inspection_closes_while_rounds_remain_to_compose_and_approve(self):
-        self.assertIn('inspect_frames', names(pipeline.editor_tools(5, False, 0)))
-        self.assertIn('inspect_interval', names(pipeline.editor_tools(4, False, 1)))
+        self.assertTrue(pipeline.inspection_open(5, False, 0))
+        self.assertTrue(pipeline.inspection_open(4, False, 1))
         for left in (3, 2, 1):
-            tools = names(pipeline.editor_tools(left, False, 0))
-            self.assertNotIn('inspect_frames', tools)
-            self.assertNotIn('inspect_interval', tools)
-            self.assertIn('compose_document', tools)
-            self.assertIn('approve_document', tools)
+            self.assertFalse(pipeline.inspection_open(left, False, 0))
 
     def test_first_draft_is_due_after_two_inspection_rounds_even_with_rounds_to_spare(self):
-        self.assertIn('inspect_frames', names(pipeline.editor_tools(7, False, 1)))
-        self.assertNotIn('inspect_frames', names(pipeline.editor_tools(5, False, 2)))
+        self.assertTrue(pipeline.inspection_open(7, False, 1))
+        self.assertFalse(pipeline.inspection_open(5, False, 2))
         self.assertEqual(pipeline.Config().max_rounds, 7)
+
+    def test_feedback_points_fixes_to_revise_pages(self):
+        self.assertIn('revise_pages', pipeline.FIX_GUIDANCE)
+        self.assertIn('revise_pages', pipeline.INSPECTION_CLOSED_AFTER_DRAFT)
+        self.assertNotIn('compose_document', pipeline.INSPECTION_CLOSED_AFTER_DRAFT)
 
     def test_checklist_names_the_exact_images_and_rules_from_the_plan(self):
         plan = {'units': [{'id': 'u01', 'type': 'action'}, {'id': 'c01', 'type': 'claim'}],
@@ -53,8 +54,8 @@ class EditorRoundReserveTest(unittest.TestCase):
         validate_design_plan(doc, {'units': [{'id': 'c01'}]})
 
     def test_a_composed_document_keeps_inspection_one_round_longer(self):
-        self.assertIn('inspect_frames', names(pipeline.editor_tools(3, True)))
-        self.assertNotIn('inspect_frames', names(pipeline.editor_tools(2, True)))
+        self.assertTrue(pipeline.inspection_open(3, True))
+        self.assertFalse(pipeline.inspection_open(2, True))
 
     def test_openrouter_forwards_notes_sent_with_tool_results(self):
         messages = [
@@ -111,7 +112,82 @@ class EditorRoundReserveTest(unittest.TestCase):
                 guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
             self.assertEqual(caught.exception.code, 'credit')
             self.assertIn('402', str(caught.exception))
+            self.assertIn('最大約$', str(caught.exception))     # says what one request needs
             self.assertIsNone(guard.pending)
+
+    def test_402_is_retried_once_with_the_expected_output_cap(self):
+        import tempfile
+        from pathlib import Path
+        from usage_guard import GuardedClient
+        seen = []
+
+        class Inner:
+            calls = []
+
+            def send(self, messages, tools, system):
+                seen.append(config.max_tokens)
+                if len(seen) == 1:
+                    self.calls.append({'usage': {'cost_usd': 0.0}, 'http_status': 402})
+                    raise pipeline.PrototypeError('OpenRouter HTTP 402: 残高またはキーの利用上限が不足しています。')
+                self.calls.append({'usage': {'cost_usd': 0.5}, 'stop_reason': 'tool_calls'})
+                return []
+
+        config = pipeline.Config()
+        config.budget_usd, config.expected_output = 100, {'document_edit': 40800}
+        with tempfile.TemporaryDirectory() as folder:
+            guard = GuardedClient(Inner(), config, Path(folder))
+            guard.rates = (4e-6, 2e-5)
+            guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
+        self.assertEqual(seen, [65536, 40800])
+        self.assertEqual(guard.calls[-1]['max_output_tokens'], 40800)
+        self.assertEqual(config.max_tokens, 65536)                  # restored after the request
+
+    def test_token_limit_counts_cached_prompt_tokens(self):
+        import tempfile
+        from pathlib import Path
+        from usage_guard import BudgetStop, GuardedClient
+
+        class Inner:
+            calls = [{'usage': {'input_tokens': 1000, 'output_tokens': 100, 'cache_read_input_tokens': 50000, 'cost_usd': 0.1}}]
+
+            def send(self, messages, tools, system):
+                raise AssertionError('must stop before sending')
+
+        config = pipeline.Config()
+        config.budget_usd, config.max_total_tokens = 100, 60000
+        with tempfile.TemporaryDirectory() as folder:
+            guard = GuardedClient(Inner(), config, Path(folder))
+            guard.rates = (0.0, 0.0)
+            with self.assertRaises(BudgetStop) as caught:
+                guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
+        self.assertEqual(caught.exception.code, 'token_limit')
+
+    def test_json_repair_request_is_not_cached(self):
+        import tempfile
+        from pathlib import Path
+        from usage_guard import GuardedClient
+        seen = []
+
+        class Inner:
+            calls = []
+
+            def send(self, messages, tools, system):
+                seen.append(config.cache_ttl)
+                if len(seen) == 1:
+                    self.calls.append({'usage': {'cost_usd': 0.1}, 'stop_reason': 'tool_calls'})
+                    error = pipeline.PrototypeError('broken JSON')
+                    error.tool_output = {'name': 'compose_document', 'arguments': '{"title": "t"'}
+                    raise error
+                self.calls.append({'usage': {'cost_usd': 0.01}, 'stop_reason': 'tool_calls'})
+                return []
+
+        config = pipeline.Config()
+        config.budget_usd = 100
+        with tempfile.TemporaryDirectory() as folder:
+            guard = GuardedClient(Inner(), config, Path(folder))
+            guard.rates = (0.0, 0.0)
+            guard.send([{'role': 'user', 'content': 'x'}], pipeline.TOOLS, 'system')
+        self.assertEqual(seen, ['1h', None])
 
 
 if __name__ == '__main__':

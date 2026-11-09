@@ -236,7 +236,16 @@ class Evidence:
         self._save()
 
     def image_block(self, relative, max_edge=1600):
+        # The same frame is encoded for the pre-run estimate and again for the real
+        # requests; reuse the finished block (callers never modify it).
         path = self.safe_asset(relative)
+        cache = self.__dict__.setdefault('_block_cache', {})
+        key = (str(path), max_edge, path.stat().st_mtime_ns)
+        if key not in cache:
+            cache[key] = self._encode_block(path, max_edge)
+        return cache[key]
+
+    def _encode_block(self, path, max_edge):
         with Image.open(path) as original:
             img = original.convert("RGB")
             img.thumbnail((max_edge, max_edge))
@@ -255,8 +264,15 @@ class Evidence:
 
     def contact_content(self, records):
         """All selected frames, in chronological sheets; originals remain available."""
-        content = []
         records = sorted(records, key=lambda r: r['seconds'])
+        cache = self.__dict__.setdefault('_contact_cache', {})
+        key = json.dumps(records, sort_keys=True, ensure_ascii=False)
+        if key not in cache:
+            cache[key] = self._contact_sheets(records)
+        return list(cache[key])
+
+    def _contact_sheets(self, records):
+        content = []
         for offset in range(0, len(records), 8):
             group = records[offset:offset+8]
             canvas = Image.new('RGB', (1536, 520), 'white')
@@ -654,24 +670,24 @@ TOOLS = [
 TOOLS.insert(1, INTERVAL_TOOL)
 INSPECTION_CLOSED = ('追加の映像確認の枠は終了しました（inspect_frames・inspect_intervalは使えません）。確認済みの画像と内容案だけで'
                      'compose_document を提出し、プレビュー確認後に approve_document で完了してください。')
-
+INSPECTION_CLOSED_AFTER_DRAFT = ('追加の映像確認の枠は終了しました（inspect_frames・inspect_intervalは使えません）。問題のあるページだけを'
+                                 'revise_pages で差し替えるか、問題がなければ approve_document で完了してください。')
+FIX_GUIDANCE = ('\n全ページを確認し、問題のあるページだけを revise_pages で差し替える（ページ数や全体の構成を変えるときだけ '
+                'compose_document）。問題がなければ approve_document を呼ぶ。')
 
 INSPECTION_ROUNDS = 2
 
 
-def editor_tools(rounds_left, has_document, round_no=0):
-    """Keep enough editor rounds to submit, fix once and approve.
+def inspection_open(rounds_left, has_document, round_no=0):
+    """Whether extra frame inspection is still allowed this editor round.
 
-    A model that keeps zooming into frames would otherwise spend every round on
-    inspection and stop at the round limit without ever composing a page. Before
-    a first draft, extra inspection is limited to the first INSPECTION_ROUNDS."""
+    Keeps enough rounds to submit, fix once and approve: a model that keeps zooming
+    into frames would otherwise spend every round on inspection and never compose.
+    Before a first draft, inspection is limited to the first INSPECTION_ROUNDS. The
+    tool list itself never changes (it is part of the cached prompt prefix)."""
     if has_document:
-        allowed = rounds_left > 2
-    else:
-        allowed = rounds_left > 3 and round_no < INSPECTION_ROUNDS
-    if allowed:
-        return TOOLS
-    return [t for t in TOOLS if t['name'] not in ('inspect_frames', 'inspect_interval')]
+        return rounds_left > 2
+    return rounds_left > 3 and round_no < INSPECTION_ROUNDS
 
 
 def submission_checklist(plan, max_rounds, editorial):
@@ -849,8 +865,7 @@ class Pipeline:
             self.content_qa = self.quality.review_document(doc, self.revisions)
             if self.content_qa.get('approved') and self.config.progress:
                 self.config.progress.complete('verify')
-        result = [{"type": "text", "text": json.dumps({"layout": self.qa, "content": self.content_qa}, ensure_ascii=False) +
-                   "\n全ページを確認し、問題があればcompose_documentで修正。問題がなければapprove_documentを呼ぶ。"}]
+        result = [{"type": "text", "text": json.dumps({"layout": self.qa, "content": self.content_qa}, ensure_ascii=False) + FIX_GUIDANCE}]
         removed = split_kit_rules(doc.get('css', ''))[1] if doc['presentation']['design'] == 'editorial' else []
         if removed:
             result.append({"type": "text", "text": "部品クラスはスタイル定義済みのため、cssの次のルールは使っていません："
@@ -919,10 +934,12 @@ class Pipeline:
             # The tool list stays identical on every turn: tools are the first part of the
             # cached prefix, so removing tools would invalidate the cache. Closed inspection
             # is announced in the conversation and enforced when a call arrives.
-            inspection_open = editor_tools(self.config.max_rounds - round_no, self.document is not None, round_no) is TOOLS
-            if not inspection_open and not pending and isinstance(messages[-1]['content'], list) \
-                    and not any(b.get('text') == INSPECTION_CLOSED for b in messages[-1]['content']):
-                messages[-1]['content'].append({'type': 'text', 'text': INSPECTION_CLOSED})
+            inspecting = inspection_open(self.config.max_rounds - round_no, self.document is not None, round_no)
+            note = INSPECTION_CLOSED_AFTER_DRAFT if self.document is not None else INSPECTION_CLOSED
+            already = any(isinstance(m.get('content'), list) and any(isinstance(b, dict) and b.get('text') == note for b in m['content'])
+                          for m in messages)
+            if not inspecting and not pending and not already and isinstance(messages[-1]['content'], list):
+                messages[-1]['content'].append({'type': 'text', 'text': note})
             save_editor(round_no, pending)
             try:
                 content = pending or self.client.send(messages, TOOLS, system)
@@ -949,8 +966,8 @@ class Pipeline:
             for call in calls:
                 try:
                     name, args = call["name"], call["input"]
-                    if name in {"inspect_frames", "inspect_interval"} and not inspection_open:
-                        raise PrototypeError(INSPECTION_CLOSED)
+                    if name in {"inspect_frames", "inspect_interval"} and not inspecting:
+                        raise PrototypeError(note)
                     if name == "inspect_frames":
                         value = self.evidence.inspect(args)
                     elif name == "inspect_interval":
