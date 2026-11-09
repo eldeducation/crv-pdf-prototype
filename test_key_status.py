@@ -60,6 +60,21 @@ class KeyStatusTest(unittest.TestCase):
                 self.assertRaises(catalog.CatalogError):
             catalog.key_status(FAKE)
 
+    def test_provider_explanation_of_a_rejection_is_shown_without_the_key(self):
+        from openrouter_client import provider_reason
+        body = {'error': {'code': 402, 'message': f'This request requires more credits, or fewer max_tokens. '
+                                                    f'You requested up to 65536 tokens, but can only afford 812. key {FAKE}'}}
+        error = mock.Mock()
+        error.read.return_value = json.dumps(body).encode('utf-8')
+        reason = provider_reason(error, FAKE)
+        self.assertIn('can only afford 812', reason)
+        self.assertNotIn(FAKE, reason)
+        self.assertNotIn('sk-or-v1', reason)
+        error.read.return_value = b'<html>gateway error</html>'
+        self.assertEqual(provider_reason(error, FAKE), '')
+        error.read.return_value = json.dumps({'error': {'message': 'x' * 900}}).encode('utf-8')
+        self.assertEqual(len(provider_reason(error, FAKE)), 300)
+
     def test_routes_and_ui(self):
         self.assertTrue(share_gateway.allowed_route('POST', 'key-status'))
         self.assertFalse(share_gateway.allowed_route('GET', 'key-status'))

@@ -16,6 +16,21 @@ def parse_arguments(raw):
     return json.loads(cleaned, strict=False)
 
 
+def provider_reason(error, key):
+    """The provider's own short explanation of a rejected request (e.g. "can only afford N
+    tokens"), with the key and any key-like strings removed. Empty when unavailable."""
+    try:
+        body = json.loads(error.read(4000).decode('utf-8', 'replace'))
+        message = body.get('error', {}).get('message', '') if isinstance(body, dict) else ''
+    except (ValueError, OSError, AttributeError, TypeError):
+        return ''
+    if not isinstance(message, str):
+        return ''
+    from security import redact
+    message = re.sub(r'\s+', ' ', redact(message, key)).strip()
+    return message[:300]
+
+
 def model_id(model):
     aliases = {'claude-opus-5-5': 'anthropic/claude-opus-5.5'}
     return aliases.get(model, model)
@@ -156,7 +171,9 @@ class OpenRouterClient:
             hints = {401: 'APIキーが認証されませんでした。', 402: '残高またはキーの利用上限が不足しています。',
                      403: 'このキー・地域・アカウントでは利用できません。', 404: '指定したモデルが利用できません。',
                      429: '利用上限です。時間をおいて再実行してください。', 400: 'モデル名・推論設定・入力容量を確認してください。'}
-            raise self.error_type(f'OpenRouter HTTP {error.code}: ' + hints.get(error.code, 'API接続に失敗しました。')) from None
+            reason = provider_reason(error, self.key) if error.code in (400, 402, 403, 404) else ''
+            raise self.error_type(f'OpenRouter HTTP {error.code}: ' + hints.get(error.code, 'API接続に失敗しました。')
+                                  + (f'（OpenRouterの説明：{reason}）' if reason else '')) from None
         except urllib.error.URLError:
             raise self.error_type('OpenRouterに接続できません。ネットワーク接続を確認してください。') from None
         finally:
