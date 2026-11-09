@@ -63,6 +63,26 @@ class MarkdownExportTest(unittest.TestCase):
         self.assertIn('\n後の段落', '\n' + text)
         self.assertNotIn('## 後の段落', text)
 
+    def test_kit_components_read_naturally(self):
+        text = page_markdown(
+            '<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">小さく試す。</p></div>'
+            '<div class="tiles"><div><span class="num">3</span><br>試した版</div><div><span class="num">2</span><br>足した情報</div></div>'
+            '<div class="bigstat"><span class="num">87</span><span class="unit">%</span><span class="label">回答者の割合</span></div>'
+            '<div class="quote-xl"><p>「まず試す」</p><p class="by">― 講演者（要旨）</p></div><h3>次の見出し</h3>'
+            '<div class="point"><span class="tag">POINT</span><p>形を先に決める。</p></div>'
+            '<div class="qa"><div class="q"><small>QUESTION</small><strong>なぜ？</strong></div><span class="arrow">→</span>'
+            '<div class="a"><strong>読みやすいから。</strong>補足。</div></div>')
+        self.assertIn('**ひとことで言うと：** 小さく試す。', text)
+        self.assertIn('**3** 試した版', text)
+        self.assertIn('**87**% 回答者の割合', text)
+        self.assertIn('> 「まず試す」\n>\n> ― 講演者（要旨）\n\n### 次の見出し', text)
+        self.assertIn('**POINT：** 形を先に決める。', text)
+        self.assertIn('**Q.** **なぜ？**', text)
+        self.assertIn('**A.** **読みやすいから。** 補足。', text)
+        self.assertNotIn('QUESTION', text)
+        self.assertNotIn('→', text)
+        self.assertNotIn('- **POINT', text)
+
     def test_svg_content_is_skipped(self):
         self.assertNotIn('path', page_markdown('<p>図</p><svg><text>path</text></svg>'))
 

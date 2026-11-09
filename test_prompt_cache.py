@@ -63,6 +63,18 @@ class StablePrefixTest(unittest.TestCase):
         self.assertIn('raise PrototypeError(note)', source)
 
 
+class AnalysisStagePrefixTest(unittest.TestCase):
+    def test_analysis_rounds_keep_the_same_tool_list(self):
+        # The final (largest) analysis round used to drop to the submit tool only,
+        # which invalidated the cached prefix and resent every evidence image.
+        import inspect
+        from content_quality import ContentQuality
+        source = inspect.getsource(ContentQuality.session)
+        self.assertIn('current_tools = available', source)
+        self.assertNotIn('[submit_tool] if finalizing', source)
+        self.assertIn('if finalizing:', source)       # closed inspection is still enforced per call
+
+
 class CostTest(unittest.TestCase):
     def test_call_cost_prices_reads_and_writes(self):
         usage = {'input_tokens': 100, 'output_tokens': 10, 'cache_read_input_tokens': 1000,

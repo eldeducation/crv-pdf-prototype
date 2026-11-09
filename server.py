@@ -73,6 +73,7 @@ def restyle_sources(limit=15):
 
 
 KEY_IDLE_SECONDS = 30 * 60
+KEY_STATUS_SECONDS = 15
 STATE = {"api_key": os.getenv("OPENROUTER_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", ""), "job": last_job(),
          "key_used_at": time.monotonic(), "key_revision": 0, "catalog": None, "catalog_attempt": 0}
 CSRF_TOKEN = secrets.token_urlsafe(32)
@@ -131,6 +132,7 @@ def clear_connection():
     STATE['key_revision'] += 1
     STATE['catalog'] = None
     STATE['catalog_attempt'] = 0
+    STATE['key_status'] = None
 
 
 def model_catalog(force=False):
@@ -306,13 +308,21 @@ class Handler(BaseHTTPRequestHandler):
                 # explained without signing in to the provider. No AI generation.
                 with LOCK:
                     expire_key()
-                    key = STATE['api_key']
+                    key, revision = STATE['api_key'], STATE['key_revision']
+                    cached = STATE.get('key_status')
                 if not key:
                     return self.send(400, {'error': '最初にAPIキーを設定してください。'})
                 if provider_for(key) != 'openrouter':
                     return self.send(200, {'supported': False})
+                # Repeated presses (or a script) reuse a recent answer instead of calling
+                # the provider each time with the user's key.
+                if cached and cached[0] == revision and time.monotonic() - cached[1] < KEY_STATUS_SECONDS:
+                    return self.send(200, cached[2])
                 try:
-                    return self.send(200, {'supported': True, **key_status(key)})
+                    result = {'supported': True, **key_status(key)}
+                    with LOCK:
+                        STATE['key_status'] = (revision, time.monotonic(), result)
+                    return self.send(200, result)
                 except CatalogError as error:
                     return self.send(error.status, {'error': 'キーの利用状況を取得できませんでした。', 'catalog_error': error.code})
             if route == 'disconnect':

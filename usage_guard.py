@@ -65,6 +65,31 @@ class GuardedClient:
             raise BudgetStop('料金情報が不正なため停止しました。')
         return self.rates
 
+    def key_status(self):
+        """The OpenRouter key's own limit and remaining amount, or None (other providers,
+        network trouble). Account-wide credits are not visible with a normal key."""
+        key = getattr(self.inner, 'key', None)
+        if self.inner.__class__.__name__ != 'OpenRouterClient' or not key:
+            return None
+        try:
+            from model_catalog import key_status
+            return key_status(key, timeout=15)
+        except Exception:
+            return None
+
+    def key_diagnosis(self, need):
+        """Say which allowance ran out after a 402: the key's limit or the account's credits."""
+        status = self.key_status()
+        if not status:
+            return ''
+        remaining = status.get('remaining_usd')
+        if remaining is None:
+            return ' このキーに上限はないため、アカウントのクレジット残高が不足しています。キーの持ち主にクレジットの補充を依頼してください。'
+        if remaining >= need:
+            return (f' このキーの上限の残りは${remaining:.2f}で足りているため、アカウントのクレジット残高が不足しています。'
+                    'このキーが属するアカウントへの補充を、キーの持ち主に依頼してください。')
+        return f' このキーの上限の残りは${remaining:.2f}です。キーの上限を上げるよう、キーの持ち主に依頼してください。'
+
     def snapshot(self):
         costs = [c.get('usage', {}).get('cost_usd') for c in self.calls]
         data = {'api_calls': self.calls, 'call_count': len(self.calls),
@@ -173,6 +198,7 @@ class GuardedClient:
                         if status == 402:
                             need = estimated * rates[0] + attempt_cap * rates[1]
                             message += f' この1回の処理には、残高（キーの上限の残り）が最大約${need:.2f}必要です。'
+                            message += self.key_diagnosis(need)
                         raise BudgetStop(message, code='credit' if status == 402 else 'auth') from None
                     raise
             if self.config.cancel_event is not None and self.config.cancel_event.is_set():

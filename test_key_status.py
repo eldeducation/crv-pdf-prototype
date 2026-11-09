@@ -77,6 +77,53 @@ class KeyStatusTest(unittest.TestCase):
         error.read.return_value = json.dumps({'error': {'message': 'x' * 900}}).encode('utf-8')
         self.assertEqual(len(provider_reason(error, FAKE)), 300)
 
+    def guard(self, status):
+        from pathlib import Path
+        import tempfile
+        import pipeline
+        from usage_guard import GuardedClient
+
+        class OpenRouterClient:      # name matters: only OpenRouter keys are looked up
+            calls, key = [], FAKE
+
+        self.tmp = tempfile.TemporaryDirectory()
+        guard = GuardedClient(OpenRouterClient(), pipeline.Config(), Path(self.tmp.name))
+        self.addCleanup(self.tmp.cleanup)
+        return guard, mock.patch('model_catalog.key_status', return_value=status)
+
+    def test_402_diagnosis_names_the_allowance_that_ran_out(self):
+        guard, patched = self.guard({'remaining_usd': 30.42})
+        with patched:
+            self.assertIn('アカウントのクレジット残高が不足', guard.key_diagnosis(0.96))
+        guard, patched = self.guard({'remaining_usd': 0.2})
+        with patched:
+            self.assertIn('キーの上限を上げる', guard.key_diagnosis(0.96))
+        guard, patched = self.guard({'remaining_usd': None})
+        with patched:
+            self.assertIn('上限はない', guard.key_diagnosis(0.96))
+
+    def test_diagnosis_is_silent_when_the_lookup_fails(self):
+        guard, _ = self.guard(None)
+        with mock.patch('model_catalog.key_status', side_effect=OSError('network')):
+            self.assertEqual(guard.key_diagnosis(0.96), '')
+
+    def test_run_stops_before_ai_when_the_key_cannot_cover_the_low_estimate(self):
+        import pipeline
+        source = __import__('inspect').getsource(pipeline.apply_cost_estimate)
+        self.assertIn("key['remaining_usd'] < estimate['low_usd']", source)
+        self.assertIn("code='credit'", source)
+
+    def test_server_reuses_a_recent_answer_and_forgets_it_with_the_key(self):
+        import inspect
+        import server
+        source = inspect.getsource(server.Handler.do_POST) if hasattr(server, 'Handler') else open(server.__file__, encoding='utf-8').read()
+        self.assertIn('KEY_STATUS_SECONDS', source)
+        self.assertGreater(server.KEY_STATUS_SECONDS, 0)
+        with server.LOCK:
+            server.STATE['key_status'] = (0, 0.0, {'supported': True})
+            server.clear_connection()
+            self.assertIsNone(server.STATE['key_status'])
+
     def test_routes_and_ui(self):
         self.assertTrue(share_gateway.allowed_route('POST', 'key-status'))
         self.assertFalse(share_gateway.allowed_route('GET', 'key-status'))

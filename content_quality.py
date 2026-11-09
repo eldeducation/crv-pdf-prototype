@@ -334,7 +334,11 @@ class ContentQuality:
             remaining = max(0, allowance-round_no)
             if round_no > allowance+1:
                 break
-            current_tools = [submit_tool] if finalizing else available
+            # The tool list stays the same every round: tools are the first part of the
+            # cached prompt prefix, and changing them in the (largest) final round would
+            # resend every evidence image at full price. Closed inspection is enforced
+            # below when a call arrives, and the round message says to submit now.
+            current_tools = available
             messages.append({"role": "user", "content": (
                 "追加確認の枠は終了です。取得済みの映像を使い、今の応答で提出ツールを呼んでください。"
                 "提出の入力不備は次の応答で修正できます。" if finalizing else

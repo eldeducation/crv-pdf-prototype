@@ -1203,6 +1203,18 @@ def apply_cost_estimate(pipeline, prompt, folder, notify):
     guard.estimate = estimate
     guard.snapshot()
     notify(f"AI処理の費用目安：約${estimate['low_usd']:.2f}〜${estimate['high_usd']:.2f}")
+    # Before any AI call: a key whose own limit cannot cover even the low estimate would
+    # only produce 402s. (Account-wide credits are not visible with a normal key.)
+    key = guard.key_status()
+    if key and key.get('remaining_usd') is not None:
+        estimate['key_remaining_usd'] = key['remaining_usd']
+        guard.snapshot()
+        if key['remaining_usd'] < estimate['low_usd']:
+            raise BudgetStop(f"このキーの上限の残り（${key['remaining_usd']:.2f}）が、費用の目安（約${estimate['low_usd']:.2f}〜"
+                             f"${estimate['high_usd']:.2f}）に足りないため、AIを使わずに止めました。キーの上限を上げるよう、"
+                             "キーの持ち主に依頼してください。", code='credit')
+        if key['remaining_usd'] < estimate['high_usd']:
+            notify(f"このキーの上限の残りは${key['remaining_usd']:.2f}です。修正が多いと途中で止まる可能性があります")
     if estimate['exceeds_max'] and estimate['automatic_ceiling']:
         raise BudgetStop(f"この動画の費用目安（約${estimate['low_usd']:.2f}〜${estimate['high_usd']:.2f}）が、"
                          "1回の生成の上限を超えるため開始しませんでした。詳しさを下げるか、短い動画でお試しください。", code='estimate_limit')
