@@ -28,6 +28,8 @@ def provider_reason(error, key):
         return ''
     from security import redact
     message = re.sub(r'\s+', ' ', redact(message, key)).strip()
+    # Dashboard links carry the key's internal id; the sentence is enough to act on.
+    message = re.sub(r'https?://\S+', '[OpenRouter settings]', message)
     return message[:300]
 
 

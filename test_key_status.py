@@ -70,6 +70,8 @@ class KeyStatusTest(unittest.TestCase):
         self.assertIn('can only afford 812', reason)
         self.assertNotIn(FAKE, reason)
         self.assertNotIn('sk-or-v1', reason)
+        error.read.return_value = json.dumps({'error': {'message': 'To increase, visit https://openrouter.ai/workspaces/default/keys/72f4dde9 and adjust'}}).encode('utf-8')
+        self.assertEqual(provider_reason(error, FAKE), 'To increase, visit [OpenRouter settings] and adjust')
         error.read.return_value = b'<html>gateway error</html>'
         self.assertEqual(provider_reason(error, FAKE), '')
         error.read.return_value = json.dumps({'error': {'message': 'x' * 900}}).encode('utf-8')
