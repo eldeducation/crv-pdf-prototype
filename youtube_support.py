@@ -204,3 +204,21 @@ if __name__ == '__main__':
         print(json.dumps(diagnostics), flush=True)
         print(error_code(error), file=sys.stderr, flush=True)
         raise SystemExit(1)
+
+
+def ensure_ffmpeg(environ=None, which=None):
+    """yt-dlp needs ffmpeg to merge video and audio. winget installs it in a
+    per-user folder that a shell started earlier may not have on PATH."""
+    import os
+    import shutil
+    environ = os.environ if environ is None else environ
+    which = which or shutil.which
+    if which('ffmpeg') and which('ffprobe'):
+        return True
+    base = Path(environ.get('LOCALAPPDATA', '')) / 'Microsoft' / 'WinGet'
+    candidates = [base / 'Links'] + sorted((base / 'Packages').glob('*FFmpeg*/*/bin'), reverse=True)
+    for folder in candidates:
+        if (folder / 'ffmpeg.exe').is_file() and (folder / 'ffprobe.exe').is_file():
+            environ['PATH'] = str(folder) + os.pathsep + environ.get('PATH', '')
+            return True
+    return False

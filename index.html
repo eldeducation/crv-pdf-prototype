@@ -242,7 +242,7 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 <section class="panel" id="connectionPanel"><h2>AI接続とモデル</h2>
 <label for="executionMode">実行方法</label><select id="executionMode"><option value="api">APIで生成する</option><option value="manual">APIを使わないテスト</option></select><p id="manualHelp" class="small" hidden>APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。</p>
 <div class="connection-card" id="connectionCard" data-state="checking"><strong id="connection" role="status" aria-live="polite">AI接続を確認しています</strong><p class="small" id="connectionHelp"></p><button class="secondary" id="disconnect" disabled>APIキーの接続を解除</button><button class="secondary" id="keyStatus" disabled>キーの残りを確認</button><p class="small" id="keyStatusText" role="status" aria-live="polite"></p></div>
-<details id="settings" open><summary>APIキーを入力・変更</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><button id="save" style="margin-top:12px">このAPIキーを設定する</button><p class="small">キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。</p></details><p class="small" id="settingStatus" role="status" aria-live="polite"></p>
+<details id="settings" open><summary>APIキーを入力・変更</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><label class="small" id="rememberKeyLabel" hidden style="margin-top:8px"><input type="checkbox" id="rememberKey"> <span>このPCに保存する（Windowsのユーザーアカウントで暗号化。次回の起動でも使える。接続を解除すると削除）</span><span id="rememberKeyState"></span></label><button id="save" style="margin-top:12px">このAPIキーを設定する</button><p class="small">キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。</p></details><p class="small" id="settingStatus" role="status" aria-live="polite"></p>
 <div id="modelSettings"><h3>使用するモデル</h3><p class="small" id="modelHelp">APIキーを設定すると、モデルを選べます。</p><div class="catalog-controls"><div class="model-search"><label for="modelSearch">モデルを検索</label><input id="modelSearch" type="search" placeholder="名前やモデルIDで検索" autocomplete="off" disabled></div><button type="button" class="secondary" id="refreshModels" disabled>一覧を更新</button></div><label class="catalog-filter"><input type="checkbox" id="compatibleOnly" disabled>資料作成に対応するモデルだけ表示</label><p id="catalogStatus" class="small" role="status" aria-live="polite"></p><div class="row"><div><label for="modelChoice">モデルを選ぶ</label><select id="modelChoice" disabled><option value="">APIキーを設定してください</option></select></div><div><label for="effort" id="effortLabel">推論設定（API）</label><select id="effort"><option value="auto" selected>モデル標準（自動）</option></select></div></div><div id="customModel" hidden><label for="model">APIのモデルID</label><input id="model" value="claude-opus-5-5" autocomplete="off"></div><p id="effortHelp" class="small"></p><p id="selectedModel" class="model-summary" aria-live="polite"></p><p id="catalogNote" class="small"></p></div>
 </section>
 <section class="panel" id="videoPanel"><h2>1. 動画を選ぶ</h2><label for="file">動画ファイル</label><input type="file" id="file" accept=".mp4,.mov,.webm,.mkv"><p class="small">MP4・MOV・WebM・MKV。最初の試作品は30分以内・1GB以内に対応。</p><label for="url">または、YouTube・Xの動画リンク</label><input id="url" type="url" placeholder="https://www.youtube.com/watch?v=… / https://x.com/…/status/…"><p class="small">動画ファイルを選んだ場合は、ファイルを優先します。</p><p class="small">Xは公開投稿の動画に対応。ログインが必要な投稿は取り込めません。</p><label style="font-weight:normal"><input type="checkbox" id="silent">解説音声がない動画（文字起こしを省略）</label><label style="font-weight:normal"><input type="checkbox" id="externalResearch" checked>必要な公開情報をWeb検索で補う</label><p class="small">不足する重要情報だけ検索し、外部資料の出典を残します。非公開の内容を含む動画ではオフにしてください。</p></section>
@@ -335,7 +335,8 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance',
+ 'このPCに保存する（Windowsのユーザーアカウントで暗号化。次回の起動でも使える。接続を解除すると削除）':'Save on this PC (encrypted for your Windows user account; reused on next start; removed when you disconnect)', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
  '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to three extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
@@ -693,7 +694,7 @@ async function api(route,body){
 $('save').onclick=async()=>{
  if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
-  const d=await api('configure',{api_key:$('key').value});
+  const d=await api('configure',{api_key:$('key').value,remember:!$('rememberKeyLabel').hidden&&$('rememberKey').checked});
   $('key').value='';if(!modelLoaded||connectionProvider!==d.provider){$('model').value=d.model;modelLoaded=true;}
   $('settings').open=false;
   settingMessage='キーを設定しました。未使用状態が30分続くと接続解除されます。';
@@ -842,6 +843,10 @@ function paintStatus(d){
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
  $('keyStatus').disabled=!configured;
+ // Saving the key is offered only on the local Windows server (never in shared/cloud mode).
+ $('rememberKeyLabel').hidden=!d.key_store_available;
+ if(d.key_saved)$('rememberKey').checked=true;
+ $('rememberKeyState').textContent=d.key_saved?tr('（保存済みのキーを使用中）',' (using the saved key)'):'';
  $('save').disabled=d.job?.status==='running'||submitting;
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();

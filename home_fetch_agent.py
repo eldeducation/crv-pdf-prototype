@@ -24,7 +24,7 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 from security import normalized_video_url          # noqa: E402
-from youtube_support import is_youtube, youtube_context, error_code  # noqa: E402
+from youtube_support import is_youtube, youtube_context, error_code, ensure_ffmpeg  # noqa: E402,F401
 import home_fetch                                    # noqa: E402
 
 CONFIG = ROOT / 'home_fetch.local.json'
@@ -78,24 +78,6 @@ class Client:
     def finish(self, rid, ok, code=None):
         body = json.dumps({'ok': True} if ok else {'ok': False, 'error_code': code}).encode()
         self.post(f'/home-fetch/done/{rid}', body, 'application/json')
-
-
-def ensure_ffmpeg(environ=None, which=None):
-    """yt-dlp needs ffmpeg to merge video and audio. winget installs it in a
-    per-user folder that a shell started earlier may not have on PATH."""
-    import os
-    import shutil
-    environ = os.environ if environ is None else environ
-    which = which or shutil.which
-    if which('ffmpeg') and which('ffprobe'):
-        return True
-    base = Path(environ.get('LOCALAPPDATA', '')) / 'Microsoft' / 'WinGet'
-    candidates = [base / 'Links'] + sorted((base / 'Packages').glob('*FFmpeg*/*/bin'), reverse=True)
-    for folder in candidates:
-        if (folder / 'ffmpeg.exe').is_file() and (folder / 'ffprobe.exe').is_file():
-            environ['PATH'] = str(folder) + os.pathsep + environ.get('PATH', '')
-            return True
-    return False
 
 
 def fetch(url, folder, sub):

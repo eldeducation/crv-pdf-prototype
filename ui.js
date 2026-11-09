@@ -72,7 +72,8 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance',
+ 'このPCに保存する（Windowsのユーザーアカウントで暗号化。次回の起動でも使える。接続を解除すると削除）':'Save on this PC (encrypted for your Windows user account; reused on next start; removed when you disconnect)', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
  '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to three extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
@@ -430,7 +431,7 @@ async function api(route,body){
 $('save').onclick=async()=>{
  if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
-  const d=await api('configure',{api_key:$('key').value});
+  const d=await api('configure',{api_key:$('key').value,remember:!$('rememberKeyLabel').hidden&&$('rememberKey').checked});
   $('key').value='';if(!modelLoaded||connectionProvider!==d.provider){$('model').value=d.model;modelLoaded=true;}
   $('settings').open=false;
   settingMessage='キーを設定しました。未使用状態が30分続くと接続解除されます。';
@@ -579,6 +580,10 @@ function paintStatus(d){
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
  $('keyStatus').disabled=!configured;
+ // Saving the key is offered only on the local Windows server (never in shared/cloud mode).
+ $('rememberKeyLabel').hidden=!d.key_store_available;
+ if(d.key_saved)$('rememberKey').checked=true;
+ $('rememberKeyState').textContent=d.key_saved?tr('（保存済みのキーを使用中）',' (using the saved key)'):'';
  $('save').disabled=d.job?.status==='running'||submitting;
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();

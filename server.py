@@ -16,6 +16,7 @@ from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
 from restyle import restyle_source
 from model_catalog import fetch_models, key_status, CatalogError
+import key_store
 from video_upload import UploadReceiver, LOCAL_MAX_BYTES, SHARED_MAX_BYTES, SESSION_MAX_BYTES
 
 from pipeline import ROOT, Config, DEFAULT_PROMPT, PrototypeError, load_env, run, provider_for, resume_fingerprint
@@ -104,6 +105,7 @@ def public_status():
                 except (OSError, ValueError, KeyError):
                     pass
         return {"configured": bool(STATE["api_key"]), "job": job, "csrf_token": CSRF_TOKEN,
+                'key_saved': bool(STATE.get('key_saved')), 'key_store_available': key_store.available(ROOT),
                 "key_revision": STATE["key_revision"], "quality_pipeline": "quality-first-v3",
                 "default_model": os.getenv("VIDEO_PDF_MODEL", "anthropic/claude-opus-5.5" if provider_for(STATE["api_key"]) == "openrouter" else "claude-opus-5-5"),
                 "default_effort": os.getenv("VIDEO_PDF_EFFORT", "xhigh"), "provider": provider_for(STATE["api_key"])}
@@ -121,9 +123,24 @@ def requested_budget(value):
 
 def expire_key():
     # Caller holds LOCK. Polling the UI must not extend the key's lifetime.
+    # A key the user chose to save on this PC is not dropped for being idle.
     running = STATE['job'] and STATE['job']['status'] == 'running'
-    if STATE['api_key'] and not running and time.monotonic() - STATE['key_used_at'] >= KEY_IDLE_SECONDS:
+    if (STATE['api_key'] and not running and not STATE.get('key_saved')
+            and time.monotonic() - STATE['key_used_at'] >= KEY_IDLE_SECONDS):
         clear_connection()
+
+
+def restore_saved_key():
+    """At startup: reuse a key the user saved on this PC (Windows DPAPI), if any."""
+    key = key_store.load(ROOT)
+    if not key:
+        return
+    try:
+        validated_provider(key)
+    except Exception:
+        return
+    STATE['api_key'], STATE['key_saved'] = key, True
+    STATE['key_used_at'] = time.monotonic()
 
 
 def clear_connection():
@@ -133,6 +150,7 @@ def clear_connection():
     STATE['catalog'] = None
     STATE['catalog_attempt'] = 0
     STATE['key_status'] = None
+    STATE['key_saved'] = False
 
 
 def model_catalog(force=False):
@@ -330,6 +348,7 @@ class Handler(BaseHTTPRequestHandler):
                     if STATE['job'] and STATE['job']['status'] == 'running':
                         raise ValueError('Stop generation and wait for the current request to finish before disconnecting.')
                     clear_connection()
+                    key_store.delete(ROOT)           # disconnecting also forgets a saved key
                 return self.send(200, {'configured': False})
             if route == "stop":
                 CANCEL.set()
@@ -342,12 +361,19 @@ class Handler(BaseHTTPRequestHandler):
                 if not key:
                     raise PrototypeError("APIキーを入力してください。")
                 provider = validated_provider(key)
+                remember = body.get('remember') is True and key_store.available(ROOT)
                 with LOCK:
                     if STATE['job'] and STATE['job']['status'] == 'running':
                         raise ValueError('Wait for the current generation to finish before replacing the API key.')
                     clear_connection()
                     STATE["api_key"] = key
                     STATE['key_used_at'] = time.monotonic()
+                    # Saving is opt-in; a key set without the box replaces any saved one.
+                    if remember:
+                        key_store.save(ROOT, key)
+                        STATE['key_saved'] = True
+                    else:
+                        key_store.delete(ROOT)
                 return self.send(200, {"configured": True, "provider": provider, "model": "anthropic/claude-opus-5.5" if provider == "openrouter" else "claude-opus-5-5"})
             if route == "start":
                 with LOCK:
@@ -472,6 +498,12 @@ class Handler(BaseHTTPRequestHandler):
             self.send(500, {"error": "処理に失敗しました。入力とローカルの実行環境を確認してください。"})
 
 
+class LocalServer(ThreadingHTTPServer):
+    # On Windows SO_REUSEADDR lets a second process bind a port that is already
+    # serving, so a restart could silently share the old address. Fail instead.
+    allow_reuse_address = os.name != "nt"
+
+
 def main():
     global TOKEN
     port = 0
@@ -482,11 +514,30 @@ def main():
             token = previous.path.strip("/")
             if previous.hostname == "127.0.0.1" and re.fullmatch(r"[A-Za-z0-9_-]{20,80}", token):
                 port, TOKEN = previous.port, token
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        server = LocalServer(("127.0.0.1", port), Handler)
+    except OSError:
+        if not port:
+            raise
+        print("前回のアドレスは使用中です（すでに起動していませんか？）。新しいアドレスで起動します。", flush=True)
+        TOKEN = secrets.token_urlsafe(24)
+        server = LocalServer(("127.0.0.1", 0), Handler)
     address = f"http://127.0.0.1:{server.server_port}/{TOKEN}/"
     (ROOT / "server.local.json").write_text(json.dumps({"url": address, "pid": os.getpid()}), encoding="utf-8")
+    with LOCK:
+        restore_saved_key()
+    try:
+        # yt-dlp merges video and audio with ffmpeg; winget's per-user folder may be off PATH.
+        from youtube_support import ensure_ffmpeg
+        ensure_ffmpeg()
+    except Exception:
+        pass
     print(address, flush=True)
-    print("この画面はPC内で動きます。終了するとメモリ内のAPIキーは消えます。", flush=True)
+    if "--open-browser" in sys.argv:
+        import webbrowser
+        webbrowser.open(address)
+    print("この画面はPC内で動きます。" + ("保存したAPIキーを読み込みました。" if STATE.get('key_saved')
+                                          else "終了するとメモリ内のAPIキーは消えます。"), flush=True)
     threading.Thread(target=key_expiry_worker, daemon=True).start()
     try:
         server.serve_forever()

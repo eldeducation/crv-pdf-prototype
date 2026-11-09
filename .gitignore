@@ -11,3 +11,5 @@ __pycache__/
 server.local.json
 sharing.local.json
 home_fetch.local.json
+api_key.local.dpapi
+*.local.dpapi
