@@ -467,14 +467,26 @@ $('disconnect').onclick=async()=>{
 };
 // Blank = automatic limit from the pre-run estimate; a number is an advanced override.
 function budgetValue(){const value=$('budget').value.trim();return value?Number(value):null;}
+function resumeNeedsConnection(job=lastJob){
+ return Boolean(job)&&!Boolean(job.manual_mode||job.report?.manual_mode)&&(!configured||connectionOffline);
+}
+function paintResumeAvailability(job=lastJob){
+ const needs=resumeNeedsConnection(job);
+ $('resume').disabled=busy||submitting||connectionOffline||needs;
+ $('resumeConnectionHelp').textContent=connectionOffline?tr('画面との接続を確認できません。接続の回復を待ってください。','The page is disconnected. Wait for the connection to recover.'):needs?tr('再開するには、先にAI接続とモデルを確認してください。保存済みデータは保持されています。','Set up the AI connection before resuming. Saved data is preserved.'):'';
+}
 $('resume').onclick=async()=>{
  if(busy||submitting||!lastJob)return;
+ if(connectionOffline){paintResumeAvailability();message(tr('画面との接続を確認してください。','Check the page connection.'),true);return;}
+ if(resumeNeedsConnection()){
+  paintResumeAvailability();message(tr('再開する前にAI接続を設定してください。','Set up the AI connection before resuming.'),true);return;
+ }
  submitting=true;submissionStarted=Date.now()/1000;clientError=null;$('resume').disabled=true;
  // Pressing resume after a cost pause is the user's OK for the estimate shown.
  const confirm_estimate=['estimate_confirm','budget'].includes(lastJob.progress?.resume?.reason);
  try{await api('start',{resume_folder:lastJob.folder,budget_usd:budgetValue(),confirm_estimate});$('results').replaceChildren();submitting=false;await refresh();}
  catch(e){message(e.message,true);}
- finally{submitting=false;$('resume').disabled=false;}
+ finally{submitting=false;paintResumeAvailability();}
 };
 $('stop').onclick=async()=>{try{const d=await api('stop',{});message(d.message);await refresh();}catch(e){message(e.message,true);}};
 $('restyle').onclick=async()=>{
@@ -566,6 +578,8 @@ function paintStatus(d){
  $('presentationSummary').textContent='';
  if(catalogRevision!==d.key_revision||configured&&!d.configured)resetCatalogue(d.key_revision);
  configured=d.configured;
+ if($('appVersion'))$('appVersion').textContent=tr('バージョン：','Version: ')+(d.version?.label||tr('取得できません','unavailable'));
+ paintResumeAvailability();
  if(d.job?.manual_mode&&d.job?.status==='running')$('executionMode').value='manual';
  const waiting=d.job?.status==='running'&&d.job?.manual_mode?d.job.manual_request:null;
  $('manualPanel').hidden=!waiting;
@@ -580,6 +594,7 @@ function paintStatus(d){
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
  $('keyStatus').disabled=!configured;
+ paintResumeAvailability();
  // Saving the key is offered only on the local Windows server (never in shared/cloud mode).
  $('rememberKeyLabel').hidden=!d.key_store_available;
  if(d.key_saved)$('rememberKey').checked=true;
@@ -671,7 +686,9 @@ function paintProgress(job){
  const saved=resume.available?(resume.saved_checkpoint
   ?tr('保存済みの内容を使い、','Use saved content and resume from ')+pair(stageNames[resume.from_stage])+(lang==='ja'?'から再開できます。':' (local PDF rendering may be repeated).')
   :tr('再開時に保存状態を確認します。再利用できない工程は再処理されます。','Saved data will be checked on resume. Stages that cannot be reused will be processed again.')):'';
- $('stopAction').textContent=[action,saved].filter(Boolean).join(' ');
+ const restart=resume.restart_reason==='plan_checkpoint_missing'?tr('以前の内容整理は完了していますが、再利用できる保存位置がないため再整理します。API生成では追加料金が発生する可能性があります。','The analysis previously finished, but its checkpoint is unavailable. It must run again and may incur additional API cost.'):'';
+ $('stopAction').textContent=[action,saved,restart].filter(Boolean).join(' ');
+ paintResumeAvailability(job);
  $('resume').textContent=resume.reason==='estimate_confirm'?tr('この目安で続ける','Continue with this estimate')
   :resume.available&&resume.saved_checkpoint?tr('続きを再開：','Resume: ')+pair(stageNames[resume.from_stage]):tr('途中から再開する');
  $('stopDetails').textContent=job.report?.review_note||job.report?.error||job.message||'';

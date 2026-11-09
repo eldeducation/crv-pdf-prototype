@@ -16,6 +16,7 @@ from PIL import Image, ImageDraw
 
 import pipeline
 from presentation_quality import THEMES
+from render_test_support import require_renderer
 
 FIXTURES = Path(__file__).resolve().parent / 'fixtures' / 'drafts'
 PLAN = json.loads((FIXTURES / 'plan.json').read_text(encoding='utf-8'))
@@ -48,12 +49,10 @@ class DraftCase(unittest.TestCase):
         return pipeline.build_document(copy.deepcopy(draft), PLAN, PRESENTATION, self.evidence, 'ja')
 
     def check(self, draft):
+        require_renderer(self)
         doc, markup = self.build(draft)
         (self.out / 'document.html').write_text(markup, encoding='utf-8')
-        try:
-            return pipeline.check_pages(self.out, doc)
-        except Exception as error:     # renderer not available on this machine
-            self.skipTest(f'renderer unavailable: {str(error)[:80]}')
+        return pipeline.check_pages(self.out, doc)
 
 
 def pages_of(markup):

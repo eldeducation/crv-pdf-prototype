@@ -60,7 +60,16 @@ def redact(text, secret=''):
     text = str(text)
     if secret:
         text = text.replace(secret, '[REDACTED]')
-    return re.sub(r'\bsk-[A-Za-z0-9_-]{12,}', '[REDACTED]', text)
+    text = re.sub(r'\bsk-[A-Za-z0-9_-]{12,}', '[REDACTED]', text)
+    # Provider errors from older runs can contain private dashboard/key IDs.
+    # Keep public documentation/source URLs; hide management URLs at read time too.
+    return re.sub(
+        r'https?://(?:www\.)?(?:'
+        r'openrouter\.ai/(?:workspaces|keys|settings)(?:[/?#][^\s<>\x22\x27]*)?'
+        r'|console\.anthropic\.com/(?:settings|workspaces|organizations)(?:[/?#][^\s<>\x22\x27]*)?'
+        r'|platform\.openai\.com/(?:settings|api-keys|organization)(?:[/?#][^\s<>\x22\x27]*)?'
+        r')', lambda match: '[OpenRouter settings]' if 'openrouter.ai/' in match.group(0).lower()
+        else '[provider dashboard URL removed]', text, flags=re.I)
 
 
 def response_headers(payload=b'', media='', secure=False, trusted_script=None):
@@ -135,7 +144,7 @@ def public_errors(value, roots=()):
     if isinstance(value, dict):
         result = {}
         for k, v in value.items():
-            if isinstance(v, str) and k in {'error', 'message', 'stderr', 'traceback'}:
+            if isinstance(v, str) and k in {'error', 'message', 'stderr', 'traceback', 'review_note', 'note'}:
                 result[k] = public_error(v, roots=roots)
             elif isinstance(v, str) and k in {'source', 'evidence_dir'} and (v.startswith('/') or re.match(r'^[A-Za-z]:[\\/]', v)):
                 result[k] = v.replace('\\', '/').rstrip('/').rsplit('/', 1)[-1]
@@ -144,6 +153,8 @@ def public_errors(value, roots=()):
         return result
     if isinstance(value, list):
         return [public_errors(v, roots) for v in value]
+    if isinstance(value, str):
+        return redact(value)
     return value
 
 

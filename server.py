@@ -10,7 +10,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from security import validated_provider, redact, response_headers, public_errors
+from security import validated_provider, redact, response_headers, public_errors, public_error
 from source_references import write_index, local_video, byte_range
 from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
@@ -18,11 +18,13 @@ from restyle import restyle_source
 from model_catalog import fetch_models, key_status, CatalogError
 import key_store
 from video_upload import UploadReceiver, LOCAL_MAX_BYTES, SHARED_MAX_BYTES, SESSION_MAX_BYTES
+from app_version import version_info
 
 from pipeline import ROOT, Config, DEFAULT_PROMPT, PrototypeError, load_env, run, provider_for, resume_fingerprint
 
 load_env()
 TOKEN = secrets.token_urlsafe(24)
+APP_VERSION = version_info(ROOT)
 LOCK = threading.Lock()
 
 
@@ -105,6 +107,7 @@ def public_status():
                 except (OSError, ValueError, KeyError):
                     pass
         return {"configured": bool(STATE["api_key"]), "job": job, "csrf_token": CSRF_TOKEN,
+                'version': APP_VERSION,
                 'key_saved': bool(STATE.get('key_saved')), 'key_store_available': key_store.available(ROOT),
                 "key_revision": STATE["key_revision"], "quality_pipeline": "quality-first-v3",
                 "default_model": os.getenv("VIDEO_PDF_MODEL", "anthropic/claude-opus-5.5" if provider_for(STATE["api_key"]) == "openrouter" else "claude-opus-5-5"),
@@ -286,6 +289,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(404, {"error": "ファイルがありません"})
             if target.suffix == '.json':
                 return self.send(200, json.loads(target.read_text(encoding='utf-8')), allowed[target.name])
+            if target.name == 'review-notes.txt':
+                return self.send(200, public_error(target.read_text(encoding='utf-8'),
+                    roots=(ROOT, Path.home())), allowed[target.name])
             return self.send(200, target.read_bytes(), allowed[target.name])
         return self.send(404, {"error": "ページがありません"})
 

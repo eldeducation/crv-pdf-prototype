@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from render_test_support import require_renderer
 
 ROOT = Path(__file__).resolve().parent
 
@@ -36,6 +37,7 @@ class ContrastRenderTest(unittest.TestCase):
     """Renders real pages (skipped where Node/Playwright/Chrome are not set up, e.g. CI)."""
 
     def render(self, body, design='editorial'):
+        require_renderer(self)
         import pipeline
         from document_design import style_css
         from presentation_quality import theme_css
@@ -46,10 +48,7 @@ class ContrastRenderTest(unittest.TestCase):
             f'<body data-document-design="{design}" data-document-purpose="seminar">'
             f'<section class="page"><main class="page-content">{body}</main><footer class="page-foot"><span>t</span><span>01</span></footer></section>'
             f'</body></html>', encoding='utf-8')
-        try:
-            return pipeline.render(folder / 'document.html', folder)
-        except Exception as error:   # renderer not available on this machine
-            self.skipTest(f'renderer unavailable: {str(error)[:80]}')
+        return pipeline.render(folder / 'document.html', folder)
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

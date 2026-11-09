@@ -122,12 +122,22 @@ def describe(folder, job, fingerprint=None):
         states = {name: read(folder / ('checkpoint-' + name + '.state.json'))
                   for name in ('content_plan', 'editor', 'document_content_review')}
         has_plan = bool(states['content_plan'].get('completed'))
+        # Restyling reuses a verified source plan without an analysis checkpoint.
+        # Revalidate the source, as run() will, instead of treating a JSON file alone
+        # as an approved plan. This also handles older saved restyle runs.
+        if not has_plan and report.get('restyle_from'):
+            try:
+                from restyle import restyle_source
+                restyle_source(folder.parent.parent, report['restyle_from'])
+                has_plan = True
+            except (ValueError, OSError, TypeError, KeyError):
+                pass
         has_review = bool(states['document_content_review'].get('completed') and states['document_content_review'].get('approved'))
         has_editor = bool(states['editor'])
         resume['saved_checkpoint'] = has_plan or has_editor
         resume['from_stage'] = ('finish' if has_review and has_editor else
                                 'verify' if states['document_content_review'] and not states['document_content_review'].get('completed') and has_plan and has_editor else
-                                'document' if has_plan and has_editor else 'analyze')
+                                'document' if has_plan else 'analyze')
         evidence = Path(report.get('evidence_dir', folder / 'work' / 'crv'))
         ready = ((evidence / 'MANIFEST.txt').is_file() and bool(read(evidence / 'frames.json').get('frames'))
                  and bool(read(folder / 'evidence.json').get('frames')))
@@ -150,6 +160,8 @@ def describe(folder, job, fingerprint=None):
                 resume['estimate'] = {k: usage['estimate'].get(k) for k in ('low_usd', 'high_usd', 'spent_usd')}
             if not report.get('resume_fingerprint'):
                 resume.update(from_stage='analyze', saved_checkpoint=False)
+            if resume['from_stage'] == 'analyze' and recorded.get('stages', {}).get('analyze', {}).get('state') == 'complete':
+                resume['restart_reason'] = 'plan_checkpoint_missing'
     now = time.time()
     elapsed = (now if status == 'running' else job.get('finished_at', updated or now)) - job.get('started', now)
     return {'available': bool(recorded), 'current': current, 'stages': stages, 'completed_count': finished,

@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from security import response_headers, normalized_video_url, child_environment, public_errors, audit_request
 from video_upload import SHARED_MAX_BYTES, SESSION_MAX_BYTES, CHUNK_HEADERS, upload_metadata, body_chunks
+from app_version import APP_FILES, version_info, source_hash
 
 ROOT = Path(__file__).resolve().parent
 TOKEN = secrets.token_urlsafe(32)
@@ -25,14 +26,7 @@ LOCK = threading.Lock()
 MAX_SESSION_AGE = 8 * 3600
 MAX_SESSION_IDLE = 3600
 UPLOAD_SLOTS = threading.BoundedSemaphore(2)
-COPY_FILES = (
-    'server.py', 'pipeline.py', 'openrouter_client.py', 'usage_guard.py', 'model_catalog.py', 'youtube_support.py', 'home_fetch.py', 'video_upload.py',
-    'content_quality.py', 'checkpoints.py', 'crv_worker.py', 'render.cjs',
-    'layout.css', 'index.html', 'ui.js', 'runtime.local.json', 'security.py',
-    'document_options.py', 'document_design.py', 'editorial_quality.py', 'restyle.py', 'source_references.py',
-    'job_progress.py', 'action_grounding.py', 'manual_client.py', 'presentation_quality.py', 'web_research.py',
-    'cost_estimate.py', 'markdown_export.py', 'prompt_cache.py', 'key_store.py',
-)
+COPY_FILES = APP_FILES
 
 
 def allowed_route(method, route):
@@ -119,6 +113,8 @@ def _launch_session(restore_identity=None):
                         'クラウドの試験公開版です。休止・再起動で生成物が消える場合があります。完成したPDFは保存してください。')
     page += '<script>' + script
     (folder / 'index.html').write_text(page, encoding='utf-8')
+    info = {**version_info(ROOT), 'runtime_source_hash': source_hash(folder)}
+    (folder / 'build-info.json').write_text(json.dumps(info), encoding='utf-8')
     env = child_environment()
     process = subprocess.Popen([sys.executable, '-u', str(folder / 'server.py')],
         cwd=folder, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,

@@ -2,7 +2,7 @@
 
 Renderや開発者PCに依存せず、受け取った人のPC上で動画からPDFを作る配布版です。Claude Code・Codexなどのコーディングエージェントや、通常のLLMチャットと併用できます。
 
-**[配布用ZIPをダウンロード](https://github.com/eldeducation/crv-pdf-prototype/raw/refs/heads/main/crv-pdf-local-20261105.zip)**
+**[配布用ZIPをダウンロード](https://github.com/eldeducation/crv-pdf-prototype/releases/latest/download/crv-pdf-local.zip)**
 
 ## 最初の手順
 
@@ -24,8 +24,8 @@ Renderや開発者PCに依存せず、受け取った人のPC上で動画からP
 
 ## 確認事項
 
-- 2026-11-05版。用途・デザイン・モデル選択・既存の品質確認処理を含む最新ローカル版から作成しました。
-- 元のソースとの一致、配布物にAPIキー・個人パス・動画・履歴が含まれないこと、ローカルURL制限、キーとクラウド設定を引き継がないこと等の7件を検査しました。
+- GitHub Actionsでテストに通ったmainと同じコミットから、自動で配布版を作ります。配布ZIPの最新版は上のリンクから取得できます。初回の自動公開が完了するまではリンクが404になる場合があります。
+- 現在のソースとの一致・秘密ファイルの除外・MANIFESTのハッシュ・再現可能なZIP作成を自動検査します。画面の下部にコミットとソース識別子を表示するので、配布版と実行版を照合できます。
 - ZIPを展開したコピーで、現在のPCの既存依存を使い、API未接続の起動と1ページの日本語PDF描画を確認しました。AI APIは呼んでいません。
 - 別PC・別OSでのクリーンインストールと実動画の一連の生成は未検証です。Linuxでは追加のブラウザー用ライブラリ・日本語フォントが必要な場合があります。
 - 各自のPCは生成中に起動しておく必要があります。YouTube/Xの取得成功は回線や配信元の制限にも依存し、保証できません。
@@ -33,3 +33,7 @@ Renderや開発者PCに依存せず、受け取った人のPC上で動画からP
 - ダウンロード後のハッシュはZIP内のMANIFEST.jsonで確認できます。ソースは収録し、第三者ライブラリは各PCでインストールします。
 
 [公開ソースと全体のREADME](https://github.com/eldeducation/crv-pdf-prototype) / [既存PDF見本](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/)
+
+## 更新方法
+
+新しいZIPは別フォルダへ展開し、セットアップしてください。使用中のフォルダを上書きしないでください。以前のPDFは先に保存し、動画・履歴・保存キーを含むフォルダ全体は共有しないでください。過去の配布版はGitHub Releasesにコミットごとに残します。11月5日のZIPは比較用の旧版です。
