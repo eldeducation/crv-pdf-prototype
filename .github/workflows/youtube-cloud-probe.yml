@@ -1,0 +1,39 @@
+name: YouTube import cloud probe (no AI)
+
+# Isolated experiment only. Does not run on main, PRs, or a schedule.
+on:
+  push:
+    branches: [probe/youtube-cloud-20261109]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: youtube-cloud-probe
+  cancel-in-progress: false
+
+jobs:
+  import-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install the same downloader version as the app
+        run: python -m pip install 'yt-dlp[default]==2026.10.26'
+      - name: Check media tools
+        run: |
+          command -v ffmpeg
+          command -v ffprobe
+      - name: Attempt one anonymous video download, then check subtitles
+        id: probe
+        run: python scripts/probe_youtube_cloud.py
+      - name: 'Result: ${{ steps.probe.outputs.verdict }}; bytes=${{ steps.probe.outputs.bytes }}; duration=${{ steps.probe.outputs.duration_seconds }}; height=${{ steps.probe.outputs.height }}; audio=${{ steps.probe.outputs.audio }}; subtitles=${{ steps.probe.outputs.subtitles }}; seconds=${{ steps.probe.outputs.seconds }}; stage=${{ steps.probe.outputs.stage }}'
+        run: echo 'Finished. See the job summary. No downloaded media was retained.'
