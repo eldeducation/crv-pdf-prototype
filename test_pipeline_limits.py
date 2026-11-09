@@ -21,6 +21,8 @@ class EditorPromptPathTests(unittest.TestCase):
             self.assertEqual(pipeline.editor_prompt_path(root), root / 'editor.txt')
             (root / 'prompts').mkdir()
             (root / 'prompts' / 'editor.txt').write_text('placed', encoding='utf-8')
+            self.assertEqual(pipeline.editor_prompt_path(root), root / 'editor.txt')
+            (root / 'editor.txt').unlink()
             self.assertEqual(pipeline.editor_prompt_path(root), root / 'prompts' / 'editor.txt')
 
     def test_this_checkout_has_a_readable_prompt(self):
@@ -39,6 +41,9 @@ class EditorPromptPathTests(unittest.TestCase):
             (root / 'prompts').mkdir()
             (root / 'prompts' / 'editor.txt').write_text('placed', encoding='utf-8')
             share_gateway.copy_prompts(root, other)
+            self.assertEqual((other / 'prompts' / 'editor.txt').read_text(encoding='utf-8'), 'top')
+            (root / 'editor.txt').unlink()
+            share_gateway.copy_prompts(root, other, restore=True)
             self.assertEqual((other / 'prompts' / 'editor.txt').read_text(encoding='utf-8'), 'placed')
 
 

@@ -812,9 +812,8 @@ def revised_draft(draft, args):
 def editor_prompt_path(root=None):
     """The Docker image places editor.txt in prompts/; a repository checkout
     keeps it at the top level. Either layout runs the same prompt."""
-    root = Path(root) if root else ROOT
-    placed = root / 'prompts' / 'editor.txt'
-    return placed if placed.is_file() else root / 'editor.txt'
+    from app_version import editor_prompt_path as resolve_prompt
+    return resolve_prompt(root if root is not None else ROOT)
 
 
 def resume_fingerprint():

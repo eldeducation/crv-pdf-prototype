@@ -131,6 +131,8 @@ class PackageTests(unittest.TestCase):
             for name in app_version.APP_FILES:
                 shutil.copyfile(ROOT/name,source/name)
             shutil.copyfile(ROOT/'editor.txt',source/'editor.txt')
+            (source/'prompts').mkdir()
+            (source/'prompts/editor.txt').write_text('stale generated copy')
             shutil.copytree(ROOT/'distribution',source/'distribution')
             for name in ('requirements.txt','SECURITY.md'):shutil.copyfile(ROOT/name,source/name)
             (source/'runtime.local.json').write_text('{"node":"C:/Private Person/node"}')

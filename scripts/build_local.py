@@ -9,7 +9,7 @@ import zipfile
 
 SOURCE = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(SOURCE))
-from app_version import APP_FILES, source_hash
+from app_version import APP_FILES, source_hash, editor_prompt_path
 
 
 def build(output, revision, source=SOURCE):
@@ -20,7 +20,7 @@ def build(output, revision, source=SOURCE):
     for name in APP_FILES:
         # Host paths are private and are generated on the recipient's PC.
         files['app/' + name] = b'{}\n' if name == 'runtime.local.json' else (source / name).read_bytes()
-    files['app/prompts/editor.txt'] = (source / 'editor.txt').read_bytes()
+    files['app/prompts/editor.txt'] = editor_prompt_path(source).read_bytes()
     for path in sorted((source / 'distribution').iterdir()):
         if path.is_file() and path.name in {'setup_local.py','launch.py','setup.cmd','start.cmd','README.md','LLM-START.md','MANUAL-TEST.md'}:
             files[path.name] = path.read_bytes()

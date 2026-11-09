@@ -16,6 +16,13 @@ APP_FILES = (
 )
 
 
+def editor_prompt_path(root):
+    """Prefer the tracked repository prompt over any stale generated copy."""
+    root = Path(root)
+    tracked = root / 'editor.txt'
+    return tracked if tracked.is_file() else root / 'prompts/editor.txt'
+
+
 def source_hash(root):
     root = Path(root)
     digest = hashlib.sha256()
@@ -23,9 +30,7 @@ def source_hash(root):
         digest.update(name.encode() + b'\0')
         digest.update((root / name).read_bytes().replace(b'\r\n', b'\n'))
         digest.update(b'\0')
-    prompt = root / 'prompts/editor.txt'
-    if not prompt.is_file():
-        prompt = root / 'editor.txt'
+    prompt = editor_prompt_path(root)
     digest.update(prompt.read_bytes().replace(b'\r\n', b'\n'))
     return digest.hexdigest()
 

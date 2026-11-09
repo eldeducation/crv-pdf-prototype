@@ -16,7 +16,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from security import response_headers, normalized_video_url, child_environment, public_errors, audit_request
 from video_upload import SHARED_MAX_BYTES, SESSION_MAX_BYTES, CHUNK_HEADERS, upload_metadata, body_chunks
-from app_version import APP_FILES, version_info, source_hash
+from app_version import APP_FILES, version_info, source_hash, editor_prompt_path
 
 ROOT = Path(__file__).resolve().parent
 TOKEN = secrets.token_urlsafe(32)
@@ -88,7 +88,7 @@ def copy_prompts(root, folder, restore=False):
         shutil.copytree(root / 'prompts', folder / 'prompts', dirs_exist_ok=restore)
     else:
         (folder / 'prompts').mkdir(exist_ok=restore)
-        shutil.copy2(root / 'editor.txt', folder / 'prompts' / 'editor.txt')
+    shutil.copy2(editor_prompt_path(root), folder / 'prompts' / 'editor.txt')
 
 
 def _launch_session(restore_identity=None):
