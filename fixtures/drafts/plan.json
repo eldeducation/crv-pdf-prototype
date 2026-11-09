@@ -1,0 +1,16 @@
+{
+  "description": "Synthetic content plan shared by the draft fixtures (claims only; no video involved).",
+  "units": [
+    {"id": "c01", "type": "claim", "start": 5, "end": 25, "explanation": "講演のタイトルと登壇者", "evidence_files": ["assets/frame_001.jpg", "assets/frame_002.jpg"]},
+    {"id": "c02", "type": "claim", "start": 30, "end": 50, "explanation": "小さく始める", "evidence_files": ["assets/frame_001.jpg"]},
+    {"id": "c03", "type": "claim", "start": 60, "end": 120, "explanation": "短い指示では意図と違う結果", "evidence_files": ["assets/frame_003.jpg"]},
+    {"id": "c04", "type": "claim", "start": 120, "end": 180, "explanation": "文脈を加える", "evidence_files": ["assets/frame_003.jpg"]},
+    {"id": "c05", "type": "claim", "start": 180, "end": 240, "explanation": "形式を先に決める", "evidence_files": ["assets/frame_004.jpg"]},
+    {"id": "c06", "type": "claim", "start": 240, "end": 300, "explanation": "判定をタグで囲む", "evidence_files": ["assets/frame_004.jpg"]}
+  ],
+  "visual_requirements": [
+    {"role": "materials", "status": "not_applicable", "finding": "講演のため不要", "evidence_files": []},
+    {"role": "tools", "status": "not_applicable", "finding": "講演のため不要", "evidence_files": []},
+    {"role": "guides", "status": "not_applicable", "finding": "講演のため不要", "evidence_files": []}
+  ]
+}

@@ -727,6 +727,43 @@ _REVISE['design_plan_pages'] = {**DESIGN_PLAN_SCHEMA['properties']['pages'],
 _REVISE['visuals'] = {**VISUAL_SCHEMA, 'description': '変更する場合だけ。図表の定義全体を置き換える'}
 
 
+def build_document(doc, plan, presentation, evidence, language='auto'):
+    """Turn an editor submission into the document and its PDF source HTML.
+
+    Shared by the editor loop and the saved-draft regression tests, so both
+    exercise exactly the same steps. Raises PrototypeError listing every gate problem."""
+    doc = {k: v for k, v in doc.items() if k != 'markdown'}
+    doc = materialize_visuals(doc, plan, language)
+    # The PDF is rendered from the pages; the editable Markdown is generated from
+    # the same pages instead of being written a second time by the editor.
+    doc['markdown'] = document_markdown(doc)
+    doc['presentation'] = presentation
+    # Run both independent gates so one rejection lists every problem.
+    problems = []
+    if presentation['design'] == 'editorial':
+        try:
+            validate_design_plan(doc, plan)
+        except ValueError as error:
+            problems.append(str(error))
+    markup = None
+    try:
+        markup = document_html(doc, evidence, plan['units'], language, plan['visual_requirements'], presentation['design'])
+    except (PrototypeError, ValueError) as error:
+        problems.append(str(error))
+    if problems:
+        raise PrototypeError('提出前の検査で次の点が見つかりました。すべて直して一度に再提出してください。\n'
+                             + '\n'.join(problems))
+    return doc, markup
+
+
+def check_pages(out, doc):
+    """Render out/document.html and return the page checks, with design notes added."""
+    qa = render(out / "document.html", out)
+    if doc['presentation']['design'] == 'editorial':
+        note_kit_lookalikes(qa, doc, out)
+    return qa
+
+
 def note_kit_lookalikes(qa, doc, out):
     """Add a design note to pages that rebuild a kit component under the editor's own class names.
 
@@ -841,27 +878,8 @@ class Pipeline:
             self.config.progress.start('document', restart=True)
         # Keep the raw submission so revise_pages can replace single pages of it.
         self.draft = copy.deepcopy(doc)
-        doc = {k: v for k, v in doc.items() if k != 'markdown'}
-        doc = materialize_visuals(doc, self.quality.plan, self.config.output_language)
-        # The PDF is rendered from the pages; the editable Markdown is generated from
-        # the same pages instead of being written a second time by the editor.
-        doc['markdown'] = document_markdown(doc)
-        doc['presentation'] = self.presentation or select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
-        # Run both independent gates so one rejection lists every problem.
-        problems = []
-        if doc['presentation']['design'] == 'editorial':
-            try:
-                validate_design_plan(doc, self.quality.plan)
-            except ValueError as error:
-                problems.append(str(error))
-        try:
-            markup = document_html(doc, self.evidence, self.quality.plan['units'], self.config.output_language,
-                                   self.quality.plan['visual_requirements'], doc['presentation']['design'])
-        except (PrototypeError, ValueError) as error:
-            problems.append(str(error))
-        if problems:
-            raise PrototypeError('提出前の検査で次の点が見つかりました。すべて直して一度に再提出してください。\n'
-                                 + '\n'.join(problems))
+        presentation = self.presentation or select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
+        doc, markup = build_document(doc, self.quality.plan, presentation, self.evidence, self.config.output_language)
         self.revisions += 1
         self.approved = False
         self.content_qa = None
@@ -875,9 +893,7 @@ class Pipeline:
         if doc['presentation']['design'] == 'editorial':
             write_json(out / 'design-plan.json', doc['design_plan'])
         self.notify(f"PDFを作成して確認しています（{self.revisions}回目）")
-        self.qa = render(out / "document.html", out)
-        if doc['presentation']['design'] == 'editorial':
-            note_kit_lookalikes(self.qa, doc, out)
+        self.qa = check_pages(out, doc)
         self.document = doc
         if self.qa.get("errors"):
             self.layout_failures += 1
