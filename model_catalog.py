@@ -54,6 +54,36 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 
 
 def read_catalog(url, key, provider, timeout):
+    result = _get_json(url, key, provider, timeout)
+    if not isinstance(result.get('data'), list):
+        raise CatalogError('invalid_response')
+    return result
+
+
+def _number(value):
+    return round(float(value), 4) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def key_status(key, timeout=20):
+    """Spending limit and usage of an OpenRouter key (GET /api/v1/key; no generation).
+
+    Only amounts and reset periods are returned - never the key, its label or
+    account identifiers. Account-wide credits need a management key, so they
+    are not available here."""
+    data = _get_json('https://openrouter.ai/api/v1/key', key, 'openrouter', timeout).get('data')
+    if not isinstance(data, dict):
+        raise CatalogError('invalid_response')
+    budget = data.get('effective_budget') if isinstance(data.get('effective_budget'), dict) else None
+    text = lambda value: str(value)[:40] if isinstance(value, str) else None
+    return {'limit_usd': _number(data.get('limit')), 'remaining_usd': _number(data.get('limit_remaining')),
+            'limit_reset': text(data.get('limit_reset')), 'usage_usd': _number(data.get('usage')),
+            'usage_monthly_usd': _number(data.get('usage_monthly')), 'is_free_tier': data.get('is_free_tier') is True,
+            'budget': {'limit_usd': _number(budget.get('limit_usd')), 'remaining_usd': _number(budget.get('remaining_usd')),
+                       'reset_interval': text(budget.get('reset_interval')), 'resets_at': text(budget.get('resets_at'))}
+            if budget else None}
+
+
+def _get_json(url, key, provider, timeout):
     destination = urllib.parse.urlsplit(url)
     expected = {'openrouter': 'openrouter.ai', 'anthropic': 'api.anthropic.com'}.get(provider)
     if not expected or destination.scheme != 'https' or destination.hostname != expected or destination.port not in (None, 443) or destination.username or destination.password:
@@ -68,7 +98,7 @@ def read_catalog(url, key, provider, timeout):
         if len(raw) > MAX_BYTES:
             raise CatalogError('too_large')
         result = json.loads(raw)
-        if not isinstance(result, dict) or not isinstance(result.get('data'), list):
+        if not isinstance(result, dict):
             raise CatalogError('invalid_response')
         return result
     except urllib.error.HTTPError as error:

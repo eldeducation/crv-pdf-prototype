@@ -37,7 +37,7 @@ COPY_FILES = (
 
 def allowed_route(method, route):
     if method == 'POST':
-        return route in ('configure', 'disconnect', 'models', 'upload', 'start', 'stop', 'manual/respond')
+        return route in ('configure', 'disconnect', 'models', 'key-status', 'upload', 'start', 'stop', 'manual/respond')
     if method != 'GET':
         return False
     # restyle-sources lists only the session server's own runs folder.

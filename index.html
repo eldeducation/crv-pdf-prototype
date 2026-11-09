@@ -241,7 +241,7 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 </div><!-- MOTION PRINT ART END --><div class="label">VIDEO → VISUAL DOCUMENT / LOCAL PROTOTYPE</div><h1>動画を資料に</h1><p>大事な内容を読み取り、写真と説明にメリハリをつけたPDFに。</p><nav class="craft-nav" aria-label="Document workflow"><a href="#videoPanel"><b>01</b><span>VIDEO</span></a><a href="#documentPanel"><b>02</b><span>DESIGN</span></a><a href="#statusPanel"><b>03</b><span>PDF</span></a></nav></header>
 <section class="panel" id="connectionPanel"><h2>AI接続とモデル</h2>
 <label for="executionMode">実行方法</label><select id="executionMode"><option value="api">APIで生成する</option><option value="manual">APIを使わないテスト</option></select><p id="manualHelp" class="small" hidden>APIなしのテストでは、指示・画像を取り出してチャットで回答を作り、その回答JSONを読み込んで進めます。APIキーは不要です。</p>
-<div class="connection-card" id="connectionCard" data-state="checking"><strong id="connection" role="status" aria-live="polite">AI接続を確認しています</strong><p class="small" id="connectionHelp"></p><button class="secondary" id="disconnect" disabled>APIキーの接続を解除</button></div>
+<div class="connection-card" id="connectionCard" data-state="checking"><strong id="connection" role="status" aria-live="polite">AI接続を確認しています</strong><p class="small" id="connectionHelp"></p><button class="secondary" id="disconnect" disabled>APIキーの接続を解除</button><button class="secondary" id="keyStatus" disabled>キーの残りを確認</button><p class="small" id="keyStatusText" role="status" aria-live="polite"></p></div>
 <details id="settings" open><summary>APIキーを入力・変更</summary><p class="small">OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。</p><label for="key">APIキー</label><input type="password" id="key" autocomplete="off" placeholder="OpenRouter / Anthropic APIキー"><button id="save" style="margin-top:12px">このAPIキーを設定する</button><p class="small">キーは接続解除、または生成していない状態で最終利用から30分後にサーバーの参照を解除します。プロバイダー側でも利用上限を設定してください。</p></details><p class="small" id="settingStatus" role="status" aria-live="polite"></p>
 <div id="modelSettings"><h3>使用するモデル</h3><p class="small" id="modelHelp">APIキーを設定すると、モデルを選べます。</p><div class="catalog-controls"><div class="model-search"><label for="modelSearch">モデルを検索</label><input id="modelSearch" type="search" placeholder="名前やモデルIDで検索" autocomplete="off" disabled></div><button type="button" class="secondary" id="refreshModels" disabled>一覧を更新</button></div><label class="catalog-filter"><input type="checkbox" id="compatibleOnly" disabled>資料作成に対応するモデルだけ表示</label><p id="catalogStatus" class="small" role="status" aria-live="polite"></p><div class="row"><div><label for="modelChoice">モデルを選ぶ</label><select id="modelChoice" disabled><option value="">APIキーを設定してください</option></select></div><div><label for="effort" id="effortLabel">推論設定（API）</label><select id="effort"><option value="auto" selected>モデル標準（自動）</option></select></div></div><div id="customModel" hidden><label for="model">APIのモデルID</label><input id="model" value="claude-opus-5-5" autocomplete="off"></div><p id="effortHelp" class="small"></p><p id="selectedModel" class="model-summary" aria-live="polite"></p><p id="catalogNote" class="small"></p></div>
 </section>
@@ -335,7 +335,7 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '作り直す元の資料':'Result to rebuild', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
  '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to three extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
@@ -470,7 +470,7 @@ const actionNames={
  video_incomplete:['動画の準備が完了していないため、動画を選び直して新しく生成してください。','Video preparation did not finish. Select the video and start a new generation.'],
  legacy:['この版の保存データは途中再開に対応していません。','This saved version does not support resuming.'],
  auth:['接続設定のキーと、モデルの利用権限を確認してください。','Check the configured key and its model access.'],
- credit:['プロバイダー側の残高・利用上限を確認してください。','Check your provider balance and key allowance.'],
+ credit:['プロバイダー側の残高・利用上限を確認してください。上の「キーの残りを確認」で、このキーの上限と残りを確認できます。','Check your provider balance and key allowance. “Check key allowance” above shows this key’s limit and remaining amount.'],
  rate_limit:['時間をおいてから、保存された続きの再開を検討してください。','Wait before attempting to resume the saved run.'],
  request:['入力と接続を確認してください。受付済みの場合は、接続が戻ると生成状況が表示されます。','Check the inputs and connection. If the request was accepted, its status will appear once the connection returns.']
 };
@@ -701,6 +701,24 @@ $('save').onclick=async()=>{
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
  finally{$('key').value='';connectionOperation=false;paintConnection();}
 };
+// The key's spending limit and what is left (OpenRouter), to explain a 402 without signing in.
+function keyStatusLine(d){
+ if(!d.supported)return tr('Anthropicの直接接続では、キーの残りを確認できません。','The remaining allowance is not available for direct Anthropic keys.');
+ const money=v=>v===null||v===undefined?'—':'$'+Number(v).toFixed(2);
+ const resets={daily:['毎日','daily'],weekly:['毎週','weekly'],monthly:['毎月','monthly']};
+ const reset=d.limit_reset?(lang==='en'?` (resets ${pair(resets[d.limit_reset])||d.limit_reset})`:`（${pair(resets[d.limit_reset])||d.limit_reset}リセット）`):'';
+ let line=d.limit_usd===null?tr('このキーに上限はありません','This key has no spending limit')
+  :`${tr('キーの上限','Key limit')} ${money(d.limit_usd)} / ${tr('残り','remaining')} ${money(d.remaining_usd)}${reset}`;
+ line+=` / ${tr('使用額','used')} ${money(d.usage_usd)}`;
+ if(d.budget&&d.budget.limit_usd!==null)line+=` / ${tr('予算の残り','budget remaining')} ${money(d.budget.remaining_usd)}`;
+ return line+tr('。アカウント全体の残高は、キーでは確認できません。','. Account-wide credits cannot be checked with a key.');
+}
+$('keyStatus').onclick=async()=>{
+ $('keyStatus').disabled=true;
+ try{$('keyStatusText').textContent=keyStatusLine(await api('key-status',{}));}
+ catch(e){$('keyStatusText').textContent=e.message;}
+ finally{$('keyStatus').disabled=!configured;}
+};
 $('disconnect').onclick=async()=>{
  if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
@@ -823,6 +841,7 @@ function paintStatus(d){
   $('manualSequence').textContent=(lang==='en'?'Request ':'依頼 ')+waiting.sequence+' / '+pair(stageNames[waiting.phase]);
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
+ $('keyStatus').disabled=!configured;
  $('save').disabled=d.job?.status==='running'||submitting;
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();

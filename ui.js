@@ -72,7 +72,7 @@ const translations={
  '生成の設定':'Generation settings',
  'モデル':'Model', '推論の深さ':'Reasoning effort', '高':'High', '超高':'Extra high', '最大':'Maximum',
  'モデルと設定はAPI側の名称です。チャットで得られた品質との一致は、これから検証します。':'These are API model names and settings. Quality compared with chat-based results is still being evaluated.',
- '作り直す元の資料':'Result to rebuild', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
+ '作り直す元の資料':'Result to rebuild', 'キーの残りを確認':'Check key allowance', '詳細設定（費用の上限）':'Advanced (spending limit)', '費用の上限（米ドル・任意）':'Spending limit (USD, optional)', '自動':'Automatic',
  '通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。':'Leave blank (automatic) in normal use. After the video is prepared, the cost is estimated and about 1.3 times the estimate is set as the limit. If the estimate is high, you are asked before any AI use.',
  'PDFを生成する':'Generate PDF',
  '一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。':'Overview → inspect key scenes → create the document → check it against the video. One content revision is allowed (up to three extra layout fixes are counted separately). Resuming reuses completed stages, and costs include earlier requests.',
@@ -207,7 +207,7 @@ const actionNames={
  video_incomplete:['動画の準備が完了していないため、動画を選び直して新しく生成してください。','Video preparation did not finish. Select the video and start a new generation.'],
  legacy:['この版の保存データは途中再開に対応していません。','This saved version does not support resuming.'],
  auth:['接続設定のキーと、モデルの利用権限を確認してください。','Check the configured key and its model access.'],
- credit:['プロバイダー側の残高・利用上限を確認してください。','Check your provider balance and key allowance.'],
+ credit:['プロバイダー側の残高・利用上限を確認してください。上の「キーの残りを確認」で、このキーの上限と残りを確認できます。','Check your provider balance and key allowance. “Check key allowance” above shows this key’s limit and remaining amount.'],
  rate_limit:['時間をおいてから、保存された続きの再開を検討してください。','Wait before attempting to resume the saved run.'],
  request:['入力と接続を確認してください。受付済みの場合は、接続が戻ると生成状況が表示されます。','Check the inputs and connection. If the request was accepted, its status will appear once the connection returns.']
 };
@@ -438,6 +438,24 @@ $('save').onclick=async()=>{
  }catch(e){settingMessage=e.message;$('settingStatus').textContent=translatedStatus(settingMessage);}
  finally{$('key').value='';connectionOperation=false;paintConnection();}
 };
+// The key's spending limit and what is left (OpenRouter), to explain a 402 without signing in.
+function keyStatusLine(d){
+ if(!d.supported)return tr('Anthropicの直接接続では、キーの残りを確認できません。','The remaining allowance is not available for direct Anthropic keys.');
+ const money=v=>v===null||v===undefined?'—':'$'+Number(v).toFixed(2);
+ const resets={daily:['毎日','daily'],weekly:['毎週','weekly'],monthly:['毎月','monthly']};
+ const reset=d.limit_reset?(lang==='en'?` (resets ${pair(resets[d.limit_reset])||d.limit_reset})`:`（${pair(resets[d.limit_reset])||d.limit_reset}リセット）`):'';
+ let line=d.limit_usd===null?tr('このキーに上限はありません','This key has no spending limit')
+  :`${tr('キーの上限','Key limit')} ${money(d.limit_usd)} / ${tr('残り','remaining')} ${money(d.remaining_usd)}${reset}`;
+ line+=` / ${tr('使用額','used')} ${money(d.usage_usd)}`;
+ if(d.budget&&d.budget.limit_usd!==null)line+=` / ${tr('予算の残り','budget remaining')} ${money(d.budget.remaining_usd)}`;
+ return line+tr('。アカウント全体の残高は、キーでは確認できません。','. Account-wide credits cannot be checked with a key.');
+}
+$('keyStatus').onclick=async()=>{
+ $('keyStatus').disabled=true;
+ try{$('keyStatusText').textContent=keyStatusLine(await api('key-status',{}));}
+ catch(e){$('keyStatusText').textContent=e.message;}
+ finally{$('keyStatus').disabled=!configured;}
+};
 $('disconnect').onclick=async()=>{
  if(connectionOperation)return;connectionOperation=true;paintConnection();
  try{
@@ -560,6 +578,7 @@ function paintStatus(d){
   $('manualSequence').textContent=(lang==='en'?'Request ':'依頼 ')+waiting.sequence+' / '+pair(stageNames[waiting.phase]);
  }
  $('disconnect').disabled=!configured||d.job?.status==='running'||submitting;
+ $('keyStatus').disabled=!configured;
  $('save').disabled=d.job?.status==='running'||submitting;
  if(!configured&&$('executionMode').value!=='manual')$('settings').open=true;
  paintExecutionMode();

@@ -15,7 +15,7 @@ from source_references import write_index, local_video, byte_range
 from job_progress import describe
 from manual_client import ManualClient, MAX_RESPONSE_BYTES
 from restyle import restyle_source
-from model_catalog import fetch_models, CatalogError
+from model_catalog import fetch_models, key_status, CatalogError
 from video_upload import UploadReceiver, LOCAL_MAX_BYTES, SHARED_MAX_BYTES, SESSION_MAX_BYTES
 
 from pipeline import ROOT, Config, DEFAULT_PROMPT, PrototypeError, load_env, run, provider_for, resume_fingerprint
@@ -301,6 +301,20 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, model_catalog(bool(body.get('refresh'))))
                 except CatalogError as error:
                     return self.send(error.status, {'error': 'モデル一覧を取得できませんでした。', 'catalog_error': error.code})
+            if route == 'key-status':
+                # Remaining spending allowance of the configured key, so a 402 can be
+                # explained without signing in to the provider. No AI generation.
+                with LOCK:
+                    expire_key()
+                    key = STATE['api_key']
+                if not key:
+                    return self.send(400, {'error': '最初にAPIキーを設定してください。'})
+                if provider_for(key) != 'openrouter':
+                    return self.send(200, {'supported': False})
+                try:
+                    return self.send(200, {'supported': True, **key_status(key)})
+                except CatalogError as error:
+                    return self.send(error.status, {'error': 'キーの利用状況を取得できませんでした。', 'catalog_error': error.code})
             if route == 'disconnect':
                 with LOCK:
                     if STATE['job'] and STATE['job']['status'] == 'running':
