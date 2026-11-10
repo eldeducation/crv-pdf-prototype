@@ -13,11 +13,13 @@ are read back too few times to repay the cache-write premium (prefix only: -9% t
 TTL by stage: the document stage needs 1 hour because one page-writing response
 can run 4-9 minutes and a cache entry's lifetime is measured from the start of
 each request; the analysis stage uses 5 minutes (its turns follow each other
-quickly); the one-off content check is not cached (a write never read is a surcharge).
+quickly); the content check also uses 5 minutes. It was first left uncached as a
+one-off, but every measured check (4 of 4, 2026-11-09/10) took two calls - a request
+for extra frames, then the review - about a minute apart, each resending ~65k tokens.
 """
 import copy
 
-TTL_BY_PHASE = {'document_edit': '1h', 'content_plan': '5m'}
+TTL_BY_PHASE = {'document_edit': '1h', 'content_plan': '5m', 'content_review': '5m'}
 
 # Cache read price relative to base input, by model (Claude docs, 2026-10); others 0.1.
 READ_MULTIPLIER = {'claude-fable-5-1': 0.025, 'claude-mythos-5-1': 0.025, 'claude-opus-5-5': 0.05}

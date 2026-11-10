@@ -50,7 +50,8 @@ class MarkerTest(unittest.TestCase):
     def test_ttl_by_stage(self):
         self.assertEqual(prompt_cache.TTL_BY_PHASE['document_edit'], '1h')   # page writing runs past 5 minutes
         self.assertEqual(prompt_cache.TTL_BY_PHASE['content_plan'], '5m')
-        self.assertNotIn('content_review', prompt_cache.TTL_BY_PHASE)        # one-off: never read back
+        # Every measured check was two calls about a minute apart (frames, then review).
+        self.assertEqual(prompt_cache.TTL_BY_PHASE['content_review'], '5m')
 
 
 class StablePrefixTest(unittest.TestCase):
