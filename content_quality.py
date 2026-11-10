@@ -17,6 +17,7 @@ from action_grounding import (TRACE_SCHEMA, ACTION_CHECK_SCHEMA, validate_traces
                               validate_action_check, review_details)
 from presentation_quality import (VISUAL_SCAN, VISUAL_CHECKS, DOCUMENT_CHECK,
                                   validate_visual_scan, validate_presentation_review)
+from training_quality import reviewer_system
 
 
 def text_block(value):
@@ -438,9 +439,13 @@ class ContentQuality:
         self.notify("完成した本文・写真の説明を元映像と照合しています")
         # Markdown is generated from these same pages, so sending it too would only
         # repeat the document (about 10k tokens per check).
-        content = [text_block({"content_plan": self.plan, "document": {
+        submitted = {
             "title": document["title"], "summary": document.get("summary", ""),
-            "pages": document["pages"]}})]+self.evidence_content(
+            "pages": document["pages"]}
+        if document.get('presentation', {}).get('purpose') == 'training':
+            submitted['presentation'] = document['presentation']
+            submitted['training_plan'] = document.get('training_plan')
+        content = [text_block({"content_plan": self.plan, "document": submitted})]+self.evidence_content(
                 overview=True, include_sequences=True)
         if self.config.efficient:
             # Preparation/guide pictures must be legible to the final reviewer.
@@ -456,7 +461,9 @@ class ContentQuality:
                 selected.setdefault(record['file'], (identity, record))
             for identity, record in selected.values():
                 content += [text_block({'detail_for': identity, **record}), self.evidence.image_block(record['file'])]
-        review = self.session("document_content_review", content, DOCUMENT_REVIEWER, REVIEW_TOOL,
+        review = self.session("document_content_review", content,
+                              reviewer_system(DOCUMENT_REVIEWER, document.get('presentation', {}).get('purpose')),
+                              REVIEW_TOOL,
                               lambda value: self.validate_review(value, document))
         review["document_sha256"] = digest(document)
         self.save(f"content-review-{revision}.json", review)

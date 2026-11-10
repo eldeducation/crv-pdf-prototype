@@ -33,6 +33,7 @@ from document_design import (select_design, editorial_brief, style_css, material
                              split_kit_rules, kit_lookalikes)
 from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
                                validate_design_plan, validate_design_review)
+from training_quality import TRAINING_PLAN_SCHEMA, validate_training_plan, editor_system
 from source_references import citation_html, write_index, source_link, markdown_references
 from markdown_export import document_markdown
 from web_research import WebResearch, POLICY as RESEARCH_POLICY, LIMITS as RESEARCH_LIMITS
@@ -691,7 +692,7 @@ def inspection_open(rounds_left, has_document, round_no=0):
     return rounds_left > 3 and round_no < INSPECTION_ROUNDS
 
 
-def submission_checklist(plan, max_rounds, editorial):
+def submission_checklist(plan, max_rounds, editorial, training=False):
     """Spell out, from this run's own plan, the gates a submission must pass.
 
     Each rejected submission costs a full document-length response, so the
@@ -710,6 +711,9 @@ def submission_checklist(plan, max_rounds, editorial):
     if editorial:
         lines.append('- design_plan.pages[].focus_excerpt：そのページの見出しか本文にある連続した文字列をそのまま写す（要約・言い換え・別ページの文は不可）。')
         lines.append('- design_plan.pagesのsource_unitsは、そのページのsource_unitsに含まれるidだけにする。')
+    if training:
+        lines.append('- 研修はtraining_plan必須。学習目標・全体像・動画の具体例・確認問題・教材用と明記した架空の応用練習・後の別ページの解答・最後の相談記入欄を、実際の本文の短い原文とページ番号に対応付ける。')
+        lines.append('- 全設問ページの後に解答を置き、問題ページには答えを載せない。training_planのsource_unitsは問題・解答の両ページに含める。修正で原文が変わったらtraining_planも更新する。')
     return '\n'.join(lines)
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['pages']['items']['properties']['visual_roles'] = {
     'type': 'array', 'maxItems': 3, 'items': {'enum': ['materials', 'tools', 'guides']},
@@ -718,6 +722,7 @@ next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['prope
     'enum': list(THEMES), 'description': '題材に合う見出し・表・強調枠の配色。省略時green。'}
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['visuals'] = VISUAL_SCHEMA
 next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['design_plan'] = DESIGN_PLAN_SCHEMA
+next(t for t in TOOLS if t['name'] == 'compose_document')['input_schema']['properties']['training_plan'] = TRAINING_PLAN_SCHEMA
 next(t for t in TOOLS if t['name'] == 'approve_document')['input_schema']['properties']['design_review'] = DESIGN_REVIEW_SCHEMA
 _REVISE = next(t for t in TOOLS if t['name'] == 'revise_pages')['input_schema']['properties']
 _REVISE['pages']['items']['properties']['visual_roles'] = next(
@@ -725,6 +730,7 @@ _REVISE['pages']['items']['properties']['visual_roles'] = next(
 _REVISE['design_plan_pages'] = {**DESIGN_PLAN_SCHEMA['properties']['pages'],
                                 'description': 'デザイン重視のとき、差し替えたページの紙面設計（page番号つき）。'}
 _REVISE['visuals'] = {**VISUAL_SCHEMA, 'description': '変更する場合だけ。図表の定義全体を置き換える'}
+_REVISE['training_plan'] = TRAINING_PLAN_SCHEMA
 
 
 def build_document(doc, plan, presentation, evidence, language='auto'):
@@ -740,6 +746,11 @@ def build_document(doc, plan, presentation, evidence, language='auto'):
     doc['presentation'] = presentation
     # Run both independent gates so one rejection lists every problem.
     problems = []
+    if presentation.get('purpose') == 'training':
+        try:
+            validate_training_plan(doc, plan)
+        except ValueError as error:
+            problems.append(str(error))
     if presentation['design'] == 'editorial':
         try:
             validate_design_plan(doc, plan)
@@ -797,7 +808,7 @@ def revised_draft(draft, args):
         # Fields not resent (source_units, visual_roles) keep the page's previous values.
         previous = doc['pages'][page['page'] - 1]
         doc['pages'][page['page'] - 1] = {**previous, **{k: page[k] for k in ('html', 'source_units', 'visual_roles') if k in page}}
-    for key in ('css', 'title', 'summary', 'visuals'):
+    for key in ('css', 'title', 'summary', 'visuals', 'training_plan'):
         if key in args:
             doc[key] = args[key]
     if args.get('design_plan_pages'):
@@ -824,6 +835,7 @@ def resume_fingerprint():
                       'research_policy': RESEARCH_POLICY, 'research_limits': RESEARCH_LIMITS,
                       'design_code': (ROOT / 'document_design.py').read_text(encoding='utf-8'),
                       'editorial_quality': (ROOT / 'editorial_quality.py').read_text(encoding='utf-8'),
+                      'training_quality': (ROOT / 'training_quality.py').read_text(encoding='utf-8'),
                       'document_options': (ROOT / 'document_options.py').read_text(encoding='utf-8')})
 
 
@@ -856,7 +868,8 @@ class Pipeline:
                      "\n映像から整理した内容案（最終確認はまだ）。動作・向き・条件を保ち、自由な紙面に編集する:\n" +
                      json.dumps(self.quality.plan, ensure_ascii=False) + '\n' +
                      submission_checklist(self.quality.plan, self.config.max_rounds,
-                                          (self.presentation or {}).get('design') == 'editorial' or self.config.design == 'editorial')}
+                                          (self.presentation or {}).get('design') == 'editorial' or self.config.design == 'editorial',
+                                          self.config.purpose == 'training')}
                     ] + self.quality.evidence_content(overview=False)
         header = {"source": e.source, "duration_seconds": e.duration, "frames": e.records}
         content = [{"type": "text", "text": "依頼者の希望:\n" + prompt + "\n動画情報:\n" + json.dumps(header, ensure_ascii=False) +
@@ -891,6 +904,8 @@ class Pipeline:
         write_json(out / "document.json", doc)
         if doc['presentation']['design'] == 'editorial':
             write_json(out / 'design-plan.json', doc['design_plan'])
+        if doc['presentation'].get('purpose') == 'training':
+            write_json(out / 'training-plan.json', doc['training_plan'])
         self.notify(f"PDFを作成して確認しています（{self.revisions}回目）")
         self.qa = check_pages(out, doc)
         self.document = doc
@@ -937,7 +952,7 @@ class Pipeline:
             self.config.progress.complete('analyze')
         self.presentation = select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
         write_json(self.evidence.out / 'presentation.json', self.presentation)
-        system = editor_prompt_path().read_text(encoding="utf-8")
+        system = editor_system(editor_prompt_path().read_text(encoding="utf-8"), self.config.purpose)
         messages = [{"role": "user", "content": self.initial_content(prompt)}]
         checkpoint = Checkpoint(self.evidence.out, 'editor', {'prompt': prompt, 'plan': self.quality.plan, 'system': system})
         saved = checkpoint.load() if self.config.resume else None
@@ -1183,7 +1198,7 @@ def apply_cost_estimate(pipeline, prompt, folder, notify):
     if quality.plan:
         plan_tokens = count_tokens(json.dumps(quality.plan, ensure_ascii=False))
         editor_input = count_tokens([{'role': 'user', 'content': pipeline.initial_content(prompt)}], TOOLS,
-                                    editor_prompt_path().read_text(encoding='utf-8'))
+            editor_system(editor_prompt_path().read_text(encoding='utf-8'), config.purpose))
     else:
         # Before a plan exists the editor's input is approximated from the
         # evidence it will reuse plus a plan of the expected size.

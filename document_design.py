@@ -8,6 +8,7 @@ import math
 import re
 from html import escape
 from document_options import normalize_modes, PRESENTATION_MODES
+from training_quality import VERSION as TRAINING_VERSION
 
 VERSION = 'adaptive-design-v3'
 VISUAL_SCHEMA = {'type': 'array', 'maxItems': 16, 'items': {
@@ -46,10 +47,10 @@ def editorial_brief(selection):
     structure = {
         'procedure': '準備と向きの基準→順序どおりの操作・写真・完了状態→仕上がり確認。難しい動作に紙面を割く。',
         'seminar': '全体像→論点と根拠→事例→結論。ページごとに中心メッセージを一つ定める。',
-        'training': '学習目標→説明・実演→注意と応用→振り返り問題と回答。架空の社内ルールを追加しない。',
+        'training': '学習目標・全体像→要点と判断の関係・動画の具体例→確認問題・教材用の応用練習→別ページの解答と理由→実務への相談・記入欄。架空の社内ルールを追加しない。',
         'mixed': '講演・解説と実演を章ごとに分ける。操作の部分だけ順番と完了状態を説明する。',
     }[purpose]
-    return {'presentation_selection': selection, 'structure_guidance': structure,
+    brief = {'presentation_selection': selection, 'structure_guidance': structure,
             'arrangement_guidance': [PRESENTATION_MODES[mode] for mode in normalize_modes(selection.get('presentation_modes', ()))],
             'style_guidance': ('デザイン重視。見出し・重要数値・引用・配色・余白にメリハリをつける。ページの主役を決め、内容に応じて段組みと大小・配置を変える。図解を増やすこと自体を目的にしない。'
                                '表紙は.cover・.tldr（ひとことで言うと）・.keypoints（3つの要点）で全体の主張を示し、章は.chapter（番号と時刻）で始める。'
@@ -59,6 +60,13 @@ def editorial_brief(selection):
             'visual_density_guidance': {'auto': '理解に役立つ箇所だけ図表を使う。', 'more': '理解に役立つ図表を優先し、重複を避ける。', 'fewer': '文章・写真・表を中心に、必要な図だけ残す。'}[selection.get('visual_density', 'auto')],
             'note_policy': '重要条件は数値・操作のすぐ近く、その他の補足は短い注記へ。確認文を各ページで反復しない。',
             'page_design_workflow': '読者の目的と内容の関係から紙面を設計し、design_planをcompose_documentに一緒に提出。全ページの実画像を見てdesign_reviewをapprove_documentに記録する。追加のAI呼び出し・設計専用ツールは不要。部品の一覧を順番に埋めない。' if selection['design'] == 'editorial' else '内容に合った読みやすい構成を選ぶ。'}
+    if purpose == 'training':
+        brief['training_structure_version'] = TRAINING_VERSION
+        brief['training_guidance'] = '学習目標から実務への持ち帰りまで教材として構成する。具体例・写真の有用性と、問題・解答の分離を優先し、training_planを実際の紙面に対応付ける。'
+        brief['style_guidance'] += ('研修では要点を伝える見出しと関係・判断の図解を主役にできる。'
+                                   '表紙を写真と3つのカードで固定せず、学習目標・全体像を優先する。'
+                                   '確認問題のページで.qaの問題・解答横並びを使わない。')
+    return brief
 
 
 DESIGN_CSS = '''

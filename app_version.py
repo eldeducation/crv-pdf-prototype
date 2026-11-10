@@ -10,7 +10,7 @@ APP_FILES = (
     'youtube_support.py', 'home_fetch.py', 'video_upload.py', 'content_quality.py',
     'checkpoints.py', 'crv_worker.py', 'render.cjs', 'layout.css', 'index.html', 'ui.js',
     'runtime.local.json', 'security.py', 'document_options.py', 'document_design.py',
-    'editorial_quality.py', 'restyle.py', 'source_references.py', 'job_progress.py',
+    'editorial_quality.py', 'training_quality.py', 'restyle.py', 'source_references.py', 'job_progress.py',
     'action_grounding.py', 'manual_client.py', 'presentation_quality.py', 'web_research.py',
     'cost_estimate.py', 'markdown_export.py', 'prompt_cache.py', 'key_store.py', 'app_version.py',
 )

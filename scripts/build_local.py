@@ -35,8 +35,9 @@ def build(output, revision, source=SOURCE):
     info = {'revision': revision, 'source_hash':source_hash(source)}
     files['QUALITY-BASELINE.json'] = json.dumps({
         'source_hash': info['source_hash'],
-        'scope': 'Unchanged app source, prompts, evidence extraction, review gates and PDF renderer. '
-                 'AI model, reasoning settings and context can still affect output quality.',
+        'scope': 'Fingerprint and file hashes of the exact application source packaged in this release. '
+                 'This is not a quality score or a claim that generation rules never change. '
+                 'AI model, reasoning settings and context can affect output quality.',
         'sha256': {name:hashlib.sha256(data).hexdigest() for name,data in sorted(files.items())
                    if name.startswith('app/') and name != 'app/runtime.local.json'},
     }, sort_keys=True, indent=2).encode()
