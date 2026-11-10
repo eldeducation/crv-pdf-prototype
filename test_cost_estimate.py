@@ -28,25 +28,48 @@ class CountTokensTest(unittest.TestCase):
         self.assertEqual(cost_estimate.count_tokens('あ' * 1000), 1100)
         self.assertEqual(cost_estimate.count_tokens('a' * 900), 300)
 
-    def test_images_count_by_pixels_with_a_cap(self):
+    def test_images_count_by_pixels_as_billed_with_a_cap(self):
         buffer = io.BytesIO()
         Image.new('RGB', (1536, 520)).save(buffer, 'JPEG')
         block = {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg',
                                              'data': base64.b64encode(buffer.getvalue()).decode()}}
-        self.assertEqual(cost_estimate.count_tokens([block]), 1065)
+        self.assertEqual(cost_estimate.count_tokens([block]), 1491)       # 1536*520/750 * 1.4
         big = io.BytesIO()
         Image.new('RGB', (3000, 3000)).save(big, 'JPEG')
         block['source']['data'] = base64.b64encode(big.getvalue()).decode()
         self.assertEqual(cost_estimate.count_tokens([block]), cost_estimate.IMAGE_TOKEN_CAP)
 
+    def test_earlier_replies_count_as_billed_when_sent_again(self):
+        # Measured 2026-11-10: a reply sent back in the history was billed at about
+        # 2.1-2.2x its size; leaving that out made the 4th edit look 147k instead of 258k.
+        reply = {'role': 'assistant', 'content': [{'type': 'tool_use', 'id': 't', 'name': 'x', 'input': {'html': 'a' * 3000}}]}
+        alone = cost_estimate.count_tokens([{'role': 'user', 'content': 'a' * 3000}])
+        self.assertAlmostEqual(cost_estimate.count_tokens([reply]) / alone, cost_estimate.RESEND_FACTOR, delta=0.1)
+
 
 class EstimateRunTest(unittest.TestCase):
-    def test_restyle_estimate_matches_measured_runs(self):
-        # Measured (uncached) document-stage spend for this video: about $1.9 (no fix) to $3.5 (one fix).
-        result = estimate(cache=False)
-        self.assertTrue(1.5 <= result['low_usd'] <= 2.5, result)
-        self.assertTrue(2.8 <= result['high_usd'] <= 5.0, result)
-        self.assertGreater(result['high_usd'], result['low_usd'])
+    def test_estimate_covers_the_measured_runs(self):
+        # Opus 5.5 restyles on 2026-11-10 (detailed editorial seminar; standard training):
+        # $2.60 with one full submission; $4.57 after three full submissions, two checks
+        # and a fix, stopped at the old $5 limit with about $1.4 of work left (~$6 total).
+        cached = estimate(analysis_input=35400, editor_input=37700, plan_tokens=4000,
+                          model='anthropic/claude-opus-5.5')
+        self.assertLessEqual(cached['low_usd'], 2.6, cached)
+        self.assertGreaterEqual(cached['high_usd'], 6.0, cached)
+        self.assertGreaterEqual(cached['ceiling_usd'], 7.5, cached)      # the stopped run would finish
+        self.assertLessEqual(cached['ceiling_usd'], cost_estimate.DEFAULT_MAX_RUN_USD)
+        standard = estimate(analysis_input=29300, editor_input=33400, plan_tokens=4000, detail_level='standard',
+                            model='anthropic/claude-opus-5.5')
+        self.assertLessEqual(standard['low_usd'], 2.6, standard)
+        self.assertGreaterEqual(standard['high_usd'], 3.7, standard)     # $4.14 run incl. $0.49 planning
+
+    def test_content_check_is_two_calls(self):
+        one = estimate(cache=False)
+        with mock.patch.object(cost_estimate, 'REVIEW_LOOK_OUTPUT', 0), \
+                mock.patch.object(cost_estimate, 'REVIEW_LOOK_GROWTH', 0):
+            cheaper = estimate(cache=False)
+        # The look call's output (4.5k) and the frames it adds to the review (15k input).
+        self.assertAlmostEqual(one['low_usd'] - cheaper['low_usd'], 4500 * OPUS[1] + 15000 * OPUS[0], delta=0.01)
 
     def test_prompt_cache_lowers_the_estimate(self):
         cached, plain = estimate(model='anthropic/claude-opus-5.5'), estimate(cache=False)
@@ -66,8 +89,10 @@ class EstimateRunTest(unittest.TestCase):
         self.assertLess(estimate(detail_level='compact')['high_usd'], estimate()['high_usd'])
 
     def test_ceiling_is_automatic_and_bounded(self):
-        result = estimate(spent=1.0)
+        result = estimate(spent=1.0, detail_level='compact', analysis_input=30000, editor_input=30000)
+        self.assertLess(result['ceiling_usd'], cost_estimate.DEFAULT_MAX_RUN_USD)
         self.assertAlmostEqual(result['ceiling_usd'], 1.0 + result['high_usd'] * 1.3, delta=0.02)
+        self.assertEqual(estimate(spent=1.0)['ceiling_usd'], cost_estimate.DEFAULT_MAX_RUN_USD)
         with mock.patch.dict(os.environ, {'VIDEO_PDF_MAX_RUN_USD': '2'}):
             capped = estimate()
         self.assertEqual(capped['ceiling_usd'], 2.0)
