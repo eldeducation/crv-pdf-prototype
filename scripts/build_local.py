@@ -22,7 +22,8 @@ def build(output, revision, source=SOURCE):
         files['app/' + name] = b'{}\n' if name == 'runtime.local.json' else (source / name).read_bytes()
     files['app/prompts/editor.txt'] = editor_prompt_path(source).read_bytes()
     for path in sorted((source / 'distribution').iterdir()):
-        if path.is_file() and path.name in {'setup_local.py','launch.py','setup.cmd','start.cmd','README.md','LLM-START.md','MANUAL-TEST.md'}:
+        if path.is_file() and path.name in {'setup_local.py','launch.py','start.py','ai_handoff.py','setup.cmd','start.cmd',
+                                           'README.md','LLM-START.md','MANUAL-TEST.md','START-HERE.md','AGENTS.md','CLAUDE.md'}:
             files[path.name] = path.read_bytes()
     files['requirements.txt'] = (source/'requirements.txt').read_bytes() + b'\nyt-dlp[default]==2026.10.26\n'
     files['package.json'] = json.dumps({'name':'crv-pdf-local','private':True,
@@ -32,6 +33,13 @@ def build(output, revision, source=SOURCE):
         if re.search(rb'sk-(?:or-v1-|ant-|proj-)[A-Za-z0-9_-]{20,}', data):
             raise ValueError('A credential-shaped value was found in a release source: ' + name)
     info = {'revision': revision, 'source_hash':source_hash(source)}
+    files['QUALITY-BASELINE.json'] = json.dumps({
+        'source_hash': info['source_hash'],
+        'scope': 'Unchanged app source, prompts, evidence extraction, review gates and PDF renderer. '
+                 'AI model, reasoning settings and context can still affect output quality.',
+        'sha256': {name:hashlib.sha256(data).hexdigest() for name,data in sorted(files.items())
+                   if name.startswith('app/') and name != 'app/runtime.local.json'},
+    }, sort_keys=True, indent=2).encode()
     files['app/build-info.json'] = json.dumps(info,sort_keys=True).encode()
     files['.gitignore'] = b'.venv/\nnode_modules/\napp/*.local.*\napp/.env*\napp/runs/\napp/uploads/\napp/work/\n__pycache__/\n*.log\n'
     manifest = {name:hashlib.sha256(data).hexdigest() for name,data in sorted(files.items())}

@@ -4,10 +4,25 @@
 
 ## 起動
 
-1. README.mdを読み、Python 3.10〜3.12、Node.js 22以上、ffmpeg/ffprobeを確認してください。`python setup_local.py --check-only` はインストールしません。未導入のものは公式配布元を使い、利用環境の承認ルールに従います。Python 3.12推奨です。
+1. START-HERE.mdとREADME.mdを読み、Python 3.10〜3.12、Node.js 22以上、ffmpeg/ffprobeを確認してください。`python start.py --check-only` はインストールしません。未導入のものは公式配布元を使い、利用環境の承認ルールに従います。Python 3.12推奨です。
 2. 初回だけ `python setup_local.py`。このフォルダの仮想環境、Node依存、Chromium、app/runtime.local.jsonを作ります。APIや生成処理は呼びません。途中失敗時は原因を確認し、同じ処理を無制限に繰り返さないでください。
 3. `python launch.py` で起動。自動でブラウザーを開けない場合は `python launch.py --no-browser` で出た127.0.0.1のURLを渡してください。既存の利用者データを削除しないでください。
 4. APIキーはチャットへ要求しません。API接続する場合は画面で本人に入力してもらいます。勝手に環境変数・.env・ブラウザーCookie・他ユーザーのファイルから認証情報を探さないでください。アプリはローカル専用で起動し、公開やトンネルは別の明示依頼が必要です。
+
+Windowsの受取人はstart.cmd、他の環境は`python start.py`で初回準備と起動をまとめられます。自分で準備するときの詳細手順は上記のとおりです。起動後のコマンドは同じ配布フォルダから実行してください。
+
+## ローカルファイルを扱えるAIからの受け渡し
+
+API・別のAIログイン・外部取得サービスを追加せず、現在この会話を処理しているAIが回答します。AI側のファイル読み取り・画像表示・コマンド実行機能を使ってください。ブラウザーだけのチャットなら後述の画面操作で受け渡します。
+
+1. 起動後、`python ai_handoff.py status`。実行中なら新しく開始せず、その依頼を続けます。
+2. ユーザーの動画リンクと用途を確認して開始します。例：`python ai_handoff.py start --url "動画URL" --purpose training --language ja`。用途はauto/procedure/seminar/training。`--detail`はcompact/standard/detailed。希望がある場合だけ`--mode clean`、diagrams、photos、comparisonを追加します（複数回指定可）。解説のない動画だけ`--silent`。外部検索を許可しない場合は`--no-research`。動画ファイルは画面で指定します。未指定の希望を勝手に追加しません。
+3. `python ai_handoff.py wait --seconds 30`は最長30秒だけ待ちます。準備中は状況を知らせ、次の確認を行います。回答待ちは計算中ではありません。
+4. `python ai_handoff.py request`が現在のrequest.json/request.html/全画像/回答テンプレートの絶対パスを返します。JSONのsystem/messages/toolsを省略せず読み、参照された画像をすべて実際に表示して確認します。画像一覧やファイル名を見ただけでは照合になりません。表示できなければその不足を伝え、承認を作りません。
+5. 既存スキーマに従う回答を**別のJSONファイル**へ保存し、`python ai_handoff.py submit "回答ファイルのパス"`。元のrequest.json、テンプレート、検査記録は書き換えません。古いrequest_idは拒否されます。回答は既存サーバーの形式・根拠・完了承認検査へ渡ります。
+6. 追加確認や修正の依頼が出たら3〜5を繰り返します。`python ai_handoff.py results`でcomplete/needs_reviewと成果物のパスを取得します。needs_reviewを完成・検証済みと呼びません。内容と全ページの表示を確認し、PDFとMarkdownを渡します。
+
+この補助コマンドはモデルを呼び出しません。品質を保つため、可能なら以前の比較と同じモデル・推論設定を使います。現在のモデルを確認できなければ不明と記載し、API用のモデル名を流用しません。画面のAPI設定はこの方式に適用されません。
 
 ## APIなしでユーザーと資料を作る
 

@@ -6,13 +6,22 @@ ROOT = Path(__file__).resolve().parent
 def python_path(root=ROOT):
     return root / '.venv' / ('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
 
+def is_ready(root=ROOT):
+    try:
+        config = json.loads((root / 'app/runtime.local.json').read_text(encoding='utf-8'))
+        return (python_path(root).is_file() and Path(config['node']).is_file()
+                and (Path(config['playwright']) / 'cli.js').is_file())
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
 def prerequisites():
     if not (3, 10) <= sys.version_info[:2] < (3, 13):
         raise RuntimeError('Use Python 3.10-3.12; Python 3.12 is recommended.')
     found = {name: shutil.which(name) for name in ('node', 'npm', 'ffmpeg', 'ffprobe')}
     missing = [name for name, path in found.items() if not path]
     if missing:
-        raise RuntimeError('Install official dependencies and reopen the terminal: ' + ', '.join(missing))
+        raise RuntimeError('Install dependencies and reopen the terminal: ' + ', '.join(missing)
+                           + '. Ask your coding agent to read LLM-START.md; nothing was installed.')
     major = int(subprocess.check_output([found['node'], '--version'], text=True).strip().lstrip('v').split('.')[0])
     if major < 22:
         raise RuntimeError('Node.js 22 or later is required.')
