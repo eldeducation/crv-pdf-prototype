@@ -758,6 +758,7 @@ def submission_checklist(plan, max_rounds, editorial, training=False):
     if actions:
         lines.append('- action（' + '、'.join(actions) + '）：それぞれdata-step-unitsのブロックとsource_unitsで対応付け、その区間の根拠画像を同じブロックに掲載する。')
     lines.append('- 編集用Markdownはページから自動で作られるので書かない。修正はrevise_pagesで該当ページだけ差し替えられる。')
+    lines.append('- 最後のページに<div class="wrapup">（まとめ）を置き、<ol>に3～5個の<li>で本文の要点を振り返る。')
     if editorial:
         lines.append('- design_plan.pages[].focus_excerpt：そのページの見出しか本文にある連続した文字列をそのまま写す（要約・言い換え・別ページの文は不可）。')
         lines.append('- design_plan.pagesのsource_unitsは、そのページのsource_unitsに含まれるidだけにする。')
@@ -783,6 +784,25 @@ _REVISE['visuals'] = {**VISUAL_SCHEMA, 'description': '変更する場合だけ�
 _REVISE['training_plan'] = TRAINING_PLAN_SCHEMA
 
 
+WRAPUP_CLASS = re.compile(r'class\s*=\s*["\'][^"\']*(?<![\w-])wrapup(?![\w-])')
+
+
+def wrapup_problem(doc):
+    """Every document ends with a summary (.wrapup) of 3-5 points on its last page."""
+    pages = doc.get('pages') or []
+    if not pages or not isinstance(pages[-1], dict):
+        return None
+    last = str(pages[-1].get('html', ''))
+    found = WRAPUP_CLASS.search(last)
+    if not found:
+        return ('最後のページにまとめを置いてください：<div class="wrapup"><p class="label">まとめ</p><h2>結論</h2>'
+                '<ol><li>要点</li>…</ol></div>（liは3～5項目、本文の内容だけを振り返る）。')
+    items = len(re.findall(r'<li[\s>]', last[found.end():]))
+    if not 3 <= items <= 6:
+        return f'まとめ（.wrapup）の要点は<ol>の<li>3～5項目にしてください（現在{items}項目）。'
+    return None
+
+
 def build_document(doc, plan, presentation, evidence, language='auto'):
     """Turn an editor submission into the document and its PDF source HTML.
 
@@ -796,6 +816,8 @@ def build_document(doc, plan, presentation, evidence, language='auto'):
     doc['presentation'] = presentation
     # Run both independent gates so one rejection lists every problem.
     problems = []
+    if wrapup_problem(doc):
+        problems.append(wrapup_problem(doc))
     if presentation.get('purpose') == 'training':
         try:
             validate_training_plan(doc, plan)

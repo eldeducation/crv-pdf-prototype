@@ -111,7 +111,7 @@ blockquote { font-weight: bold; color: var(--heading-color); }
 # Magazine-style parts the editor can compose freely (see editor.txt). They only
 # style ordinary HTML; content, captions and source spans stay the editor's job.
 KIT_CLASSES = ('cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
-               'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles')
+               'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles', 'wrapup')
 _KIT_SELECTOR = re.compile(r'\.(?:' + '|'.join(map(re.escape, KIT_CLASSES)) + r')(?![\w-])')
 
 

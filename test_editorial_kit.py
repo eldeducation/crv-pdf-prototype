@@ -8,12 +8,13 @@ from presentation_quality import THEMES, theme_css
 
 ROOT = Path(__file__).resolve().parent
 KIT_CLASSES_EXPECTED = KIT_CLASSES = ['cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
-               'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles']
+               'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles', 'wrapup']
 
 
 class EditorialKitTest(unittest.TestCase):
     def test_editorial_css_defines_every_kit_class(self):
-        css = style_css('editorial')
+        # .wrapup (the required closing summary) is in the base layout so every design styles it.
+        css = style_css('editorial') + (ROOT / 'layout.css').read_text(encoding='utf-8')
         for name in KIT_CLASSES:
             self.assertRegex(css, r'\.' + re.escape(name) + r'[\s,{.:>]', name)
 

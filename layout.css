@@ -36,4 +36,14 @@ th { background: var(--accent-soft, #edf5f0); }
 .flow > * { flex: 1; padding: 3mm; background: #edf6f0; }
 blockquote { border-left: 1mm solid #238461; padding-left: 5mm; margin: 5mm 0; font-size: 14pt; }
 svg { max-width: 100%; height: auto; }
+/* Closing summary, required on the last page of every document. */
+.wrapup { border-top: 1.2mm solid var(--heading-color, #164c3b); padding-top: 4mm; margin: 6mm 0 0; }
+.wrapup .label { font-size: 9pt; font-weight: bold; letter-spacing: .14em; color: var(--heading-color, #164c3b); margin: 0 0 1.5mm; }
+.wrapup h2 { margin: 0 0 4mm; }
+.wrapup ol { list-style: none; counter-reset: wrapup; padding: 0; margin: 0; }
+.wrapup li { counter-increment: wrapup; position: relative; background: var(--accent-soft, #edf6f0); border-radius: 1.5mm;
+             padding: 3mm 4mm 3mm 15mm; margin: 0 0 2.5mm; font-size: 10.5pt; line-height: 1.65; }
+.wrapup li::before { content: counter(wrapup, decimal-leading-zero); position: absolute; left: 4mm; top: 2.4mm;
+                     font: bold 15pt/1.2 Arial, sans-serif; color: var(--accent-strong, var(--heading-color, #164c3b)); }
+.wrapup .next { margin: 4mm 0 0; font-size: 10pt; }
 @media print { body { background: white; } .page { margin: 0; } }

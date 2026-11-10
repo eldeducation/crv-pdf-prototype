@@ -94,6 +94,8 @@ HTMLは h1 h2 h3 p div section figure img figcaption span strong em ul ol li tab
 thead tbody tr th td blockquote br hr small 等を使える。必要なら静的SVGの図解を使える。
 SVGは svg g path rect circle ellipse line polyline polygon text tspan defs marker linearGradient radialGradient stop と、
 線・塗り・破線（stroke-dasharray）・矢印（marker-end="url(#id)"）などの描画属性を使える。href・外部参照・foreignObject・アニメーションは使えない。
+最後のページには、用途・デザインにかかわらず必ずまとめを置く：<div class="wrapup"><p class="label">まとめ</p><h2>全体の結論を一言で</h2><ol><li>要点1～2文<span data-source-unit="内容案のid"></span></li>…</ol></div>（liは3～5項目）。
+まとめは本文で説明した内容だけを振り返り、新しい事実・数値を足さない。手順書は完成状態と確認点、研修は学習目標の振り返り、セミナーは結論と前提条件を含める。必要なら<p class="next">で次に確認すること（動画で示されたもの）を1文添える。
 css は追加CSSのみ。@pageや.page/.page-content等の基盤の上書きは禁止。
 本文は10～11pt目安、キャプションも8pt未満にしない。文字を縮めて詰め込まない。
 背景と文字のコントラスト、写真の大きさ、余白に気を配る。
