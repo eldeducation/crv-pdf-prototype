@@ -1,0 +1,14 @@
+{
+  "model": "anthropic/claude-opus-5.5",
+  "reasoning_effort": "high",
+  "source": "https://www.youtube.com/watch?v=Q2w4-mluYo0",
+  "purpose": "training",
+  "output_language": "ja",
+  "pages": 9,
+  "api_cost_usd": 4.1410858,
+  "content_review_approved": true,
+  "layout_errors": 0,
+  "pdf_pages_visually_checked": true,
+  "pdf_sha256": "1fbd0f1cdc7baeb23d6739611a118dddce5967dedaf6c61393d4cc1bc2fb7554",
+  "ai_generation": "OpenRouter API; Claude Opus 5.5 high; no manual content rewriting"
+}

@@ -1,0 +1,31 @@
+{
+  "model": "anthropic/claude-opus-5.5",
+  "effort": "high",
+  "purpose": "training",
+  "detail": "standard",
+  "language": "ja",
+  "source": "https://www.youtube.com/watch?v=Q2w4-mluYo0",
+  "pages": 13,
+  "photo_placements": 14,
+  "question_count": 7,
+  "question_pages": [
+    9
+  ],
+  "answer_pages": [
+    11
+  ],
+  "practice_page": 10,
+  "practice_answer_page": 12,
+  "application_page": 13,
+  "api_cost_usd": 2.5986154,
+  "api_calls": 6,
+  "seconds": 404.8,
+  "reused_verified_content_plan": "20261109-160343-1f33af",
+  "source_revision": "ad680b8cf29935b660f34182bc72d4c48a903e00",
+  "source_hash": "6a00c1b99ed06897a067b22173ed8071b88c09738277f1452e91bff789fe00b9",
+  "content_review_approved": true,
+  "layout_errors": 0,
+  "all_pdf_pages_visually_checked": true,
+  "pdf_sha256": "d49eb62a65a48464792d589be620e45318dc7a2bf9122c1da4b2399a7247597f",
+  "manual_content_or_design_rewriting": false
+}

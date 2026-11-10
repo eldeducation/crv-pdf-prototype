@@ -1,0 +1,19 @@
+{
+  "source": "https://x.com/ai_explorer25/status/2113976731854131272/video/1?s=46",
+  "model": "anthropic/claude-opus-5.5",
+  "effort": "high",
+  "purpose": "seminar",
+  "detail_level": "detailed",
+  "output_language": "ja",
+  "status": "complete",
+  "content_verified": true,
+  "ai_reviewed": true,
+  "actual_api_cost_usd": 6.3288528,
+  "approved_total_limit_usd": 6.5,
+  "api_call_count": 9,
+  "pages": 12,
+  "reused": "Previously downloaded video, Whisper base transcript, extracted frames, and approved content plan. Previous PDF body and layout were not used as model input.",
+  "visual_check": "All 12 final rendered pages match the visually inspected page images pixel for pixel.",
+  "runtime_source_hash": "6a00c1b99ed06897a067b22173ed8071b88c09738277f1452e91bff789fe00b9",
+  "pdf_sha256": "a04b79a49c306db02a5e7e316a1872560779198ed56527c2057f39d3b1078e6d"
+}

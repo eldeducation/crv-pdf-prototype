@@ -1,0 +1,16 @@
+{
+  "source": "https://www.youtube.com/watch?v=BNHrLHl1DKQ",
+  "model": "anthropic/claude-opus-5.5",
+  "effort": "xhigh",
+  "purpose": "auto",
+  "detail_level": "standard",
+  "output_language": "ja",
+  "status": "needs_review",
+  "content_verified": false,
+  "stop_code": "budget",
+  "pages": 12,
+  "actual_api_cost_usd": 7.0077756,
+  "approved_total_limit_usd": 7.62,
+  "pdf_sha256": "ea7111b0ecebba4f414f2289c12c42702d2e8a426765f144dd4eccf1303febb2",
+  "note": "Draft only. The content review stopped at the cost guard. Not a verified teaching document."
+}
