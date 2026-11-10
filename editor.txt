@@ -92,6 +92,8 @@ HTML本文やCSSを書いてよいがJavaScript、外部URL、外部フォント
 画像srcは渡された assets/ 内のファイルだけ。画像の縦横比を維持する。
 HTMLは h1 h2 h3 p div section figure img figcaption span strong em ul ol li table
 thead tbody tr th td blockquote br hr small 等を使える。必要なら静的SVGの図解を使える。
+SVGは svg g path rect circle ellipse line polyline polygon text tspan defs marker linearGradient radialGradient stop と、
+線・塗り・破線（stroke-dasharray）・矢印（marker-end="url(#id)"）などの描画属性を使える。href・外部参照・foreignObject・アニメーションは使えない。
 css は追加CSSのみ。@pageや.page/.page-content等の基盤の上書きは禁止。
 本文は10～11pt目安、キャプションも8pt未満にしない。文字を縮めて詰め込まない。
 背景と文字のコントラスト、写真の大きさ、余白に気を配る。

@@ -403,9 +403,17 @@ class Evidence:
         return result
 
 
-ALLOWED_TAGS = set("h1 h2 h3 h4 p div section article figure img figcaption span strong b em i mark ul ol li table thead tbody tr th td blockquote br hr small svg g path rect circle ellipse line polyline polygon text tspan defs lineargradient stop".split())
+ALLOWED_TAGS = set("h1 h2 h3 h4 p div section article figure img figcaption span strong b em i mark ul ol li table thead tbody tr th td blockquote br hr small svg g path rect circle ellipse line polyline polygon text tspan defs lineargradient radialgradient stop marker".split())
 VOID_TAGS = {"img", "br", "hr"}
-ALLOWED_ATTRS = set("class style alt title colspan rowspan viewbox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width opacity transform font-size font-weight text-anchor offset stop-color id".split())
+# Static SVG drawing only. Arrowheads (marker), dashed lines and caps are presentational;
+# on 2026-11-10 three full rewrites (~$3) were spent on xmlns, <marker> and stroke-dasharray.
+ALLOWED_ATTRS = set("class style alt title colspan rowspan viewbox width height x y x1 y1 x2 y2 cx cy r rx ry d points fill stroke stroke-width opacity transform font-size font-weight text-anchor offset stop-color id"
+                    " stroke-dasharray stroke-dashoffset stroke-linecap stroke-linejoin stroke-opacity fill-opacity stop-opacity"
+                    " marker-start marker-mid marker-end markerwidth markerheight markerunits refx refy orient"
+                    " preserveaspectratio dominant-baseline dx dy gradientunits fx fy font-style letter-spacing".split())
+SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
+PAINT_REFERENCES = {'fill', 'stroke', 'marker-start', 'marker-mid', 'marker-end'}
+LOCAL_REFERENCE = re.compile(r'\s*url\(\s*#[A-Za-z][\w.-]*\s*\)\s*')
 
 
 def check_css(css):
@@ -429,40 +437,66 @@ class Fragment(HTMLParser):
         self.research = WebResearch(evidence.out, evidence.source)
         self.external_facts = self.research.facts(units or [])
         self.language = language
+        # Every markup problem of the page is collected, so one rejection lists them all;
+        # each rejected submission costs a full document-length response.
+        self.problems = []
+
+    def problem(self, message):
+        if message not in self.problems:
+            self.problems.append(message)
 
     def handle_starttag(self, tag, attrs):
         if tag not in ALLOWED_TAGS:
-            raise PrototypeError(f"HTMLの {tag} は使用できません。")
+            self.problem(f"HTMLの {tag} は使用できません。")
+            if tag not in VOID_TAGS:
+                self.stack.append(tag)     # keeps its closing tag from being reported too
+            return
         safe = []
         reference = None
         for key, value in attrs:
             value = value or ""
             if key == 'data-step-units' and tag in {'section', 'div'}:
                 if any(i not in self.units for i in value.split()) or not value.split():
-                    raise PrototypeError('data-step-unitsには内容案の工程idを指定してください。')
+                    self.problem('data-step-unitsには内容案の工程idを指定してください。')
+                    continue
                 safe.append(f'data-step-units="{html.escape(value, quote=True)}"')
                 continue
             if key == 'data-source-unit' and tag == 'span':
                 if value not in self.units:
-                    raise PrototypeError('根拠のidは内容案に存在するものを指定してください。')
+                    self.problem('根拠のidは内容案に存在するものを指定してください。')
+                    continue
                 reference = self.units[value]
                 self.references.add(value)
                 continue
+            if key == 'xmlns' and tag == 'svg' and value.strip() == SVG_NAMESPACE:
+                continue                    # implied for inline SVG; nothing to keep
             if key == "src" and tag == "img":
-                self.evidence.safe_asset(value)
+                try:
+                    self.evidence.safe_asset(value)
+                except PrototypeError as error:
+                    self.problem(str(error))
+                    continue
                 self.images += 1
                 self.image_names.add(value)
             elif key not in ALLOWED_ATTRS:
-                raise PrototypeError(f"HTML属性 {key} は使用できません。")
+                self.problem(f"HTML属性 {key} は使用できません。")
+                continue
             if key == "class" and set(value.split()) & {"page", "page-content", "page-foot"}:
-                raise PrototypeError("ページ枠のクラスは本文では使用できません。")
+                self.problem("ページ枠のクラスは本文では使用できません。")
+                continue
             if key == "style":
-                check_css(value)
-            if key in {"fill", "stroke"} and re.search(r"url|javascript|https?:", value, re.I):
-                raise PrototypeError("SVGの外部参照は使用できません。")
+                try:
+                    check_css(value)
+                except PrototypeError as error:
+                    self.problem(str(error))
+                    continue
+            if key in PAINT_REFERENCES and re.search(r"url|javascript|https?:", value, re.I) \
+                    and not LOCAL_REFERENCE.fullmatch(value):
+                self.problem("SVGの外部参照は使用できません（同じ図の中の url(#id) だけ使えます）。")
+                continue
             safe.append(f'{key}="{html.escape(value, quote=True)}"')
         if tag == "img" and not any(k == "src" for k, v in attrs):
-            raise PrototypeError("画像のsrcがありません。")
+            self.problem("画像のsrcがありません。")
         self.pieces.append("<" + tag + (" " + " ".join(safe) if safe else "") + ">")
         if reference:
             self.pieces.append(citation_html(reference, self.evidence.source))
@@ -476,7 +510,10 @@ class Fragment(HTMLParser):
         if tag in VOID_TAGS:
             return
         if not self.stack or self.stack[-1] != tag:
-            raise PrototypeError(f"HTMLの閉じタグが一致しません: {tag}")
+            self.problem(f"HTMLの閉じタグが一致しません: {tag}")
+            if tag in self.stack:           # resynchronise so later problems are still found
+                del self.stack[len(self.stack) - 1 - self.stack[::-1].index(tag):]
+            return
         self.stack.pop()
         self.pieces.append(f"</{tag}>")
 
@@ -493,7 +530,9 @@ class Fragment(HTMLParser):
         self.feed(markup)
         self.close()
         if self.stack:
-            raise PrototypeError("HTMLの閉じタグが不足しています。")
+            self.problem("HTMLの閉じタグが不足しています。")
+        if self.problems:
+            raise PrototypeError("\n".join(self.problems))
         return "".join(self.pieces)
 
 
@@ -507,18 +546,26 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
     image_names, action_images, page_images = set(), {}, []
     cited_units = set()
     known_units = {u['id']: u for u in (units or [])}
-    for page in pages:
+    markup_problems = {}
+    for number, page in enumerate(pages, 1):
         parser = Fragment(evidence, units, language)
-        fragments.append(parser.result(page["html"]))
+        try:
+            fragments.append(parser.result(page["html"]))
+        except PrototypeError as error:
+            # Check every page before rejecting, and name the pages for each problem.
+            for message in str(error).split("\n"):
+                markup_problems.setdefault(message, []).append(number)
+            continue
         cited_units.update(parser.references)
         count += parser.images
         image_names.update(parser.image_names)
         page_images.append(parser.image_names)
         if any(re.match(r"^\s*Image\s*[—–-]\s+\S", text, re.I) for text in parser.text_parts):
-            raise PrototypeError("写真の代わりのImage説明枠が残っています。実際の根拠画像をimgで掲載してください。")
+            markup_problems.setdefault("写真の代わりのImage説明枠が残っています。実際の根拠画像をimgで掲載してください。", []).append(number)
         identifiers = page.get('source_units', [])
         if not isinstance(identifiers, list) or any(not isinstance(i, str) or i not in known_units for i in identifiers):
-            raise PrototypeError('source_unitsは内容案のidの配列で指定してください。')
+            markup_problems.setdefault('source_unitsは内容案のidの配列で指定してください。', []).append(number)
+            continue
         identifiers = set(identifiers) | parser.references
         for identity in identifiers:
             action_images.setdefault(identity, set()).update(parser.image_names)
@@ -527,6 +574,9 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
         if not related:
             related = [{'start': r['seconds'], 'end': r['seconds']} for r in evidence.records if r['file'] in parser.image_names]
         source_labels.append('' if parser.references else ' '.join(citation_html(u, evidence.source) for u in related[:3]))
+    if markup_problems:
+        raise PrototypeError("\n".join(f"{'・'.join(map(str, numbers))}ページ: {message}"
+                                       for message, numbers in markup_problems.items()))
     if any(u.get('external_facts') and u['id'] not in cited_units for u in (units or [])):
         raise PrototypeError('外部補足のある説明にはdata-source-unitの出典マーカーが必要です。')
     if count == 0:
