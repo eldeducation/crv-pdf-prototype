@@ -51,6 +51,15 @@ test('a disconnected page cannot submit paid or manual resume',async()=>{
   assert.equal(f.calls.length,0);
  }
 });
+
+test('finish reserve resume keeps the chosen cumulative ceiling',async()=>{
+ const f=fixture({folder:'saved-run',progress:{resume:{reason:'finish_reserve'}}},true);
+ f.context.budgetValue=()=>3.85;
+ await f.elements.get('resume').onclick();
+ assert.equal(f.calls[0][1].resume_folder,'saved-run');
+ assert.equal(f.calls[0][1].budget_usd,3.85);
+ assert.equal(f.calls[0][1].confirm_estimate,false);
+});
 test('embedded UI stays identical to ui.js',()=>{
  const page=fs.readFileSync(__dirname+'/index.html','utf8');
  assert.equal(page.split('<script>')[1].split('</script>')[0].trim(),source.trim());

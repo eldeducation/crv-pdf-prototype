@@ -4,6 +4,9 @@ import time
 from pathlib import Path
 
 STAGES = ('prepare', 'analyze', 'document', 'verify', 'finish')
+# Default phase bounds: analysis 8, editing 7, up to two review sessions of 8,
+# plus one format-repair reserve. Successful runs do not consume unused slots.
+DEFAULT_MAX_API_CALLS = 8 + 7 + 2 * 8 + 1
 
 
 def read(path, default=None):
@@ -122,6 +125,21 @@ def describe(folder, job, fingerprint=None):
         states = {name: read(folder / ('checkpoint-' + name + '.state.json'))
                   for name in ('content_plan', 'editor', 'document_content_review')}
         has_plan = bool(states['content_plan'].get('completed'))
+        # The accepted plan may already be bound to an editor even if a later
+        # interrupted planner session replaced its small completion marker.
+        # UI polling checks only that binding; Pipeline revalidates the plan and
+        # loads the full matching editor before it can make a paid request.
+        if not has_plan and states['editor'].get('signature'):
+            try:
+                from app_version import editor_prompt_path
+                from training_quality import editor_system
+                from checkpoints import signature
+                plan = read(folder / 'content-plan.json')
+                system = editor_system(editor_prompt_path(Path(__file__).resolve().parent).read_text(encoding='utf-8'), report.get('purpose', 'auto'))
+                has_plan = bool(plan and states['editor']['signature'] == signature(
+                    {'prompt': report.get('prompt'), 'plan': plan, 'system': system}))
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
         # Restyling reuses a verified source plan without an analysis checkpoint.
         # Revalidate the source, as run() will, instead of treating a JSON file alone
         # as an approved plan. This also handles older saved restyle runs.
@@ -142,13 +160,18 @@ def describe(folder, job, fingerprint=None):
         ready = ((evidence / 'MANIFEST.txt').is_file() and bool(read(evidence / 'frames.json').get('frames'))
                  and bool(read(folder / 'evidence.json').get('frames')))
         costs_unknown = bool(pending) or any('cost_usd' not in c.get('usage', {}) for c in usage.get('api_calls', []))
+        old_limit = usage.get('max_calls', report.get('max_api_calls', 12))
+        spent, ceiling = usage.get('known_cost_usd'), usage.get('budget_usd')
+        finish_reserve = (reason == 'call_limit' and has_plan and has_editor and old_limit in {12, 20}
+                          and isinstance(usage.get('call_count'), int) and usage['call_count'] < DEFAULT_MAX_API_CALLS
+                          and isinstance(spent, (int, float)) and isinstance(ceiling, (int, float)) and spent < ceiling)
         if report.get('quality_pipeline') != 'quality-first-v3':
             resume['reason'] = 'legacy'
         elif costs_unknown:
             resume['reason'] = 'billing_pending'
-        elif reason in {'call_limit', 'round_limit', 'revision_limit', 'token_limit', 'estimate_limit'}:
+        elif reason in {'call_limit', 'round_limit', 'revision_limit', 'token_limit', 'estimate_limit'} and not finish_reserve:
             resume['reason'] = reason
-        elif usage.get('call_count', 0) >= usage.get('max_calls', 12):
+        elif usage.get('call_count', 0) >= old_limit and not finish_reserve:
             resume['reason'] = 'call_limit'
         elif report.get('resume_fingerprint') and fingerprint and report['resume_fingerprint'] != fingerprint:
             resume['reason'] = 'version_changed'
@@ -156,6 +179,8 @@ def describe(folder, job, fingerprint=None):
             resume.update(reason='video_incomplete', from_stage='prepare')
         else:
             resume.update(available=True, reason=reason if reason in {'budget', 'estimate_confirm'} else None)
+            if finish_reserve:
+                resume.update(reason='finish_reserve', max_calls=DEFAULT_MAX_API_CALLS)
             if reason in {'budget', 'estimate_confirm'} and usage.get('estimate'):
                 resume['estimate'] = {k: usage['estimate'].get(k) for k in ('low_usd', 'high_usd', 'spent_usd')}
             if not report.get('resume_fingerprint'):

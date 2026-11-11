@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 from checkpoints import Checkpoint
 from content_quality import (ContentQuality, PLAN_TOOL, SubmissionRepairLimit,
@@ -78,7 +79,7 @@ class SubmissionRepairTests(unittest.TestCase):
         self.assertEqual(q.evidence.inspect_calls,4)
         self.assertTrue(all(t==q.client.seen_tools[0] for t in q.client.seen_tools))
         self.assertEqual(q.config.budget_usd,3.85)
-        self.assertEqual(q.config.max_api_calls,12)
+        self.assertEqual(q.config.max_api_calls,32)
 
     def test_legacy_checkpoint_continues_from_the_failed_submission(self):
         self.saved_rejection()
@@ -201,6 +202,55 @@ class PlanValidationTests(unittest.TestCase):
 
 
 class ResumeCostTests(unittest.TestCase):
+    def test_editor_resume_revalidates_the_saved_plan_without_replanning(self):
+        import pipeline
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp); plan={'kind':'lecture','overview':'fixture','units':[]}
+            (folder/'content-plan.json').write_text(json.dumps(plan))
+            config=Config(resume=True)
+            system=pipeline.editor_system(pipeline.editor_prompt_path().read_text(encoding='utf-8'),config.purpose)
+            Checkpoint(folder,'editor',{'prompt':'same prompt','plan':plan,'system':system}).save(messages=[],round=4)
+            p=pipeline.Pipeline.__new__(pipeline.Pipeline)
+            p.config=config;p.evidence=SimpleNamespace(out=folder);p.notify=lambda m:None
+            p.quality=SimpleNamespace(plan=None,validate_plan=mock.Mock(side_effect=lambda v:v))
+            self.assertTrue(p.restore_editor_plan('same prompt'))
+            self.assertEqual(p.quality.plan,plan)
+            p.quality.validate_plan.assert_called_once()
+            p.quality.plan=None
+            with self.assertRaises(pipeline.PrototypeError):p.restore_editor_plan('changed prompt')
+
+    def test_auto_ceiling_is_persisted_even_when_the_run_stops(self):
+        import pipeline
+        class StubPipeline:
+            def __init__(self, evidence, config, *args):
+                self.config=config
+                self.client=SimpleNamespace(calls=[])
+                self.document=self.qa=self.presentation=None
+                self.revisions=self.layout_failures=0
+            def generate(self,prompt):
+                self.config.budget_usd=3.85  # represents the automatic estimate
+                raise BudgetStop('fixture stop',code='budget')
+        with tempfile.TemporaryDirectory() as temp:
+            folder=Path(temp)/'run'
+            with mock.patch.object(pipeline,'load_env'), mock.patch.object(pipeline,'Evidence'), mock.patch.object(pipeline,'Pipeline',StubPipeline):
+                with self.assertRaises(BudgetStop):
+                    pipeline.run('fixture',evidence_dir=temp,run_dir=folder,config=Config(),client=SimpleNamespace(calls=[]),notify=lambda m:None)
+            saved=json.loads((folder/'run.json').read_text(encoding='utf-8'))
+            self.assertEqual(saved['budget_usd'],3.85)
+            config=Config(resume=True)
+            inherit_resume_budget(config,saved)
+            self.assertEqual(config.budget_usd,3.85)
+
+    def test_legacy_auto_ceiling_is_inherited_from_usage_when_report_was_null(self):
+        config=Config(resume=True)
+        inherit_resume_budget(config,{'budget_usd':None},{'budget_usd':3.85})
+        self.assertEqual(config.budget_usd,3.85)
+
+    def test_explicit_385_is_not_replaced_by_a_recomputed_old_ceiling(self):
+        config=Config(resume=True,budget_usd=3.85)
+        inherit_resume_budget(config,{'budget_usd':None},{'budget_usd':4.24})
+        self.assertEqual(config.budget_usd,3.85)
+
     def test_automatic_resume_keeps_the_previous_total_ceiling(self):
         config=Config(resume=True)
         inherit_resume_budget(config,{'budget_usd':3.85})

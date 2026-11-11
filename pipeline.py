@@ -27,7 +27,7 @@ from content_quality import ContentQuality, INTERVAL_TOOL, digest, compact_inspe
 from presentation_quality import validate_visual_pages, validate_step_bindings, theme_css, THEMES
 from usage_guard import GuardedClient, BudgetStop
 from checkpoints import Checkpoint, signature
-from job_progress import Progress, stop_code
+from job_progress import Progress, stop_code, DEFAULT_MAX_API_CALLS
 from document_options import build_prompt, validate_options, normalize_modes, validate_notes
 from document_design import (select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA,
                              split_kit_rules, kit_lookalikes)
@@ -85,7 +85,7 @@ class Config:
     confirm_estimate: bool = False   # the user accepted a high estimate shown before AI use
     expected_output: dict | None = None
     cache_ttl: str | None = None     # set per request by the usage guard (prompt_cache.TTL_BY_PHASE)
-    max_api_calls: int = 12
+    max_api_calls: int = DEFAULT_MAX_API_CALLS
     max_total_tokens: int | None = None
     cancel_event: object = None
     resume: bool = False
@@ -116,11 +116,13 @@ class PrototypeError(RuntimeError):
         self.code = code
 
 
-def inherit_resume_budget(config, previous):
+def inherit_resume_budget(config, previous, usage=None):
     """Automatic resume keeps the previously approved cumulative ceiling.
     A different explicit amount still has to come from the caller/UI."""
-    if config.budget_usd is None and previous.get('budget_usd') is not None:
-        ceiling = previous['budget_usd']
+    ceiling = previous.get('budget_usd')
+    if ceiling is None:
+        ceiling = (usage or {}).get('budget_usd')
+    if config.budget_usd is None and ceiling is not None:
         if (isinstance(ceiling, bool) or not isinstance(ceiling, (int, float))
                 or not math.isfinite(ceiling) or not .1 <= ceiling <= 20):
             raise PrototypeError('保存された費用上限を確認できません。再開前に上限を指定してください。')
@@ -1021,16 +1023,34 @@ class Pipeline:
                 "type": "base64", "media_type": "image/jpeg", "data": base64.b64encode(buf.getvalue()).decode("ascii")}}])
         return result
 
+    def restore_editor_plan(self, prompt):
+        """Resume a saved editor only with its revalidated, hash-bound plan.
+        Changes in accumulated research must not restart paid planning."""
+        folder = self.evidence.out
+        if (not self.config.resume or not self.config.efficient or self.quality.plan
+                or not (folder / 'content-plan.json').is_file()
+                or not (folder / 'checkpoint-editor.json.gz').is_file()):
+            return False
+        plan = self.quality.validate_plan(read_json(folder / 'content-plan.json'))
+        system = editor_system(editor_prompt_path().read_text(encoding='utf-8'), self.config.purpose)
+        saved = Checkpoint(folder, 'editor', {'prompt':prompt, 'plan':plan, 'system':system}).load()
+        if not saved or not isinstance(saved.get('messages'), list):
+            raise PrototypeError('保存した内容案と紙面の対応を確認できません。内容整理の自動やり直しは行いません。', code='version_changed')
+        self.quality.plan = plan
+        self.notify('保存済みの内容案と紙面の対応を確認しました。内容整理をやり直さず、紙面修正から続けます')
+        return True
+
     def generate(self, prompt):
         if self.config.progress:
             self.config.progress.start('analyze')
         try:
+            self.restore_editor_plan(prompt)
             if not self.quality.plan:
                 self.quality.prepare(prompt)
             else:
                 self.notify('保存した内容案と画像を再利用しています')
         except ValueError as error:
-            raise PrototypeError(str(error)) from None
+            raise PrototypeError(str(error), code=getattr(error, 'code', None)) from None
         if self.config.progress:
             self.config.progress.complete('analyze')
         self.presentation = select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
@@ -1341,7 +1361,8 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
         evidence_dir = original['evidence_dir']
     if config.resume:
         previous = read_json(folder / 'run.json')
-        inherit_resume_budget(config, previous)
+        prior_usage = read_json(folder / 'usage.json') if (folder / 'usage.json').is_file() else {}
+        inherit_resume_budget(config, previous, prior_usage)
         config.external_research = bool(previous.get('external_research', True))
         if bool(previous.get('manual_mode')) != manual_mode:
             raise PrototypeError('途中再開ではAPI生成とAPIなしのテストを切り替えられません。')
@@ -1445,6 +1466,9 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
         report.update(status="failed", error=safe_error[:2000])
         raise
     finally:
+        # Automatic ceilings are set after the initial report. Persist the
+        # effective value even on an error, before a later resume reads it.
+        report['budget_usd'] = config.budget_usd
         report["seconds"] = round(time.monotonic() - start, 2)
         report["revisions"] = pipeline.revisions if pipeline else 0
         report["layout_failures"] = pipeline.layout_failures if pipeline else 0

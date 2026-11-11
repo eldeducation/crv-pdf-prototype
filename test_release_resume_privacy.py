@@ -92,6 +92,44 @@ class ResumeTests(unittest.TestCase):
             self.assertEqual(resume['from_stage'],'document')
             self.assertTrue(resume['saved_checkpoint'])
 
+    def test_legacy_call_limit_can_resume_finishing_only_with_a_saved_plan_and_budget(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder,job=self.make_run(Path(temp),checkpoint=True)
+            (folder/'checkpoint-editor.state.json').write_text('{"round":4}')
+            job['report']['stop_code']='call_limit'
+            (folder/'usage.json').write_text(json.dumps({'call_count':12,'max_calls':12,'known_cost_usd':.87,'budget_usd':3.85,'api_calls':[]}))
+            resume=job_progress.describe(folder,job,'same')['resume']
+            self.assertTrue(resume['available'])
+            self.assertEqual(resume['reason'],'finish_reserve')
+            self.assertEqual(resume['max_calls'],32)
+            (folder/'usage.json').write_text(json.dumps({'call_count':32,'max_calls':32,'known_cost_usd':.87,'budget_usd':3.85,'api_calls':[]}))
+            self.assertFalse(job_progress.describe(folder,job,'same')['resume']['available'])
+
+    def test_editor_bound_plan_keeps_finishing_resumable_after_interrupted_replanning(self):
+        from checkpoints import Checkpoint
+        with tempfile.TemporaryDirectory() as temp:
+            folder,job=self.make_run(Path(temp),checkpoint=False)
+            plan={'kind':'lecture','units':[]}
+            (folder/'content-plan.json').write_text(json.dumps(plan))
+            job['report'].update(stop_code='call_limit',prompt='same task',purpose='auto')
+            system=pipeline.editor_system(pipeline.editor_prompt_path().read_text(encoding='utf-8'),'auto')
+            Checkpoint(folder,'editor',{'prompt':'same task','plan':plan,'system':system}).save(messages=[],round=5)
+            (folder/'usage.json').write_text(json.dumps({'call_count':20,'max_calls':20,'known_cost_usd':1.46,'budget_usd':3.85,'api_calls':[]}))
+            resume=job_progress.describe(folder,job,'same')['resume']
+            self.assertTrue(resume['available'])
+            self.assertEqual(resume['reason'],'finish_reserve')
+            self.assertEqual(resume['from_stage'],'document')
+            job['report']['prompt']='different task'
+            self.assertFalse(job_progress.describe(folder,job,'same')['resume']['available'])
+
+    def test_finish_reserve_does_not_override_an_explicit_smaller_call_limit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            folder,job=self.make_run(Path(temp),checkpoint=True)
+            (folder/'checkpoint-editor.state.json').write_text('{"round":4}')
+            job['report']['stop_code']='call_limit'
+            (folder/'usage.json').write_text(json.dumps({'call_count':10,'max_calls':10,'known_cost_usd':.87,'budget_usd':3.85,'api_calls':[]}))
+            self.assertFalse(job_progress.describe(folder,job,'same')['resume']['available'])
+
     def test_older_restyle_is_revalidated_and_does_not_claim_reanalysis(self):
         with tempfile.TemporaryDirectory() as temp:
             folder,job=self.make_run(Path(temp),restyle=True)

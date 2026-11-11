@@ -459,7 +459,8 @@ const reasonNames={
  request:['生成の受付を確認できませんでした','The generation request could not be confirmed'],error:['生成が途中で停止しました','Generation stopped before completion']
 };
 const actionNames={
- budget:['続きから再開できます。再開時に残りの費用の目安を計算し直し、上限を自動で設定します。','You can resume. The remaining cost is re-estimated and the limit is set automatically.'],
+ budget:['残りの費用の目安を確認して再開できます。上限を指定し直さなければ、保存された累計費用上限を維持します。','You can resume after reviewing the remaining estimate. The saved total cost ceiling stays unchanged unless you explicitly change it.'],
+ finish_reserve:['解析済みの内容を使って仕上げ・最終確認を再開できます。累計費用上限は維持し、工程別に制限された応答枠を使います。','Resume editing and final review using the saved analysis. The total cost ceiling stays unchanged and every phase remains bounded.'],
  estimate_confirm:['この先のAI処理はまだ行っていません（追加の料金なし）。この目安で進める場合は「この目安で続ける」を押してください。','No further AI processing has run (no additional charge). Press “Continue with this estimate” to proceed.'],
  estimate_limit:['この先のAI処理はまだ行っていません（追加の料金なし）。詳しさを「標準」か「簡潔」にするか、短い動画でお試しください。','No further AI processing has run (no additional charge). Choose a lower level of detail or a shorter video.'],
  billing_pending:['プロバイダー側で前回の利用状況を確認してください。料金が未確定の保存状態では、追加の課金を伴う再開を停止しています。','Check the previous request in your provider dashboard. Paid resumption is blocked while the saved cost is unconfirmed.'],
