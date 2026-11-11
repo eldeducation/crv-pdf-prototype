@@ -38,8 +38,8 @@ async function render() {
       const counts = [];
       const designDiagnostics = [];
       if (!pages.length) errors.push('ページ枠がありません');
-      // Text/background contrast (WCAG ratio). A background image or gradient makes the
-      // background unknown, so such text is skipped rather than guessed.
+      // Never infer a colour through a background image/gradient. Critical
+      // emphasis must be measurable rather than silently bypassing the check.
       const parseColor = value => {
         let m = /^rgba?\(([^)]+)\)$/.exec(value);
         if (m) { const p = m[1].split(/[\s,\/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; }
@@ -100,12 +100,17 @@ async function render() {
           if (!checkedContrast.has(node.parentElement)) {
             checkedContrast.add(node.parentElement);
             const ratio = contrastOf(node.parentElement);
+            const critical = Boolean(node.parentElement.closest('mark'));
+            const sample = node.textContent.trim().slice(0, 20);
+            if (critical && ratio === null)
+              errors.push(`${idx+1}ページ: 強調文字「${sample}」の背景がグラデーション・画像で配色を検査できません。単色の背景と読みやすい文字色を使ってください。`);
             if (ratio !== null) {
               const size = parseFloat(style.fontSize);
               const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
-              const sample = node.textContent.trim().slice(0, 20), shown = Math.round(ratio * 10) / 10;
+              const shown = Math.round(ratio * 10) / 10;
               // Clearly unreadable text blocks approval; merely low contrast is a design note.
-              if (ratio < (large ? 2 : 3))
+              // Highlights use the full 3:1 / 4.5:1 target, including on dark cards.
+              if (ratio < (critical ? (large ? 3 : 4.5) : (large ? 2 : 3)))
                 errors.push(`${idx+1}ページ: 文字「${sample}」と背景の色が近く読めません（コントラスト比${shown}、${large ? 3 : 4.5}以上が目安）。文字色か背景色を変えてください。`);
               else if (ratio < (large ? 3 : 4.5)) lowContrast.push(sample);
             }

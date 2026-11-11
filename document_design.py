@@ -113,6 +113,7 @@ blockquote { font-weight: bold; color: var(--heading-color); }
 KIT_CLASSES = ('cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
                'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles', 'wrapup')
 _KIT_SELECTOR = re.compile(r'\.(?:' + '|'.join(map(re.escape, KIT_CLASSES)) + r')(?![\w-])')
+_MARK_SELECTOR = re.compile(r'(?:^|[\s>+~,(])mark(?=$|[\s.#\[:>+~,)])', re.I)
 
 
 def split_kit_rules(css):
@@ -123,7 +124,7 @@ def split_kit_rules(css):
     rules are flat. Returns (kept_css, removed_selectors)."""
     kept, removed = [], []
     for match in re.finditer(r'([^{}]*)\{[^{}]*\}', css or ''):
-        if _KIT_SELECTOR.search(match.group(1)):
+        if _KIT_SELECTOR.search(match.group(1)) or _MARK_SELECTOR.search(match.group(1)):
             removed.append(' '.join(match.group(1).split()))
         else:
             kept.append(match.group(0))
@@ -179,7 +180,10 @@ def kit_lookalikes(pages, authored_css, base_css):
 
 
 EDITORIAL_KIT_CSS = '''
-mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); color: inherit; padding: 0 .3mm; }
+/* Opaque highlight: transparent PDF gradients can look dark in some viewers,
+   and were skipped by the contrast checker. Never paint a band across glyphs. */
+mark { background: var(--accent-mark); color: #14231e; padding: 0 .3mm; border-radius: .4mm;
+       -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .cover { background: var(--heading-color); color: #fff; border-radius: 2.5mm; padding: 9mm 9mm 8mm; margin: 0 0 6mm; }
 .cover .kicker { display: inline-block; border: .3mm solid rgba(255,255,255,.6); border-radius: 1mm; padding: .8mm 3mm; font-size: 8.5pt; letter-spacing: .14em; font-weight: bold; margin-bottom: 5mm; }
 .cover h1 { color: #fff; font-size: 30pt; line-height: 1.28; margin: 0 0 4mm; }
@@ -220,7 +224,7 @@ mark { background: linear-gradient(transparent 58%, var(--accent-mark) 58%); col
 .point > .tag { flex: none; }
 .point .tag { writing-mode: vertical-rl; letter-spacing: .3em; font-size: 8pt; font-weight: bold; border-left: .3mm solid rgba(255,255,255,.5); padding-left: 2mm; }
 .point p { margin: 0; font-size: 12pt; line-height: 1.7; font-weight: bold; }
-.point mark { background: none; color: var(--accent-mark); }
+.point mark { background: var(--accent-mark); color: #14231e; }
 .versus { display: grid; grid-template-columns: 1fr 1fr; border: .3mm solid #dce4df; border-radius: 2mm; overflow: hidden; margin: 4mm 0; }
 .versus > div { padding: 4mm 5mm; }
 .versus > div + div { background: var(--accent-soft); }

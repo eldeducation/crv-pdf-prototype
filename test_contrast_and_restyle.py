@@ -15,7 +15,7 @@ class ContrastCheckTest(unittest.TestCase):
     def test_render_checks_text_contrast_with_error_and_warning_levels(self):
         source = (ROOT / 'render.cjs').read_text(encoding='utf-8')
         self.assertIn('const contrastOf = el =>', source)
-        self.assertIn("ratio < (large ? 2 : 3)", source)          # unreadable: blocks approval
+        self.assertIn("(critical ? (large ? 3 : 4.5) : (large ? 2 : 3))", source)
         self.assertIn("ratio < (large ? 3 : 4.5)", source)        # low: design note
         self.assertIn("cs.backgroundImage !== 'none') return null", source)   # unknown background is skipped
 
@@ -36,12 +36,12 @@ class ContrastCheckTest(unittest.TestCase):
 class ContrastRenderTest(unittest.TestCase):
     """Renders real pages (skipped where Node/Playwright/Chrome are not set up, e.g. CI)."""
 
-    def render(self, body, design='editorial'):
+    def render(self, body, design='editorial', theme='amber'):
         require_renderer(self)
         import pipeline
         from document_design import style_css
         from presentation_quality import theme_css
-        css = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css(design) + theme_css('amber')
+        css = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css(design) + theme_css(theme)
         folder = Path(self.tmp.name)
         (folder / 'document.html').write_text(
             f'<!doctype html><html lang="ja"><meta charset="utf-8"><style>{css}</style>'
@@ -75,6 +75,26 @@ class ContrastRenderTest(unittest.TestCase):
             '<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">要点の文。</p></div>'
             '<div class="chapter"><p class="no">01</p><div><p class="meta">PART 1　02:00 – 08:35</p><h2>見出し</h2></div></div>')
         self.assertEqual([e for e in result['errors'] if 'コントラスト' in e or '読めません' in e], [])
+
+    def test_highlights_are_measurable_and_readable_on_every_theme(self):
+        from presentation_quality import THEMES
+        for theme in THEMES:
+            with self.subTest(theme=theme):
+                result = self.render(
+                    '<div class="cover"><h1>題名</h1><p class="sub">説明の<mark>強調部分</mark></p></div>'
+                    '<div class="tldr"><p class="line">ロープの先に<mark>大きさが変わらない輪</mark>を作る。</p></div>'
+                    '<div class="point"><p>暗い枠の<mark><strong>重要な説明</strong></mark></p></div>', theme=theme)
+                self.assertEqual(result['errors'], [])
+                warnings = ' '.join(w for d in result['design_diagnostics'] for w in d['warnings'])
+                self.assertNotIn('コントラストが低い', warnings)
+
+    def test_a_gradient_highlight_cannot_silently_skip_colour_validation(self):
+        result = self.render('<p><mark style="background:linear-gradient(transparent 58%,#333 58%);color:#222">暗い帯の強調</mark></p>')
+        self.assertTrue(any('暗い帯の強調' in e and '検査できません' in e for e in result['errors']))
+
+    def test_low_contrast_highlight_blocks_approval_instead_of_only_warning(self):
+        result = self.render('<p><mark style="background:#fff;color:#8a8a8a">薄くて読みにくい強調</mark></p>')
+        self.assertTrue(any('薄くて読みにくい強調' in e and '読めません' in e for e in result['errors']))
 
 
 class PromptTagsAllowedTest(unittest.TestCase):

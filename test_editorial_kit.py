@@ -41,6 +41,13 @@ class EditorialKitTest(unittest.TestCase):
         for name in ('point', 'chapter', 'qa'):
             self.assertRegex(css, r'\.' + name + r' \{ display: flex;')
 
+    def test_authored_highlight_rules_cannot_restore_the_old_transparent_band(self):
+        from document_design import split_kit_rules
+        kept, removed = split_kit_rules('mark{background:linear-gradient(transparent,#333)}'
+                                       'p > mark strong{color:white}.landmark{padding:1mm}')
+        self.assertEqual(removed, ['mark', 'p > mark strong'])
+        self.assertIn('.landmark', kept)
+
     def test_lookalikes_of_kit_components_are_found_per_page(self):
         from document_design import kit_lookalikes
         base = (ROOT / 'layout.css').read_text(encoding='utf-8') + style_css('editorial')

@@ -1,0 +1,13 @@
+{
+  "source_pdf_sha256": "474fdbfdd9b1326a39adf9ef0b708d26868d0f5e126ee82da3286238b8d8f0a9",
+  "pdf_sha256": "f850ae2ed612aa09f757682c994da223cb0043eb4fee11d857de58ee29d6e14f",
+  "pages": 7,
+  "repair": "Only the page-1 highlight tiling-pattern resource changed: transparent gradient to opaque pale blue.",
+  "text_page_streams_and_images_unchanged": true,
+  "new_ai_generation": false,
+  "additional_api_cost_usd": 0,
+  "independent_video_review_performed": false,
+  "physical_reproduction_test_performed": false,
+  "visual_review_completed": true,
+  "visual_review_scope": "All seven pages rendered and visually inspected. No new independent source-video or physical reproduction review."
+}
