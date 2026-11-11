@@ -187,7 +187,12 @@ mark { background: var(--accent-mark); color: #14231e; padding: 0 .3mm; border-r
 .cover { background: var(--heading-color); color: #fff; border-radius: 2.5mm; padding: 9mm 9mm 8mm; margin: 0 0 6mm; }
 .cover .kicker { display: inline-block; border: .3mm solid rgba(255,255,255,.6); border-radius: 1mm; padding: .8mm 3mm; font-size: 8.5pt; letter-spacing: .14em; font-weight: bold; margin-bottom: 5mm; }
 .cover h1 { color: #fff; font-size: 30pt; line-height: 1.28; margin: 0 0 4mm; }
-.cover h1 em { font-style: normal; color: var(--accent-mark); }
+.cover h2, .cover h3 { color: #fff; }
+.cover :is(h1,h2,h3) :is(em,strong,b,span) { color: inherit; }
+/* Keep title glyphs white on the dark cover. Emphasis uses weight and an
+   offset underline, never a nearby shade of the cover's own theme colour. */
+.cover h1 em { font-style: normal; color: inherit; font-weight: 800;
+               text-decoration: underline; text-decoration-thickness: .06em; text-underline-offset: .14em; }
 .cover .sub { font-size: 12pt; line-height: 1.6; margin: 0; opacity: .92; }
 .cover-media { display: grid; grid-template-columns: 1.7fr 1fr; gap: 5mm; align-items: end; margin: 0 0 6mm; }
 .shot { margin: 0 0 4mm; }

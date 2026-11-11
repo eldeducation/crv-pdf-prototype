@@ -100,18 +100,21 @@ async function render() {
           if (!checkedContrast.has(node.parentElement)) {
             checkedContrast.add(node.parentElement);
             const ratio = contrastOf(node.parentElement);
-            const critical = Boolean(node.parentElement.closest('mark'));
+            const cover = Boolean(node.parentElement.closest('.cover'));
+            const critical = cover || Boolean(node.parentElement.closest('mark'));
             const sample = node.textContent.trim().slice(0, 20);
             if (critical && ratio === null)
-              errors.push(`${idx+1}ページ: 強調文字「${sample}」の背景がグラデーション・画像で配色を検査できません。単色の背景と読みやすい文字色を使ってください。`);
+              errors.push(`${idx+1}ページ: 表紙・強調文字「${sample}」の背景がグラデーション・画像で配色を検査できません。単色の背景と読みやすい文字色を使ってください。`);
             if (ratio !== null) {
               const size = parseFloat(style.fontSize);
               const large = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700);
               const shown = Math.round(ratio * 10) / 10;
               // Clearly unreadable text blocks approval; merely low contrast is a design note.
-              // Highlights use the full 3:1 / 4.5:1 target, including on dark cards.
-              if (ratio < (critical ? (large ? 3 : 4.5) : (large ? 2 : 3)))
-                errors.push(`${idx+1}ページ: 文字「${sample}」と背景の色が近く読めません（コントラスト比${shown}、${large ? 3 : 4.5}以上が目安）。文字色か背景色を変えてください。`);
+              // Covers need 4.5:1 even for a large title; nearby theme colours
+              // can technically meet the large-text minimum yet remain unclear.
+              const required = cover ? 4.5 : (large ? 3 : 4.5);
+              if (ratio < (critical ? required : (large ? 2 : 3)))
+                errors.push(`${idx+1}ページ: 文字「${sample}」と背景の色が近く読めません（コントラスト比${shown}、${required}以上が目安）。文字色か背景色を変えてください。`);
               else if (ratio < (large ? 3 : 4.5)) lowContrast.push(sample);
             }
           }

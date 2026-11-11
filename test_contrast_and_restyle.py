@@ -2,6 +2,7 @@
 import inspect
 import json
 import re
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +16,7 @@ class ContrastCheckTest(unittest.TestCase):
     def test_render_checks_text_contrast_with_error_and_warning_levels(self):
         source = (ROOT / 'render.cjs').read_text(encoding='utf-8')
         self.assertIn('const contrastOf = el =>', source)
-        self.assertIn("(critical ? (large ? 3 : 4.5) : (large ? 2 : 3))", source)
+        self.assertIn("ratio < (critical ? required : (large ? 2 : 3))", source)
         self.assertIn("ratio < (large ? 3 : 4.5)", source)        # low: design note
         self.assertIn("cs.backgroundImage !== 'none') return null", source)   # unknown background is skipped
 
@@ -95,6 +96,45 @@ class ContrastRenderTest(unittest.TestCase):
     def test_low_contrast_highlight_blocks_approval_instead_of_only_warning(self):
         result = self.render('<p><mark style="background:#fff;color:#8a8a8a">薄くて読みにくい強調</mark></p>')
         self.assertTrue(any('薄くて読みにくい強調' in e and '読めません' in e for e in result['errors']))
+
+    def test_large_cover_title_with_nearby_blue_is_rejected(self):
+        result = self.render('<div class="cover"><h1 style="color:#8da7c5">青い背景に近い青い題名</h1></div>', theme='blue')
+        self.assertTrue(any('青い背景に近い青い題名' in e and '4.5以上' in e for e in result['errors']))
+
+    def test_cover_title_and_nested_emphasis_stay_white_in_all_themes(self):
+        require_renderer(self)
+        import pipeline
+        from document_design import style_css
+        from presentation_quality import THEMES, theme_css
+        css = style_css('editorial') + ''.join(theme_css(t).replace(':root', '.'+t) for t in THEMES)
+        html = '<style>'+css+'</style>'+''.join(
+            f'<div class="cover {t}"><h1>もやい結び<em><span>下・下・下・上</span></em></h1>'
+            '<h2><strong>第2見出し</strong></h2><h3>第3見出し</h3></div>' for t in THEMES)
+        script = r'''
+const fs=require('fs'), p=require(process.argv[1]);
+(async()=>{
+  const browser=await p.chromium.launch({headless:true, ...(process.argv[2]?{executablePath:process.argv[2]}:{}),args:['--disable-background-networking']});
+  try {
+    const page=await browser.newPage({javaScriptEnabled:false});
+    await page.setContent(fs.readFileSync(0,'utf8'));
+    const result=await page.evaluate(()=>[...document.querySelectorAll('.cover')].map(el=>({
+      colours:[...el.querySelectorAll('h1,h2,h3,em,strong,span')].map(x=>getComputedStyle(x).color),
+      decoration:getComputedStyle(el.querySelector('em')).textDecorationLine,
+      underlineOffset:getComputedStyle(el.querySelector('em')).textUnderlineOffset
+    })));
+    process.stdout.write(JSON.stringify(result));
+  } finally {await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
+'''
+        settings=pipeline.runtime()
+        result=subprocess.run([settings.get('node') or 'node','-e',script,settings.get('playwright') or 'playwright',settings.get('browser','')],
+                              input=html,text=True,encoding='utf-8',capture_output=True,cwd=ROOT,timeout=30,check=True)
+        rows=json.loads(result.stdout)
+        self.assertEqual(len(rows),len(THEMES))
+        for row in rows:
+            self.assertTrue(all(c=='rgb(255, 255, 255)' for c in row['colours']),row)
+            self.assertEqual(row['decoration'],'underline')
+            self.assertNotEqual(row['underlineOffset'],'auto')
 
 
 class PromptTagsAllowedTest(unittest.TestCase):
