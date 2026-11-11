@@ -98,12 +98,18 @@ def files(entry, known):
 def validate_visual_scan(plan, records):
     scan = role_map(plan.get('visual_requirements'), 'visual_requirements')
     known = {r['file'] for r in records}
+    problems = []
     for entry in scan.values():
-        names = files(entry, known)
-        if entry.get('status') not in ('visible', 'not_visible', 'not_applicable'):
-            raise ValueError('視覚情報のstatusを指定してください。')
-        if (entry['status'] == 'visible') != bool(names):
-            raise ValueError('visibleには掲載候補の根拠画像を指定し、映っていない場合は空配列にしてください。')
+        try:
+            names = files(entry, known)
+            if entry.get('status') not in ('visible', 'not_visible', 'not_applicable'):
+                raise ValueError('視覚情報のstatusを指定してください。')
+            if (entry['status'] == 'visible') != bool(names):
+                raise ValueError('visibleには掲載候補の根拠画像を指定し、映っていない場合は空配列にしてください。')
+        except (ValueError, TypeError) as error:
+            problems.append(f"{entry['role']}: {error}")
+    if problems:
+        raise ValueError('\n'.join(problems))
     return scan
 
 

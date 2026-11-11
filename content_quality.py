@@ -7,6 +7,8 @@ Tool schemas are intentionally explicit so missing checks cannot mean approval.
 from __future__ import annotations
 
 import hashlib
+import copy
+import gzip
 import json
 import math
 import re
@@ -191,6 +193,67 @@ image_usefulnessは画像の存在でなく、動かす対象・位置・変化�
 visual_checksでは材料・道具の準備欄に対応する写真があり、位置ガイドを該当工程で参照できるかも判定する。
 """
 
+# Repair only rejected submissions, never enlarge the run's monetary/call cap.
+VALIDATION_REPAIR_ROUNDS = 2
+
+
+class SubmissionRepairLimit(ValueError):
+    code = 'round_limit'
+
+
+def pending_submission_error(messages, submit_name):
+    """Recognise a legacy checkpoint's last rejected submission, not an image
+    error or an arbitrary instruction. New checkpoints store this explicitly."""
+    if len(messages) < 2 or messages[-2].get('role') != 'assistant' or messages[-1].get('role') != 'user':
+        return None
+    calls, results = messages[-2].get('content'), messages[-1].get('content')
+    if not isinstance(calls, list) or not isinstance(results, list):
+        return None
+    tools = [c for c in calls if c.get('type') == 'tool_use']
+    if len(tools) != 1 or tools[0].get('name') != submit_name:
+        return None
+    ids = {c.get('id') for c in calls if c.get('type') == 'tool_use' and c.get('name') == submit_name}
+    errors = [str(r.get('content', '')) for r in results
+              if r.get('type') == 'tool_result' and r.get('is_error') and r.get('tool_use_id') in ids]
+    return '\n'.join(errors) or None
+
+
+def research_only_checkpoint(folder, phase, content, system, submit_tool):
+    """Research appended by this same conversation must not restart analysis.
+    All original request/evidence/transcript/tool/system content must still
+    match; this fallback never accepts an already completed result."""
+    if phase != 'content_plan':
+        return None
+    path = folder / ('checkpoint-' + phase + '.json.gz')
+    try:
+        with gzip.open(path, 'rt', encoding='utf-8') as stream:
+            saved = json.load(stream)
+        messages = saved['messages']
+        if 'result' in saved or messages[0].get('role') != 'user':
+            return None
+        original = messages[0]['content']
+        def stable(blocks):
+            result, research_blocks = [], 0
+            for block in blocks:
+                try:
+                    value = json.loads(block['text']) if block.get('type') == 'text' else None
+                except (TypeError, ValueError):
+                    value = None
+                if isinstance(value, dict) and set(value) == {'external_sources_untrusted', 'queries_used', 'page_attempts'}:
+                    result.append({'same_run_research': True})
+                    research_blocks += 1
+                else:
+                    result.append(block)
+            return result if research_blocks == 1 else None
+        previous, current = stable(original), stable(content)
+        if previous is None or previous != current:
+            return None
+        checkpoint = Checkpoint(folder, phase, {'system':system, 'content':original, 'tool':submit_tool})
+        verified = checkpoint.load()
+        return (checkpoint, verified) if verified else None
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return None
+
 
 class ContentQuality:
     def __init__(self, evidence, client, config, notify, inspect_tool, transcript):
@@ -198,6 +261,13 @@ class ContentQuality:
         self.inspect_tool, self.transcript = inspect_tool, transcript
         self.plan, self.plan_review = None, None
         self.events = []
+        if config.resume:
+            try:
+                previous_events = json.loads((evidence.out / 'quality-events.json').read_text(encoding='utf-8'))
+                if isinstance(previous_events, list):
+                    self.events = previous_events
+            except (OSError, ValueError):
+                pass
         self.research = WebResearch(evidence.out, evidence.source)
 
     def save(self, name, value):
@@ -215,49 +285,35 @@ class ContentQuality:
         return [records[name] for name in names]
 
     def validate_plan(self, plan):
+        # Failed validation must not leave partially normalised times/risk in
+        # the draft. Keep collecting independent problems, then accept as one.
+        plan = copy.deepcopy(plan)
         if plan.get("kind") not in {"procedure", "lecture", "mixed"} or not str(plan.get("overview", "")).strip():
             raise ValueError("動画の種類と内容の全体像を記録してください。")
         units = plan.get("units")
         if not isinstance(units, list) or not 1 <= len(units) <= 80:
             raise ValueError("内容は1～80項目で整理してください。")
-        validate_visual_scan(plan, self.evidence.records)
+        problems = []
+        try:
+            validate_visual_scan(plan, self.evidence.records)
+        except (ValueError, KeyError, TypeError) as error:
+            problems.append('visual_requirements: ' + str(error))
         ids = set()
         for unit in units:
+            if not isinstance(unit, dict):
+                problems.append('内容の各項目はオブジェクトで指定してください。')
+                continue
             identity = unit.get("id")
             if not isinstance(identity, str) or not identity.strip() or identity in ids:
-                raise ValueError("内容のidは空欄や重複にできません。")
+                problems.append('内容のidは空欄や重複にできません。')
+                continue
             ids.add(identity)
-            if unit.get("type") not in {"action", "claim"}:
-                raise ValueError("内容のtypeはactionまたはclaimです。")
-            for name in ("title", "explanation"):
-                if not isinstance(unit.get(name), str) or not unit[name].strip():
-                    raise ValueError(f"{identity}: {name}を具体的に記録してください。")
-            start, end = float(unit["start"]), float(unit["end"])
-            if not all(math.isfinite(t) for t in (start, end)) or not 0 <= start < end <= self.evidence.duration:
-                raise ValueError("内容の区間を動画の範囲内で指定してください。")
-            records = self._files(unit.get("evidence_files"))
-            # CRV samples and rounded unit boundaries may differ slightly. Align
-            # metadata to nearby real frames instead of paying for a rewrite.
-            first, last = min(r["seconds"] for r in records), max(r["seconds"] for r in records)
-            if first < start-3 or last > end+3:
-                raise ValueError(f"{identity}: 根拠画像の時刻 {first:.2f}～{last:.2f}秒が区間 {start:.2f}～{end:.2f}秒から大きく外れています。")
-            start, end = min(start, first), max(end, last)
-            unit["start"], unit["end"] = start, end
-            risk = unit.get("risk")
-            if risk not in {"none", "orientation", "layers", "fine_motion", "screen_text", "numbers"}:
-                raise ValueError("確認する動作・情報のriskを指定してください。")
-            if unit["type"] == "action":
-                for name in ("before_state", "moving_part", "action", "after_state"):
-                    if not isinstance(unit.get(name), str) or not unit[name].strip():
-                        raise ValueError(f"{identity}: 動作の前後状態・対象・動作を記録してください。")
-                if len({r["seconds"] for r in records}) < 2:
-                    raise ValueError(f"{identity}: 動作の開始と終了を示す2枚以上が必要です。")
-                # Guard against accidentally labelling explicit rotation/layer
-                # operations as low risk. No subject-specific or fixed-time rule.
-                description = " ".join(unit.get(k, "") for k in ("explanation", "action", "moving_part"))
-                if risk == "none" and re.search(r"回転|裏返|手前.{0,6}[枚層]|重な.{0,6}[枚層]", description):
-                    unit["risk"] = "orientation" if re.search(r"回転|裏返", description) else "layers"
-                    risk = unit["risk"]
+            try:
+                self._validate_unit(unit)
+            except (ValueError, KeyError, TypeError, OverflowError) as error:
+                problems.append(f'{identity}: {error}')
+        if problems:
+            raise ValueError('提出内容の不備をまとめて確認してください。\n' + '\n'.join(dict.fromkeys(problems)))
         plan["units"].sort(key=lambda u:float(u["start"]))
         # Never silently attach a middle frame the model has not selected/read.
         plan["action_concerns"] = validate_traces(plan["units"], self.evidence.records)
@@ -265,6 +321,33 @@ class ContentQuality:
         if facts and not self.config.external_research:
             raise ValueError('外部検索が無効なため、外部情報を追加できません。')
         return plan
+
+    def _validate_unit(self, unit):
+        if unit.get('type') not in {'action', 'claim'}:
+            raise ValueError('内容のtypeはactionまたはclaimです。')
+        for name in ('title', 'explanation'):
+            if not isinstance(unit.get(name), str) or not unit[name].strip():
+                raise ValueError(f'{name}を具体的に記録してください。')
+        start, end = float(unit['start']), float(unit['end'])
+        if not all(math.isfinite(t) for t in (start, end)) or not 0 <= start < end <= self.evidence.duration:
+            raise ValueError('内容の区間を動画の範囲内で指定してください。')
+        records = self._files(unit.get('evidence_files'))
+        first, last = min(r['seconds'] for r in records), max(r['seconds'] for r in records)
+        if first < start-3 or last > end+3:
+            raise ValueError(f'根拠画像の時刻 {first:.2f}～{last:.2f}秒が区間 {start:.2f}～{end:.2f}秒から大きく外れています。')
+        unit['start'], unit['end'] = min(start, first), max(end, last)
+        risk = unit.get('risk')
+        if risk not in {'none', 'orientation', 'layers', 'fine_motion', 'screen_text', 'numbers'}:
+            raise ValueError('確認する動作・情報のriskを指定してください。')
+        if unit['type'] == 'action':
+            for name in ('before_state', 'moving_part', 'action', 'after_state'):
+                if not isinstance(unit.get(name), str) or not unit[name].strip():
+                    raise ValueError('動作の前後状態・対象・動作を記録してください。')
+            if len({r['seconds'] for r in records}) < 2:
+                raise ValueError('動作の開始と終了を示す2枚以上が必要です。')
+            description = ' '.join(unit.get(k, '') for k in ('explanation', 'action', 'moving_part'))
+            if risk == 'none' and re.search(r'回転|裏返|手前.{0,6}[枚層]|重な.{0,6}[枚層]', description):
+                unit['risk'] = 'orientation' if re.search(r'回転|裏返', description) else 'layers'
 
     def validate_review(self, review, document=None):
         units = {u["id"]: u for u in self.plan["units"]}
@@ -317,10 +400,17 @@ class ContentQuality:
         messages = [{"role": "user", "content": content}]
         checkpoint = Checkpoint(self.evidence.out, phase, {'system': system, 'content': content, 'tool': submit_tool})
         saved = checkpoint.load() if self.config.resume else None
+        if self.config.resume and not saved:
+            continued = research_only_checkpoint(self.evidence.out, phase, content, system, submit_tool)
+            if continued:
+                checkpoint, saved = continued
         if saved and 'result' in saved:
             return validate(saved['result'])
         if saved:
             messages = saved['messages']
+        repairs_used = saved.get('validation_repairs_used', 0) if saved else 0
+        pending_repair = (saved.get('pending_validation_error', pending_submission_error(messages, submit_tool['name']))
+                          if saved else None)
         research_tools = RESEARCH_TOOLS if self.config.external_research else []
         available = [self.inspect_tool, INTERVAL_TOOL, *research_tools, submit_tool]
         # Image inspection must not consume the response reserved for submitting
@@ -329,33 +419,49 @@ class ContentQuality:
         start_round = saved.get('round', 0) if saved else 0
         # Search/read need separate responses. Only research use unlocks two
         # extra tool responses; runs that do not search keep the previous cap.
-        for round_no in range(start_round, inspection_rounds + 4):
+        for round_no in range(start_round, inspection_rounds + 4 + VALIDATION_REPAIR_ROUNDS):
             allowance = inspection_rounds + (2 if self.research.used else 0)
-            finalizing = round_no >= allowance
-            remaining = max(0, allowance-round_no)
-            if round_no > allowance+1:
+            repairing = round_no >= allowance + 2
+            if repairing and (not pending_repair or repairs_used >= VALIDATION_REPAIR_ROUNDS):
                 break
+            finalizing = repairing or round_no >= allowance
+            remaining = max(0, allowance-round_no)
             # The tool list stays the same every round: tools are the first part of the
             # cached prompt prefix, and changing them in the (largest) final round would
             # resend every evidence image at full price. Closed inspection is enforced
             # below when a call arrives, and the round message says to submit now.
             current_tools = available
             messages.append({"role": "user", "content": (
-                "追加確認の枠は終了です。取得済みの映像を使い、今の応答で提出ツールを呼んでください。"
-                "提出の入力不備は次の応答で修正できます。" if finalizing else
+                (f"提出内容の不備だけを修正する追加応答です（{repairs_used+1}/{VALIDATION_REPAIR_ROUNDS}回）。"
+                 "直前の指摘をまとめて直し、指摘されていない説明・根拠は保って提出ツールで再提出してください。"
+                 "追加画像・検索は禁止です。取得済みの根拠を使い、時刻や画像を捏造して検査を通さないでください。"
+                 if repairing else
+                 "追加確認の枠は終了です。取得済みの映像を使い、今の応答で提出ツールを呼んでください。"
+                 "提出の入力不備は残りの通常応答、または上限内の修正専用応答で直せます。") if finalizing else
                 f"追加確認できる応答は残り{remaining}回。その後は結果を提出します。"
                 "全編を何度も確認せず、重要な疑問に絞り、既存の根拠画像も利用してください。")})
             before = len(self.client.calls)
-            checkpoint.save(messages=messages, round=round_no)
+            if repairing:
+                repairs_used += 1
+                self.notify(f'提出内容の不備を修正して再提出しています（追加{repairs_used}/{VALIDATION_REPAIR_ROUNDS}回・費用上限は維持）')
+            checkpoint.save(messages=messages, round=round_no,
+                            validation_repairs_used=repairs_used, pending_validation_error=pending_repair)
             try:
                 try:
                     response = self.client.send(messages, current_tools, system)
                 except BudgetStop:
+                    if repairing and len(self.client.calls) == before:
+                        # A pre-send cost/call guard must not consume a repair.
+                        repairs_used -= 1
+                        checkpoint.save(messages=messages, round=round_no,
+                                        validation_repairs_used=repairs_used, pending_validation_error=pending_repair)
                     raise
                 except RuntimeError:
                     if (self.client.calls[before:] and self.client.calls[-1].get("invalid_tool_output")
                             and round_no < inspection_rounds+1):
                         messages.append({"role": "user", "content": "前回のツール引数JSONを正しく受信できませんでした。根拠を保った簡潔な内容で、正しいJSONとして再提出してください。"})
+                        checkpoint.save(messages=messages, round=round_no+1,
+                                        validation_repairs_used=repairs_used, pending_validation_error=pending_repair)
                         continue
                     raise
             finally:
@@ -363,16 +469,20 @@ class ContentQuality:
                     call["phase"] = phase
                 self.save("quality-progress.json", {"phase": phase, "round": round_no+1,
                           "finalizing": finalizing, "extra_frames": self.evidence.extra_count,
-                          "api_calls": len(self.client.calls)})
+                          "api_calls": len(self.client.calls), "validation_repair": repairing,
+                          "validation_repairs_used": repairs_used, "validation_repairs_limit": VALIDATION_REPAIR_ROUNDS})
             messages.append({"role": "assistant", "content": response})
             calls = [b for b in response if b.get("type") == "tool_use"]
             if not calls:
                 messages.append({"role": "user", "content": "確認は未完了です。指定の提出ツールで結果を記録してください。"})
+                checkpoint.save(messages=messages, round=round_no+1,
+                                validation_repairs_used=repairs_used, pending_validation_error=pending_repair)
                 continue
             results, submitted = [], None
             inspection = any(c["name"] in {"inspect_frames", "inspect_interval", 'search_web', 'read_web_source'} for c in calls)
             submission_count = sum(c["name"] == submit_tool["name"] for c in calls)
             for call in calls:
+                validating_submission = False
                 try:
                     if call["name"] == "inspect_frames":
                         if finalizing:
@@ -393,22 +503,30 @@ class ContentQuality:
                         if inspection or submission_count != 1:
                             raise ValueError("追加画像を読んだ次の応答で、提出は1件だけ行ってください。")
                         self.save(phase+"-draft.json", call["input"])
+                        validating_submission = True
                         submitted = validate(call["input"])
+                        pending_repair = None
                         value = [text_block("確認結果を受け取りました。")]
                     else:
                         raise ValueError("この段階では資料作成や完了承認はできません。")
                     results.append({"type": "tool_result", "tool_use_id": call["id"], "content": value})
                 except (ValueError, KeyError, TypeError, RuntimeError) as error:
+                    if validating_submission:
+                        pending_repair = str(error)
                     self.events.append({"phase": phase, "tool": call["name"], "error": str(error)[:1500]})
                     self.save("quality-events.json", self.events)
                     results.append({"type": "tool_result", "tool_use_id": call["id"], "is_error": True, "content": str(error)[:1500]})
             if self.config.efficient:
                 results = compact_inspection_results(self.evidence, calls, results)
             messages.append({"role": "user", "content": results})
-            checkpoint.save(messages=messages, round=round_no+1)
+            checkpoint.save(messages=messages, round=round_no+1,
+                            validation_repairs_used=repairs_used, pending_validation_error=pending_repair)
             if submitted is not None:
                 checkpoint.save(result=submitted)
                 return submitted
+        if pending_repair and repairs_used >= VALIDATION_REPAIR_ROUNDS:
+            raise SubmissionRepairLimit('提出内容の修正上限に達しました。最後の指摘と保存済みの内容案を確認してください。'
+                                        '同じ保存位置の再開で修正回数はリセットしません。quality-events.jsonを保存しています。')
         raise ValueError("内容の提出を完了できませんでした。quality-events.jsonとquality-progress.jsonを確認してください。")
 
     def prepare(self, prompt):

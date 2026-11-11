@@ -116,6 +116,17 @@ class PrototypeError(RuntimeError):
         self.code = code
 
 
+def inherit_resume_budget(config, previous):
+    """Automatic resume keeps the previously approved cumulative ceiling.
+    A different explicit amount still has to come from the caller/UI."""
+    if config.budget_usd is None and previous.get('budget_usd') is not None:
+        ceiling = previous['budget_usd']
+        if (isinstance(ceiling, bool) or not isinstance(ceiling, (int, float))
+                or not math.isfinite(ceiling) or not .1 <= ceiling <= 20):
+            raise PrototypeError('保存された費用上限を確認できません。再開前に上限を指定してください。')
+        config.budget_usd = ceiling
+
+
 def provider_for(api_key):
     return "openrouter" if str(api_key).startswith("sk-or-") else "anthropic"
 
@@ -1330,6 +1341,7 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
         evidence_dir = original['evidence_dir']
     if config.resume:
         previous = read_json(folder / 'run.json')
+        inherit_resume_budget(config, previous)
         config.external_research = bool(previous.get('external_research', True))
         if bool(previous.get('manual_mode')) != manual_mode:
             raise PrototypeError('途中再開ではAPI生成とAPIなしのテストを切り替えられません。')

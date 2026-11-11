@@ -134,7 +134,7 @@ def describe(folder, job, fingerprint=None):
                 pass
         has_review = bool(states['document_content_review'].get('completed') and states['document_content_review'].get('approved'))
         has_editor = bool(states['editor'])
-        resume['saved_checkpoint'] = has_plan or has_editor
+        resume['saved_checkpoint'] = bool(states['content_plan']) or has_editor
         resume['from_stage'] = ('finish' if has_review and has_editor else
                                 'verify' if states['document_content_review'] and not states['document_content_review'].get('completed') and has_plan and has_editor else
                                 'document' if has_plan else 'analyze')
