@@ -101,7 +101,7 @@ class ContrastRenderTest(unittest.TestCase):
         result = self.render('<div class="cover"><h1 style="color:#8da7c5">青い背景に近い青い題名</h1></div>', theme='blue')
         self.assertTrue(any('青い背景に近い青い題名' in e and '4.5以上' in e for e in result['errors']))
 
-    def test_cover_title_and_nested_emphasis_stay_white_in_all_themes(self):
+    def test_cover_title_and_emphasis_adapt_to_the_palette_in_all_themes(self):
         require_renderer(self)
         import pipeline
         from document_design import style_css
@@ -110,6 +110,8 @@ class ContrastRenderTest(unittest.TestCase):
         html = '<style>'+css+'</style>'+''.join(
             f'<div class="cover {t}"><h1>もやい結び<em><span>下・下・下・上</span></em></h1>'
             '<h2><strong>第2見出し</strong></h2><h3>第3見出し</h3></div>' for t in THEMES)
+        html += ('<div class="cover" style="--cover-background:#fff1d7;--cover-text:#183452;--cover-emphasis:#6b185b">'
+                 '<h1>明るい背景<em><span>濃い色の題名</span></em></h1><h2><strong>見出し</strong></h2><h3>補助見出し</h3></div>')
         script = r'''
 const fs=require('fs'), p=require(process.argv[1]);
 (async()=>{
@@ -117,11 +119,16 @@ const fs=require('fs'), p=require(process.argv[1]);
   try {
     const page=await browser.newPage({javaScriptEnabled:false});
     await page.setContent(fs.readFileSync(0,'utf8'));
-    const result=await page.evaluate(()=>[...document.querySelectorAll('.cover')].map(el=>({
-      colours:[...el.querySelectorAll('h1,h2,h3,em,strong,span')].map(x=>getComputedStyle(x).color),
-      decoration:getComputedStyle(el.querySelector('em')).textDecorationLine,
-      underlineOffset:getComputedStyle(el.querySelector('em')).textUnderlineOffset
-    })));
+    const result=await page.evaluate(()=>{
+      const lum=c=>c.match(/[\d.]+/g).slice(0,3).map(Number).map(v=>{v/=255;return v<=.04045?v/12.92:((v+.055)/1.055)**2.4;}).reduce((v,c,i)=>v+c*[.2126,.7152,.0722][i],0);
+      const contrast=(a,b)=>(Math.max(lum(a),lum(b))+.05)/(Math.min(lum(a),lum(b))+.05);
+      return [...document.querySelectorAll('.cover')].map(el=>{
+        const colours=[...el.querySelectorAll('h1,h2,h3,em,strong,span')].map(x=>getComputedStyle(x).color);
+        return {colours, ratios:colours.map(c=>contrast(c,getComputedStyle(el).backgroundColor)),
+          decoration:getComputedStyle(el.querySelector('em')).textDecorationLine,
+          underlineOffset:getComputedStyle(el.querySelector('em')).textUnderlineOffset};
+      });
+    });
     process.stdout.write(JSON.stringify(result));
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
@@ -130,11 +137,22 @@ const fs=require('fs'), p=require(process.argv[1]);
         result=subprocess.run([settings.get('node') or 'node','-e',script,settings.get('playwright') or 'playwright',settings.get('browser','')],
                               input=html,text=True,encoding='utf-8',capture_output=True,cwd=ROOT,timeout=30,check=True)
         rows=json.loads(result.stdout)
-        self.assertEqual(len(rows),len(THEMES))
+        self.assertEqual(len(rows),len(THEMES)+1)
         for row in rows:
-            self.assertTrue(all(c=='rgb(255, 255, 255)' for c in row['colours']),row)
+            self.assertTrue(all(c>=4.5 for c in row['ratios']),row)
+            self.assertEqual(row['colours'][1],row['colours'][2])  # nested span inherits emphasis
+            self.assertNotEqual(row['colours'][0],row['colours'][1])
             self.assertEqual(row['decoration'],'underline')
             self.assertNotEqual(row['underlineOffset'],'auto')
+        self.assertEqual(rows[-1]['colours'][0],'rgb(24, 52, 82)')
+        self.assertEqual(rows[-1]['colours'][1],'rgb(107, 24, 91)')
+
+    def test_readable_defaults_also_support_light_backgrounds(self):
+        from presentation_quality import cover_colours, colour_contrast
+        for background in ('#ffffff','#fff1d7','#cceeff','#14231e','#244c78','#913d49'):
+            text, emphasis=cover_colours(background)
+            self.assertGreaterEqual(colour_contrast(text,background),4.5)
+            self.assertGreaterEqual(colour_contrast(emphasis,background),4.5)
 
 
 class PromptTagsAllowedTest(unittest.TestCase):

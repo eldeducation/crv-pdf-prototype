@@ -105,7 +105,7 @@ themeで題材に合う配色を選べる：green/red/blue/amber/purple/slate。
 デザイン重視には.section-index（章番号）、.pullquote（重要な発言）、.feature（主役の情報）も使える。すべてのページに機械的に並べない。
 デザイン重視では次の雑誌風の部品も使える。中身・出典span・キャプションは通常どおり付け、内容に合う部品だけを選ぶ（全部を使わない）。
 部品のスタイルは用意済みで、配色はthemeに従う。cssでこれらのクラス名（子要素を含む）を指定したルールは使われないので書かない。部品は下の例と同じHTML構造・子要素のクラス名で書き、独自の装飾が必要なときだけ別のクラス名を作る。
-濃い背景の表紙では題名を白文字にする。題名内のemは白文字の太字と下線で強調する標準部品なので、青い背景に青文字など同系色の指定を足さない。表紙の配色は文字の大きさに関係なく4.5:1以上で検査する。本文の内容・写真・順序は配色のために変えない。
+表紙の文字は白に固定しない。背景に応じた読みやすい標準配色がある。題材に合う別の配色を選ぶ場合はcssの:rootに--cover-background・--cover-text・--cover-emphasisをまとめて指定できる（例：:root { --cover-background:#fff1d7; --cover-text:#183452; --cover-emphasis:#6b185b; }）。背景と題名・強調の両方が見分けやすい組み合わせを選び、色だけでなく太さや下線でも強調する。表紙は文字の大きさに関係なく実際の背景とのコントラスト4.5:1以上を検査する。本文の内容・写真・順序は配色のために変えない。
 - 表紙（1ページ目）：<div class="cover"><span class="kicker">SEMINAR DIGEST ／ セミナー要約</span><h1>題名<em>強調語</em></h1><p class="sub">副題</p></div>、その下に<div class="cover-media">（主役の写真と補助の写真の2列）、<div class="tldr"><p class="label">ひとことで言うと</p><p class="line">結論の1文。<mark>要点</mark></p></div>、<div class="keypoints">に3つの要点（各<div><p class="no">01</p><h3>見出し</h3><p>1文</p></div>）。表紙だけで全体の主張が分かるようにする。
 - 章の始まり：<div class="chapter"><p class="no">01</p><div><p class="meta">PART 1　02:00 – 08:35</p><h2>見出し</h2></div></div>。時刻は内容案の区間と一致させ、本文には出典spanも付ける。
 - 流れ・変化：<div class="chevrons"><div>段階<small>説明</small></div>…<div class="on">到達点</div></div>（2～6段）。順序のない並列には使わない。

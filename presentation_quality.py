@@ -4,6 +4,7 @@ These checks validate coverage and quoted text, not the truth of visual meaning.
 The existing model review must still judge what the images and instructions show.
 """
 import re
+import colorsys
 import unicodedata
 from html.parser import HTMLParser
 
@@ -19,12 +20,33 @@ THEMES = {
 }
 
 
+def colour_contrast(first, second):
+    def luminance(colour):
+        values = [int(colour[i:i+2], 16) / 255 for i in (1, 3, 5)]
+        linear = [v/12.92 if v <= .04045 else ((v+.055)/1.055)**2.4 for v in values]
+        return sum(a*b for a,b in zip(linear, (.2126,.7152,.0722)))
+    light, dark = sorted((luminance(first), luminance(second)), reverse=True)
+    return (light+.05)/(dark+.05)
+
+
+def cover_colours(background):
+    """Readable defaults, not a white-text requirement. Authored palette variables
+    may replace them and are checked against the actual rendered background."""
+    hue, lightness, saturation = colorsys.rgb_to_hls(*(int(background[i:i+2],16)/255 for i in (1,3,5)))
+    accent = '#'+''.join(f'{round(v*255):02x}' for v in colorsys.hls_to_rgb((hue+.5)%1, .86 if lightness < .5 else .22, max(.45,saturation)))
+    def choose(candidates):
+        return next(c for c in candidates if colour_contrast(c, background) >= 4.5)
+    return choose(('#fffdf7','#14231e','#ffffff','#000000')), choose((accent,'#fffdf7','#14231e','#ffffff','#000000'))
+
+
 def theme_css(theme='green'):
     if not isinstance(theme, str) or theme not in THEMES:
         raise ValueError('themeはgreen・red・blue・amber・purple・slateから選んでください。')
     heading, soft, strong, mark = THEMES[theme]
+    text, emphasis = cover_colours(heading)
     return (f':root {{ --heading-color: {heading}; --accent-soft: {soft}; '
-            f'--accent-strong: {strong}; --accent-mark: {mark}; }}')
+            f'--accent-strong: {strong}; --accent-mark: {mark}; '
+            f'--cover-background: {heading}; --cover-text: {text}; --cover-emphasis: {emphasis}; }}')
 STR = {'type': 'string'}
 VISUAL_SCAN = {'type': 'array', 'minItems': 3, 'maxItems': 3, 'items': {
     'type': 'object', 'required': ['role', 'status', 'finding', 'evidence_files'],
