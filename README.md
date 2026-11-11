@@ -2,11 +2,11 @@
 
 動画を、作業するとき・共有するとき・学ぶときに使える資料へ。YouTube・Xの公開動画リンクや動画ファイルから、内容と用途に合わせて写真・説明・図表を組み合わせたPDFを作る試作品です。
 
-**2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・27種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
+**2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・28種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
 
 ## ローカルClaudeの検証成果（2026-11-11）
 
-[もやい結び・PDF（7ページ）](docs/examples/2026-11-11/bowline-claude-local/document.pdf)を追加しました。ローカルアプリ＋Claudeサブスクリプションで、Opus 5.5・highを使ったと報告された作例です。AI APIを使わない方式として、11月10日のAPI版と分けて記録しています。元動画との独立照合・実物で結ぶ再現試験は未実施です。
+もやい結びの[更新前PDF（7ページ）](docs/examples/2026-11-11/bowline-claude-local/document.pdf)と[更新後PDF（7ページ）](docs/examples/2026-11-11/bowline-claude-local/document-updated.pdf)を保存し、[アプリ更新前後の比較](docs/examples/2026-11-11/bowline-claude-local/README.md#アプリ更新前後の比較同日追加)を追加しました。更新後はGitHubの変更を反映したローカルアプリでの作成です（ユーザー申告、正確なコミットは未確認）。ローカルアプリ＋Claudeサブスクリプションで、Opus 5.5・highを使ったと報告された作例です。AI APIを使わない方式として、11月10日のAPI版と分けて記録しています。元動画との独立照合・実物で結ぶ再現試験は未実施です。
 
 [今回のまとめ](docs/updates/2026-11-11.md) / [検証メモと確認範囲](docs/examples/2026-11-11/bowline-claude-local/README.md) / [生成条件・ファイルハッシュ](docs/examples/2026-11-11/bowline-claude-local/generation-info.json)
 
@@ -148,7 +148,7 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 
 ## これまで作成した資料一覧
 
-**15題材・27種類（要確認版・未検証のローカル作例を含む）。** 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
+**15題材・28種類（要確認版・未検証のローカル作例を含む）。** 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
 
 | 題材・入力動画 | 作成済みPDF（ページ数） | 位置づけ・確認点 |
 | --- | --- | --- |
@@ -179,6 +179,7 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 | [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Opus API版・12ページ](docs/examples/2026-11-10/sam-altman-opus/document.pdf) | 約$6.33。主張・回想・条件・不確実性を区別。本文・写真の説明・紙面を確認。 |
 | [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Opus API版・要確認・12ページ](docs/examples/2026-11-10/git-intro-needs-review/document.pdf) | 約$7.01。費用上限の見込みにより内容確認で停止。後続の検査改善前の実行。 |
 | [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document.pdf) | Opus 5.5・high、サブスク利用・AI APIなし（ユーザー申告）。紙面確認のみ。元動画との独立照合・再現試験は未実施。[条件・確認範囲](docs/examples/2026-11-11/bowline-claude-local/README.md)。 |
+| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [アプリ更新後Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document-updated.pdf) | GitHub変更をローカルへ反映、Opus 5.5・high（ユーザー申告）。表紙・末尾の構成が変更。[更新前後の比較と未確認条件](docs/examples/2026-11-11/bowline-claude-local/README.md#アプリ更新前後の比較同日追加)。 |
 
 ピアノでは、音やタイミングを含む動画を静止画の手順書にする限界が見られました。動画に合わせて資料化の方法を選ぶ必要があり、発表ではこの点に短く触れます。
 
