@@ -139,6 +139,9 @@ class Text(HTMLParser):
         self.parts.append(data)
 
 
+SUMMARY_CLASSES = {'cover', 'tldr', 'keypoints', 'wrapup'}
+
+
 class StepBindings(HTMLParser):
     """Read actual HTML ownership; page metadata alone cannot place a photo."""
     def __init__(self):
@@ -146,6 +149,9 @@ class StepBindings(HTMLParser):
         self.stack, self.blocks = [], []
         self.active = None
         self.unbound_references = set()
+        # Recaps (cover, one-line summary, key points, wrap-up) may cite steps without
+        # being the step's explanation; their references are not unbound step text.
+        self.summary_depth = None
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -163,9 +169,14 @@ class StepBindings(HTMLParser):
                 self.active['headings'] += 1
             if tag == 'img':
                 self.active['images'].add(values.get('src', ''))
+        classes = set((values.get('class') or '').split())
+        if self.summary_depth is None and self.active is None and classes & SUMMARY_CLASSES:
+            self.summary_depth = len(self.stack)
         if tag == 'span' and 'data-source-unit' in values:
-            target = self.active['references'] if self.active is not None else self.unbound_references
-            target.add(values['data-source-unit'])
+            if self.active is not None:
+                self.active['references'].add(values['data-source-unit'])
+            elif self.summary_depth is None:
+                self.unbound_references.add(values['data-source-unit'])
         if tag not in ('img', 'br', 'hr'):
             self.stack.append(tag)
 
@@ -176,6 +187,8 @@ class StepBindings(HTMLParser):
             self.stack.pop()
         if self.active is not None and len(self.stack) == self.active['depth']:
             self.active = None
+        if self.summary_depth is not None and len(self.stack) == self.summary_depth:
+            self.summary_depth = None
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
@@ -203,9 +216,11 @@ def validate_step_bindings(pages, units, records, parsed=None):
     actions = {i for i, u in known.items() if u['type'] == 'action'}
     times = {r['file']: r['seconds'] for r in records}
     images = {i: set() for i in actions}
-    for page, parser in zip(pages, parsed if parsed is not None else step_bindings(pages)):
+    for page_no, (page, parser) in enumerate(zip(pages, parsed if parsed is not None else step_bindings(pages)), 1):
         if parser.unbound_references & actions:
-            raise ValueError('操作の説明と写真をsection data-step-units="工程id"でまとめてください。')
+            loose = '、'.join(sorted(parser.unbound_references & actions))
+            raise ValueError(f'{page_no}ページ目：工程（{loose}）の出典spanが工程ブロックの外にあります。'
+                             '操作の説明と写真をsection data-step-units="工程id"でまとめ、出典spanはそのブロックの中に置いてください。')
         for block in parser.blocks:
             ids = block['ids']
             if not ids.issubset(known):
