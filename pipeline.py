@@ -836,6 +836,24 @@ def wrapup_problem(doc):
     return None
 
 
+# Words that only occur in the fictional examples of the procedure rules (editor.txt).
+# If they reach a document while the analysed video never mentions them, the editor
+# copied an example instead of describing this video.
+EXAMPLE_ONLY_TERMS = ('卓上ライト', '電球', 'シェード', 'ソケット', '口金', 'E17', '2,000時間', '右・右・左', '右・右・右・左')
+
+
+def example_leak_problem(doc, plan):
+    """Procedure examples are illustrations; their wording must not become content."""
+    text = re.sub(r'<[^>]+>', ' ', ' '.join(str(p.get('html', '')) for p in doc.get('pages') or [] if isinstance(p, dict)))
+    text += ' ' + str(doc.get('title', '')) + ' ' + str(doc.get('summary', ''))
+    source = json.dumps(plan, ensure_ascii=False)
+    leaked = [term for term in EXAMPLE_ONLY_TERMS if term in text and term not in source]
+    if leaked:
+        return ('指示の例（架空の作業）の語句が資料に入っています：' + '、'.join(leaked)
+                + '。例は書き方の説明で今回の動画とは関係ありません。今回の内容案と映像から書き直してください。')
+    return None
+
+
 def build_document(doc, plan, presentation, evidence, language='auto'):
     """Turn an editor submission into the document and its PDF source HTML.
 
@@ -851,6 +869,8 @@ def build_document(doc, plan, presentation, evidence, language='auto'):
     problems = []
     if wrapup_problem(doc):
         problems.append(wrapup_problem(doc))
+    if presentation.get('purpose') == 'procedure' and example_leak_problem(doc, plan):
+        problems.append(example_leak_problem(doc, plan))
     if presentation.get('purpose') == 'training':
         try:
             validate_training_plan(doc, plan)
