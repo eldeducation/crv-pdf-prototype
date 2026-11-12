@@ -10,7 +10,7 @@ import model_catalog as catalog
 import share_gateway
 
 FAKE = 'sk-or-v1-not-a-real-key-fixture-only'
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 RESPONSE = {'data': {'label': 'sk-or-v1-au7...890', 'creator_user_id': 'user_123', 'workspace_id': 'ws_1',
                      'limit': 15, 'limit_remaining': 0.8, 'limit_reset': 'monthly', 'usage': 14.2, 'usage_monthly': 14.2,
                      'is_free_tier': False,

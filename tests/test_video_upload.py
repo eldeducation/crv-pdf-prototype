@@ -213,7 +213,7 @@ class GatewayHTTPTests(unittest.TestCase):
             list(body_chunks(BoundedReader(b'abc'), 4))
 
     def test_ui_and_embedded_script_match(self):
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parent.parent
         html = (root / 'index.html').read_text(encoding='utf-8')
         script = html.split('<script>', 1)[1].split('</script>', 1)[0]
         # The CSP hash covers '\n' + ui.js + '\n' exactly (browsers normalize CRLF), so

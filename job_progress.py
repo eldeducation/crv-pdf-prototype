@@ -2,6 +2,7 @@
 import json
 import time
 from pathlib import Path
+from atomic_io import safe_replace
 
 STAGES = ('prepare', 'analyze', 'document', 'verify', 'finish')
 # Default phase bounds: analysis 8, editing 7, up to two review sessions of 8,
@@ -34,7 +35,7 @@ class Progress:
         self.data['updated_at'] = self.clock()
         temporary = self.folder / 'progress.tmp'
         temporary.write_text(json.dumps(self.data, ensure_ascii=False), encoding='utf-8')
-        temporary.replace(self.folder / 'progress.json')
+        safe_replace(temporary, self.folder / 'progress.json')
 
     def start(self, stage, *, restart=False):
         if stage not in STAGES:

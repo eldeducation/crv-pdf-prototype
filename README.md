@@ -4,6 +4,12 @@
 
 **2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・30種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
 
+## 作業手順書の改善とWindowsでの使い方（2026-11-12）
+
+作業手順書を「動画を見ずにこの資料だけで作業できる」文章とデザインにするルールを入れました。Windowsでは、このリポジトリをそのまま置き、`1_setup.bat` → `2_start.bat` で使えます（管理者権限不要）。APIキーなしで、チャットのAI（Claude・ChatGPTなど）がAI役をする**チャットモード**（`4_chat_mode.bat`）も使えます。
+
+[今回の変更のまとめ](docs/updates/2026-11-12.md) / [Windowsでの使い方](docs/local-windows.md) / [チャットモード](docs/chat-mode.md)
+
 ## ローカルClaudeの検証成果（2026-11-11）
 
 もやい結びの[更新前PDF（7ページ）](docs/examples/2026-11-11/bowline-claude-local/document.pdf)と[更新後PDF（配色修正前・7ページ）](docs/examples/2026-11-11/bowline-claude-local/document-updated.pdf)を保存し、[アプリ更新前後の比較](docs/examples/2026-11-11/bowline-claude-local/README.md#アプリ更新前後の比較同日追加)を追加しました。更新後はGitHubの変更を反映したローカルアプリでの作成です（ユーザー申告、正確なコミットは未確認）。ローカルアプリ＋Claudeサブスクリプションで、Opus 5.5・highを使ったと報告された作例です。AI APIを使わない方式として、11月10日のAPI版と分けて記録しています。元動画との独立照合・実物で結ぶ再現試験は未実施です。
@@ -253,7 +259,10 @@ APIキーの値はREADME・ソース・スクリーンショット・公開デ�
 - `cost_estimate.py`：AIを使う前の費用の目安と自動上限。`prompt_cache.py`：同じ前半部分のキャッシュと料金計算。
 - `document_design.py` / `editorial_quality.py`：デザイン重視の部品・配色と、紙面設計・紙面確認の検査。
 - `markdown_export.py`：ページのHTMLから編集用Markdownを作る。
-- `fixtures/drafts/`：回帰テスト用の下書き（架空の文章。画像はテスト時に生成し、動画の内容は含まない）。
+- `tests/`：自動テスト。`tests/fixtures/drafts/` は回帰テスト用の下書き（架空の文章。画像はテスト時に生成し、動画の内容は含まない）。
+- `chat_worker.py` / `manual_client.py`：APIなしのチャットモード（[docs/chat-mode.md](docs/chat-mode.md)）。`atomic_io.py`：Windowsでの安全なファイル置き換え。
+- `1_setup.bat`〜`5_autostart_*.bat` / `local/windows/`：Windowsでの準備・起動（[docs/local-windows.md](docs/local-windows.md)）。
+- `docs/references/`：Opus比較用の元PDF。
 - `render.cjs`：外部通信とJavaScriptを制限したローカルHTML→PDF描画。
 - `security.py`：入力URL・API接続先・出力ヘッダーなどの検査。
 - `Dockerfile` / `render.yaml`：FFmpeg・CPU Whisper・Chromium・日本語フォントを含むRender Free向けの候補設定。
@@ -271,7 +280,7 @@ Codex・Claude Code・人が並行して変更するため、GitHubの`main`を�
 
 ### 2026-11-09：配布・描画テスト・過去ログ・再開案内の改善
 
-- **[各自のPC向け配布版](LOCAL-DISTRIBUTION.md)**は、mainのテストが通った同じコミットから自動作成し、GitHub Releasesへコミットごとに保存します。最新版ZIPの固定リンクを用意しました。11月5日のZIPは旧版として残します。利用者の設定・動画・履歴・DPAPI保存キーは同梱せず、実行環境のパスは各PCで作ります。
+- **[各自のPC向け配布版](LOCAL-DISTRIBUTION.md)**は、mainのテストが通った同じコミットから自動作成し、GitHub Releasesへコミットごとに保存します。最新版ZIPの固定リンクを用意しました。11月5日のZIPは2026-11-12にリポジトリから外しました（履歴には残っています）。利用者の設定・動画・履歴・DPAPI保存キーは同梱せず、実行環境のパスは各PCで作ります。
 - 画面下部にコミットとソース識別子を表示し、ZIP内のbuild-info.json・MANIFEST.jsonと照合できます。共有セッション用の画面変更は元の版情報を保持し、ソースを変更すると識別子も変わります。
 - 描画テストは実際の描画エラーを失敗として扱います。ローカルでNode/Playwright/Chromiumが未導入の場合だけスキップでき、CIではブラウザー・日本語フォントを用意して描画を必須にします。
 - 過去のエラー・review_note・確認メモに残ったキー管理URLやキー形式の値は、画面表示とrun.json・usage.json・review-notes.txtのダウンロード時にも伏せます。元の保存記録とPDF本文は変更しません。

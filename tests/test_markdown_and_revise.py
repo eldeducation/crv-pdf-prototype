@@ -126,7 +126,7 @@ class SharedCopyTest(unittest.TestCase):
         import ast
         from pathlib import Path
         import share_gateway
-        root = Path(__file__).resolve().parent
+        root = Path(__file__).resolve().parent.parent
         copied = {n[:-3] for n in share_gateway.COPY_FILES if n.endswith('.py')}
         local = {p.stem for p in root.glob('*.py')}
         missing = set()

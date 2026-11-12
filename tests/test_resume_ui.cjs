@@ -3,7 +3,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync(__dirname+'/ui.js','utf8');
+const source=fs.readFileSync(__dirname+'/../ui.js','utf8');
 const start=source.indexOf('function resumeNeedsConnection(');
 const end=source.indexOf("$('stop').onclick",start);
 
@@ -61,7 +61,7 @@ test('finish reserve resume keeps the chosen cumulative ceiling',async()=>{
  assert.equal(f.calls[0][1].confirm_estimate,false);
 });
 test('embedded UI stays identical to ui.js',()=>{
- const page=fs.readFileSync(__dirname+'/index.html','utf8');
+ const page=fs.readFileSync(__dirname+'/../index.html','utf8');
  assert.equal(page.split('<script>')[1].split('</script>')[0].trim(),source.trim());
  assert.match(page,/id="appVersion"/);
  assert.match(page,/id="resumeConnectionHelp"/);

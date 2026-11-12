@@ -3,6 +3,7 @@ import gzip
 import hashlib
 import json
 import time
+from atomic_io import safe_replace
 
 
 def signature(value):
@@ -26,7 +27,7 @@ class Checkpoint:
         temp = self.path.with_suffix('.tmp')
         with gzip.open(temp, 'wt', encoding='utf-8') as stream:
             json.dump({'signature': self.signature, **state}, stream, ensure_ascii=False)
-        temp.replace(self.path)
+        safe_replace(temp, self.path)
         # Small metadata avoids repeatedly loading image-filled checkpoints for UI polling.
         summary = {'version': 1, 'signature': self.signature, 'saved_at': time.time(),
                    'completed': 'result' in state or bool(state.get('approved')),
@@ -34,4 +35,4 @@ class Checkpoint:
                    'round': state.get('round', 0), 'has_pending_tools': bool(state.get('pending'))}
         small = self.state_path.with_suffix('.tmp')
         small.write_text(json.dumps(summary), encoding='utf-8')
-        small.replace(self.state_path)
+        safe_replace(small, self.state_path)

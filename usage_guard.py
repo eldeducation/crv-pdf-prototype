@@ -7,6 +7,7 @@ import os
 import time
 import urllib.request
 from PIL import Image
+from atomic_io import safe_replace
 
 
 ACCOUNT_STATUSES = {401, 402, 403}
@@ -100,7 +101,7 @@ class GuardedClient:
                 'estimate': self.estimate}
         temp = self.folder / 'usage.tmp'
         temp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-        temp.replace(self.folder / 'usage.json')
+        safe_replace(temp, self.folder / 'usage.json')
         return data
 
     def send(self, messages, tools, system):
@@ -136,7 +137,8 @@ class GuardedClient:
         # 8192 truncated real plans even with modest visible explanations.
         # 32768 truncated an editorial document (18k reasoning + 23k chars of pages);
         # apply_model_options still clamps this to the selected model's own limit.
-        cap = min(self.config.max_tokens, {'content_plan': 24576,
+        # Local change: 24,576 truncated xhigh content plans twice in real runs (2026-11-05).
+        cap = min(self.config.max_tokens, {'content_plan': 49152,
                   'content_review': 16384, 'document_edit': 65536}[phase])
         estimated = input_estimate(messages, tools, system)
         # input_tokens is the uncached remainder; cached reads/writes are prompt tokens too.

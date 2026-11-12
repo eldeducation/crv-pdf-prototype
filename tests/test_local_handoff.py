@@ -20,7 +20,7 @@ from manual_client import ManualClient
 from scripts.build_local import build
 from usage_guard import BudgetStop
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def load(name):

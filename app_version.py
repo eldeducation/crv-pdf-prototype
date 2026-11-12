@@ -13,6 +13,7 @@ APP_FILES = (
     'editorial_quality.py', 'training_quality.py', 'restyle.py', 'source_references.py', 'job_progress.py',
     'action_grounding.py', 'manual_client.py', 'presentation_quality.py', 'web_research.py',
     'cost_estimate.py', 'markdown_export.py', 'prompt_cache.py', 'key_store.py', 'app_version.py',
+    'atomic_io.py',
 )
 
 

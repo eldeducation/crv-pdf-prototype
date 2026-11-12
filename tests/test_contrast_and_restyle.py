@@ -9,7 +9,7 @@ from pathlib import Path
 from unittest import mock
 from render_test_support import require_renderer
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 class ContrastCheckTest(unittest.TestCase):

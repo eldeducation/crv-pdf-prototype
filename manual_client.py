@@ -214,6 +214,58 @@ class ManualClient:
             self._pending = None  # A second submission cannot race the worker.
             self._ready.set()
 
+    # --- Chat bridge (local change) -------------------------------------------------
+    # Lets a chat assistant act as the model without the browser: the current
+    # request is announced in runs/chat-bridge.json, and an answer placed at
+    # <request dir>/chat-response.json is submitted exactly like an uploaded
+    # answer (same request_id check and tool-schema validation). Invalid answers
+    # are moved aside and the reason is written to chat-response-error.txt.
+    def _bridge_path(self):
+        return self.folder.parent / 'chat-bridge.json'
+
+    def _write_bridge(self, directory, request_id, number, phase, names):
+        info = {'status': 'waiting', 'run_folder': self.folder.name,
+                'request_dir': directory.relative_to(self.folder.parent.parent).as_posix(),
+                'request_id': request_id, 'sequence': number, 'phase': phase,
+                'available_tools': names, 'answer_file': 'chat-response.json',
+                'created_at': time.time()}
+        try:
+            temporary = self._bridge_path().with_suffix('.tmp')
+            temporary.write_text(json_text(info), encoding='utf-8')
+            from atomic_io import safe_replace
+            safe_replace(temporary, self._bridge_path())
+        except OSError:
+            pass
+
+    def _clear_bridge(self, request_id):
+        try:
+            path = self._bridge_path()
+            current = json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+            if current.get('request_id') == request_id:
+                current.update(status='answered' if self._response is not None else 'closed', closed_at=time.time())
+                path.write_text(json_text(current), encoding='utf-8')
+        except (OSError, ValueError):
+            pass
+
+    def _poll_chat_response(self, directory):
+        answer = directory / 'chat-response.json'
+        if not answer.is_file():
+            return
+        try:
+            # Ignore a file that is still being written.
+            if time.time() - answer.stat().st_mtime < 1.0:
+                return
+            value = json.loads(answer.read_text(encoding='utf-8-sig'))
+            self.submit(value)
+            (directory / 'chat-response-error.txt').unlink(missing_ok=True)
+        except (OSError, ValueError, TypeError) as error:
+            attempt = len(list(directory.glob('chat-response.rejected-*.json'))) + 1
+            try:
+                answer.replace(directory / f'chat-response.rejected-{attempt}.json')
+                (directory / 'chat-response-error.txt').write_text(str(error)[:4000], encoding='utf-8')
+            except OSError:
+                pass
+
     def send(self, messages, tools, system):
         if self.cancel_event.is_set():
             from usage_guard import BudgetStop
@@ -233,8 +285,17 @@ class ManualClient:
             self._pending = {'request_id': request_id, 'sequence': number, 'phase': phase,
                              'available_tools': names, 'created_at': time.time()}
         self.notify('APIなしのテスト：回答ファイルを待っています。')
+        self._write_bridge(directory, request_id, number, phase, names)
+        # Local change: sizes for the chat test report (what the API would have been sent).
+        started, input_estimate = time.time(), None
+        try:
+            from cost_estimate import count_tokens
+            input_estimate = round(count_tokens(messages, tools, system))
+        except Exception:  # noqa: BLE001 - the estimate is optional; the request itself is unaffected
+            count_tokens = None
         try:
             while not self._ready.wait(0.25):
+                self._poll_chat_response(directory)
                 if self.cancel_event.is_set():
                     from usage_guard import BudgetStop
                     raise BudgetStop('停止しました。API呼び出しは行っていません。', code='cancelled')
@@ -243,11 +304,21 @@ class ManualClient:
                 raise BudgetStop('停止しました。API呼び出しは行っていません。', code='cancelled')
             with self._lock:
                 response = self._response
-            self.exchanges.append({'request_id': request_id, 'sequence': number, 'phase': phase,
-                                   'directory': directory.relative_to(self.folder).as_posix()})
+            record = {'request_id': request_id, 'sequence': number, 'phase': phase,
+                      'directory': directory.relative_to(self.folder).as_posix()}
+            try:
+                calls = [b for b in response if b.get('type') == 'tool_use']
+                record.update(answered_with=[b['name'] for b in calls], input_tokens_estimate=input_estimate,
+                              output_tokens_estimate=round(count_tokens(json_text([b['input'] for b in calls]))) if count_tokens else None,
+                              format_rejections=len(list(directory.glob('chat-response.rejected-*.json'))),
+                              answer_seconds=round(time.time() - started))
+            except Exception:  # noqa: BLE001 - report data only
+                pass
+            self.exchanges.append(record)
             (self.folder / 'manual-exchanges.json').write_text(json_text(self.exchanges), encoding='utf-8')
             self.notify('回答を受け取りました。通常の検査を続けています。')
             return response
         finally:
             with self._lock:
                 self._pending = None
+            self._clear_bridge(request_id)

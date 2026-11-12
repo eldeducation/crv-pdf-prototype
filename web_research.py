@@ -360,6 +360,12 @@ class WebResearch:
         status = '' if fact['status'] == 'supported' else (' / 未確定' if language != 'en' else ' / unresolved')
         return '<small class="source-ref">['+label+status+': <a href="'+html.escape(public_url(fact['url']), quote=True)+'" rel="noopener noreferrer">'+html.escape(fact['title'][:100])+'</a>]</small>'
 
+    def short_citation(self, fact, language='auto'):
+        """Footer form: one short line per external page."""
+        label = 'Source' if language == 'en' else '出典'
+        title = fact['title'] if len(fact['title']) <= 40 else fact['title'][:39] + '…'
+        return '<small class="source-ref">['+label+': <a href="'+html.escape(public_url(fact['url']), quote=True)+'" rel="noopener noreferrer">'+html.escape(title)+'</a>]</small>'
+
     def markdown(self, units, language='auto'):
         facts = self.facts(units)
         if not facts:

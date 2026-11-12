@@ -2,7 +2,7 @@ from pathlib import Path
 import sys,json,unittest,subprocess,http.cookiejar
 from types import SimpleNamespace
 from unittest.mock import patch,Mock,MagicMock
-ROOT=Path(__file__).resolve().parent
+ROOT=Path(__file__).resolve().parent.parent
 sys.path.insert(0,str(ROOT))
 import youtube_browser as browser
 
