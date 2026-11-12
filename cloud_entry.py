@@ -9,6 +9,7 @@ import threading
 import time
 import urllib.parse
 from http.cookies import SimpleCookie
+from pathlib import Path
 import share_gateway as gateway
 from home_fetch import HomeFetchQueue, QUEUE_ENV, token_digest
 from security import response_headers
@@ -36,8 +37,43 @@ LOGIN_HTML = '''<!doctype html><html lang="ja"><meta charset="utf-8">
 <form action="/login" method="post"><label for="password">招待用パスワード / Invitation password</label><input id="password" name="password" type="password" required minlength="24" maxlength="512" autocomplete="current-password"><button type="submit">ログイン / Sign in</button></form>
 <p>ここにはAIのAPIキーを入力しないでください。<br>This is not your AI API key. PDF results are temporary; download them when ready.</p></main></html>'''.encode('utf-8')
 
+
+# Non-sensitive, structured diagnostics. Never log cookie values, URLs, keys or IPs.
+def _diagnostic(event, **data):
+    record = {'event': event, 'time': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()), **data}
+    try:
+        print(json.dumps(record, separators=(',', ':')), flush=True)
+    except (OSError, ValueError):
+        pass
+
+
+def _cgroup_memory_mib():
+    paths = (Path('/sys/fs/cgroup/memory.current'),
+             Path('/sys/fs/cgroup/memory/memory.usage_in_bytes'))
+    for path in paths:
+        try:
+            return round(int(path.read_text(encoding='ascii').strip()) / 1048576, 1)
+        except (OSError, ValueError):
+            continue
+    return None
+
+
+def _sample_resources():
+    with gateway.LOCK:
+        sessions = list(gateway.SESSIONS.values())
+    return {'memory_mib': _cgroup_memory_mib(),
+            'sessions': len(sessions),
+            'live_children': sum(item['process'].poll() is None for item in sessions)}
+
+
+def _resource_monitor():
+    while True:
+        time.sleep(20)
+        _diagnostic('resource_sample', boot=CloudHandler.boot_marker, **_sample_resources())
+
 class CloudHandler(gateway.Handler):
     password_digest = b''
+    boot_marker = secrets.token_hex(6)
     public_origin = ''
     login_tokens = {}
     login_attempts = []
@@ -104,6 +140,25 @@ class CloudHandler(gateway.Handler):
                     del self.login_tokens[key]
             return self.login_tokens.get(token, 0) > now
 
+    def auth_denial_reason(self):
+        cookies = SimpleCookie()
+        try:
+            cookies.load(self.headers.get('Cookie', ''))
+        except Exception:
+            return 'invalid_cookie_header'
+        token = cookies['__Host-video_access'].value if '__Host-video_access' in cookies else ''
+        if not token:
+            return 'missing_login_cookie'
+        if len(token) > 128:
+            return 'invalid_login_cookie'
+        with self.login_lock:
+            expiry = self.login_tokens.get(token)
+        if expiry is None:
+            return 'login_token_not_in_server_memory'
+        if expiry <= time.monotonic():
+            return 'expired_login_token'
+        return 'unknown_auth_failure'
+
     def login_page(self):
         self.send_response(200)
         headers = response_headers(LOGIN_HTML, 'text/html; charset=utf-8', secure=True, trusted_script=b'')
@@ -166,9 +221,16 @@ class CloudHandler(gateway.Handler):
             return self.home_fetch()
         if self.command == 'POST' and self.path == '/login':
             return self.login()
+        # Capture expiry before authenticated() purges expired token records.
+        denial_reason = self.auth_denial_reason()
         if not self.authenticated():
             if self.command == 'GET' and self.path in ('/', '/login'):
                 return self.login_page()
+            request_path = urllib.parse.urlsplit(self.path).path
+            category = next((name for name in ('status', 'stop', 'start', 'configure', 'upload')
+                             if request_path.endswith('/' + name)), 'page')
+            _diagnostic('auth_denied', boot=self.boot_marker, route=category,
+                        reason=denial_reason, **_sample_resources())
             return self.send(401, {'error': '招待用パスワードでログインしてください。 / Invitation login required.'})
         if self.path in ('/', '/login') and self.command == 'GET':
             return self.send(302, b'', extra_headers={'Location': '/' + gateway.TOKEN + '/'})
@@ -200,6 +262,8 @@ def main():
     server.daemon_threads = True
     record = {'pid': os.getpid(), 'port': server.server_port, 'path': '/' + gateway.TOKEN + '/', 'public_url': origin}
     (gateway.ROOT / 'work/sharing.local.json').write_text(json.dumps(record), encoding='utf-8')
+    _diagnostic('server_boot', boot=CloudHandler.boot_marker, pid=os.getpid(), **_sample_resources())
+    threading.Thread(target=_resource_monitor, daemon=True).start()
     threading.Thread(target=gateway.session_expiry_worker, daemon=True).start()
     verify_source = os.environ.pop('VIDEO_PDF_VERIFY_YOUTUBE', '')
     if verify_source:
