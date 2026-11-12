@@ -12,6 +12,9 @@ from security import child_environment
 
 
 class FrameWidthTests(unittest.TestCase):
+    def test_existing_positional_arguments_keep_their_meaning(self):
+        self.assertEqual(pipeline.Config('model', 'high', 96, 5).max_rounds, 5)
+
     def test_default_environment_and_explicit_override(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(pipeline.Config().frame_width, 1280)

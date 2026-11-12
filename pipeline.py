@@ -65,7 +65,6 @@ class Config:
     model: str = "claude-opus-5-5"
     effort: str = "xhigh"
     max_frames: int = 96
-    frame_width: int = field(default_factory=lambda: int(os.getenv('VIDEO_PDF_FRAME_WIDTH', '1280')))
     # Inspection (<=2) + draft + two fixes + approval. The API-call cap and the
     # cost estimate still stop a run before it overspends.
     max_rounds: int = 7
@@ -100,6 +99,7 @@ class Config:
     restyle_from: str | None = None
     progress: object = None
     model_options: dict | None = None
+    frame_width: int = field(default_factory=lambda: int(os.getenv('VIDEO_PDF_FRAME_WIDTH', '1280')))
 
     def __post_init__(self):
         if type(self.frame_width) is not int or self.frame_width not in (640, 1280):
