@@ -17,7 +17,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Callable
@@ -65,6 +65,7 @@ class Config:
     model: str = "claude-opus-5-5"
     effort: str = "xhigh"
     max_frames: int = 96
+    frame_width: int = field(default_factory=lambda: int(os.getenv('VIDEO_PDF_FRAME_WIDTH', '1280')))
     # Inspection (<=2) + draft + two fixes + approval. The API-call cap and the
     # cost estimate still stop a run before it overspends.
     max_rounds: int = 7
@@ -101,6 +102,8 @@ class Config:
     model_options: dict | None = None
 
     def __post_init__(self):
+        if type(self.frame_width) is not int or self.frame_width not in (640, 1280):
+            raise ValueError('画像の横幅は640または1280pxで指定してください。')
         validate_options(self.purpose, self.detail_level, self.output_language, self.design, self.visual_density)
         self.presentation_modes = normalize_modes(self.presentation_modes)
         self.presentation_notes = validate_notes(self.presentation_notes)
@@ -1302,7 +1305,7 @@ def extract(source, folder, config, notify=print):
     env["CRV_MEMORY_DB"] = str((folder.parent / "memory.db").resolve())
     env["XDG_CACHE_HOME"] = str((folder.parent / "cache").resolve())
     env["PYTHONIOENCODING"] = "utf-8"
-    args = [sys.executable, ROOT / "crv_worker.py", source, "-o", str(folder), "--grid", "--adaptive", "--frame-width", "1280",
+    args = [sys.executable, ROOT / "crv_worker.py", source, "-o", str(folder), "--grid", "--adaptive", "--frame-width", str(config.frame_width),
             "--max-frames", str(config.max_frames), "--why", DEFAULT_PROMPT]
     if source.startswith("https://"):
         args.extend(["--yt-dlp-arg=-S", "--yt-dlp-arg=res:1080"])
@@ -1317,6 +1320,7 @@ def extract(source, folder, config, notify=print):
     if config.no_transcribe:
         args.append("--no-transcribe")
     notify("動画の画像と文字起こしを準備しています")
+    notify(f"動画準備の画像横幅：{config.frame_width}px（最大{config.max_frames}枚）")
     try:
         run_preparation(args, env=env, log=folder.parent / "extraction.log", notify=notify)
     except PrototypeError as error:
@@ -1553,13 +1557,15 @@ def main():
     parser.add_argument("--model", default=os.getenv("VIDEO_PDF_MODEL", "claude-opus-5-5"))
     parser.add_argument("--effort", choices=["auto", "none", "minimal", "low", "medium", "high", "xhigh", "max"], default=os.getenv("VIDEO_PDF_EFFORT", "xhigh"))
     parser.add_argument("--max-frames", type=int, default=96)
+    parser.add_argument("--frame-width", type=int, choices=[640, 1280], default=None)
     parser.add_argument("--no-transcribe", action="store_true")
     args = parser.parse_args()
     if not args.source and not args.evidence:
         parser.error("動画または --evidence を指定してください")
     try:
         result = run(args.source or "既存解析", evidence_dir=args.evidence, prompt=args.prompt,
-                     config=Config(model=args.model, effort=args.effort, max_frames=args.max_frames, no_transcribe=args.no_transcribe))
+                     config=Config(model=args.model, effort=args.effort, max_frames=args.max_frames, no_transcribe=args.no_transcribe,
+                                   **({'frame_width': args.frame_width} if args.frame_width is not None else {})))
         print(result / "document.pdf")
     except (PrototypeError, BudgetStop) as error:
         print(str(error), file=sys.stderr)
