@@ -61,8 +61,9 @@ def editorial_brief(selection):
             'note_policy': '重要条件は数値・操作のすぐ近く、その他の補足は短い注記へ。確認文を各ページで反復しない。',
             'page_design_workflow': '読者の目的と内容の関係から紙面を設計し、design_planをcompose_documentに一緒に提出。全ページの実画像を見てdesign_reviewをapprove_documentに記録する。追加のAI呼び出し・設計専用ツールは不要。部品の一覧を順番に埋めない。' if selection['design'] == 'editorial' else '内容に合った読みやすい構成を選ぶ。'}
     if purpose == 'procedure':
-        brief['procedure_writing_guidance'] = ('editor指示の【作業手順書の書き方】に従う。表紙の副題・ひとことで言うと・要点に作り手の説明や不明点を書かない。'
-                                               '章見出しに動画の区間を書かない。本文に動画の実況・照合の記録を書かず、不明点は該当手順の最後に※注1行だけ。')
+        brief['procedure_writing_guidance'] = ('editor指示の【作業手順書の書き方】に従う。表紙の「ひとことで言うと」は作業全体を1文で、要点は作業の段階にする。'
+                                               '手順番号は通し番号1種類、章見出しは言葉で示し動画の区間を書かない。作業に寄与しない動きや当たり前の動作を独立した手順にしない。'
+                                               '本文に動画の実況・照合の記録を書かない。出典spanは工程ブロックごとに1つ。')
     if purpose == 'training':
         brief['training_structure_version'] = TRAINING_VERSION
         brief['training_guidance'] = '学習目標から実務への持ち帰りまで教材として構成する。具体例・写真の有用性と、問題・解答の分離を優先し、training_planを実際の紙面に対応付ける。'
