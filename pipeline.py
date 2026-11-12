@@ -450,6 +450,9 @@ class Fragment(HTMLParser):
         self.research = WebResearch(evidence.out, evidence.source)
         self.external_facts = self.research.facts(units or [])
         self.language = language
+        # One citation per external page on each PDF page: the same manufacturer page
+        # backing several steps should not repeat its long title after every step.
+        self.cited_sources = set()
         # Every markup problem of the page is collected, so one rejection lists them all;
         # each rejected submission costs a full document-length response.
         self.problems = []
@@ -514,7 +517,8 @@ class Fragment(HTMLParser):
         if reference:
             self.pieces.append(citation_html(reference, self.evidence.source))
             for fact in self.external_facts.values():
-                if fact['unit_id'] == reference['id']:
+                if fact['unit_id'] == reference['id'] and fact['url'] not in self.cited_sources:
+                    self.cited_sources.add(fact['url'])
                     self.pieces.append(self.research.citation(fact, self.language))
         if tag not in VOID_TAGS:
             self.stack.append(tag)
