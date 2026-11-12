@@ -440,8 +440,12 @@ def check_css(css):
 
 
 class Fragment(HTMLParser):
-    def __init__(self, evidence, units=None, language='auto'):
+    def __init__(self, evidence, units=None, language='auto', compact_sources=False):
         super().__init__(convert_charrefs=True)
+        # Procedures keep the reading flow clean: source times and external pages go to
+        # the page footer instead of after each step (captions already carry times).
+        self.compact_sources = compact_sources
+        self.footer_units, self.footer_external = [], {}
         self.evidence, self.pieces, self.stack, self.images = evidence, [], [], 0
         self.units = {u['id']: u for u in (units or [])}
         self.references = set()
@@ -515,11 +519,18 @@ class Fragment(HTMLParser):
             self.problem("画像のsrcがありません。")
         self.pieces.append("<" + tag + (" " + " ".join(safe) if safe else "") + ">")
         if reference:
-            self.pieces.append(citation_html(reference, self.evidence.source))
+            if self.compact_sources:
+                if reference not in self.footer_units:
+                    self.footer_units.append(reference)
+            else:
+                self.pieces.append(citation_html(reference, self.evidence.source))
             for fact in self.external_facts.values():
                 if fact['unit_id'] == reference['id'] and fact['url'] not in self.cited_sources:
                     self.cited_sources.add(fact['url'])
-                    self.pieces.append(self.research.citation(fact, self.language))
+                    if self.compact_sources:
+                        self.footer_external[fact['url']] = self.research.short_citation(fact, self.language)
+                    else:
+                        self.pieces.append(self.research.citation(fact, self.language))
         if tag not in VOID_TAGS:
             self.stack.append(tag)
 
@@ -560,12 +571,13 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
     if not isinstance(pages, list) or not 1 <= len(pages) <= 24:
         raise PrototypeError("資料は1～24ページにしてください。")
     fragments, count, source_labels = [], 0, []
+    compact_sources = str(doc.get('presentation', {}).get('purpose', '')) == 'procedure'
     image_names, action_images, page_images = set(), {}, []
     cited_units = set()
     known_units = {u['id']: u for u in (units or [])}
     markup_problems = {}
     for number, page in enumerate(pages, 1):
-        parser = Fragment(evidence, units, language)
+        parser = Fragment(evidence, units, language, compact_sources)
         try:
             fragments.append(parser.result(page["html"]))
         except PrototypeError as error:
@@ -590,7 +602,11 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
         # Compact source times in the footer; full explanations are in the Web index.
         if not related:
             related = [{'start': r['seconds'], 'end': r['seconds']} for r in evidence.records if r['file'] in parser.image_names]
-        source_labels.append('' if parser.references else ' '.join(citation_html(u, evidence.source) for u in related[:3]))
+        if compact_sources:
+            shown = sorted(parser.footer_units, key=lambda u: u['start'])[:3] or related[:3]
+            source_labels.append(' '.join([citation_html(u, evidence.source) for u in shown] + list(parser.footer_external.values())))
+        else:
+            source_labels.append('' if parser.references else ' '.join(citation_html(u, evidence.source) for u in related[:3]))
     if markup_problems:
         raise PrototypeError("\n".join(f"{'・'.join(map(str, numbers))}ページ: {message}"
                                        for message, numbers in markup_problems.items()))
