@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
 from security import normalized_video_url
+from atomic_io import safe_replace
 
 
 def clock(value):
@@ -127,7 +128,7 @@ def write_index(folder):
             'purpose': report.get('purpose', 'auto'), 'output_language': report.get('output_language', 'auto')}
     temporary = folder / 'source-index.tmp'
     temporary.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding='utf-8')
-    temporary.replace(folder / 'source-index.json')
+    safe_replace(temporary, folder / 'source-index.json')
     return True
 
 
