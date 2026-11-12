@@ -63,7 +63,8 @@ def editorial_brief(selection):
     if purpose == 'procedure':
         brief['procedure_writing_guidance'] = ('editor指示の【作業手順書の書き方】に従う。表紙の「ひとことで言うと」は作業全体を1文で、要点は作業の段階にする。'
                                                '各手順の見出しは.chapter（noに手順の通し番号、metaに段階名）で示し、ほかの番号や章見出しを作らない。作業に寄与しない動きや当たり前の動作を独立した手順にしない。'
-                                               '本文に動画の実況・照合の記録を書かない。出典spanは工程ブロックごとに1つ。')
+                                               '本文に動画の実況・照合の記録を書かない。出典spanは工程ブロックごとに1つ。'
+                                               '表紙と全体の流れ（.chevrons）で作業の全体と覚え方を主役にし、手順ページは同じ型で、主役の写真1枚を大きく、補助を小さくする。')
     if purpose == 'training':
         brief['training_structure_version'] = TRAINING_VERSION
         brief['training_guidance'] = '学習目標から実務への持ち帰りまで教材として構成する。具体例・写真の有用性と、問題・解答の分離を優先し、training_planを実際の紙面に対応付ける。'
