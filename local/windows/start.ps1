@@ -1,7 +1,7 @@
 ﻿# Start the local app (loopback 127.0.0.1 only). Close this window or press Ctrl+C to stop.
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
-$Root = $PSScriptRoot
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path  # project folder (this script lives in local\windows)
 $RT   = Join-Path $Root '_runtime'
 $py   = Join-Path $RT 'venv\Scripts\python.exe'
 if (-not (Test-Path $py)) { Write-Host 'Setup has not finished. Run 1_setup.bat first.'; exit 1 }

@@ -15,7 +15,7 @@ import server
 import share_gateway
 
 FAKE = 'sk-or-v1-not-a-real-key-fixture-only'
-REPO = Path(__file__).resolve().parent
+REPO = Path(__file__).resolve().parent.parent
 
 
 @unittest.skipUnless(os.name == 'nt', 'DPAPI is Windows-only')

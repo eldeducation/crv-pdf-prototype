@@ -6,7 +6,7 @@ $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
 
-$Root = $PSScriptRoot
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path  # project folder (this script lives in local\windows)
 $RT   = Join-Path $Root '_runtime'
 $DL   = Join-Path $RT 'downloads'
 $Log  = Join-Path $RT 'setup-log.txt'

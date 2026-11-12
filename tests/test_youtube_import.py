@@ -6,7 +6,7 @@ import json
 import unittest
 from unittest.mock import patch, Mock, MagicMock
 
-MODULE_ROOT = Path(__file__).resolve().parent
+MODULE_ROOT = Path(__file__).resolve().parent.parent
 if not (MODULE_ROOT/'youtube_support.py').is_file(): MODULE_ROOT = MODULE_ROOT.parent
 sys.path.insert(0,str(MODULE_ROOT))
 import youtube_support as youtube

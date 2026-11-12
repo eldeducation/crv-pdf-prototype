@@ -5,8 +5,9 @@ $link = Join-Path $startup 'CRV PDF chat mode.lnk'
 if ($Remove) { Remove-Item $link -ErrorAction SilentlyContinue; Write-Host 'Autostart removed.'; exit 0 }
 $shell = New-Object -ComObject WScript.Shell
 $s = $shell.CreateShortcut($link)
-$s.TargetPath = Join-Path $PSScriptRoot '4_chat_mode.bat'
-$s.WorkingDirectory = $PSScriptRoot
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
+$s.TargetPath = Join-Path $Root '4_chat_mode.bat'
+$s.WorkingDirectory = $Root
 $s.WindowStyle = 7
 $s.Save()
 Write-Host "Autostart added: $link"

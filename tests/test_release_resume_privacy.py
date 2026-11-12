@@ -20,7 +20,7 @@ import security
 import server
 from scripts.build_local import build
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 REVISION = 'f' * 40
 PRIVATE_URL = 'https://openrouter.ai/workspaces/default/keys/private-fixture-id'
 FAKE_KEY = 'sk-or-v1-' + 'not-a-real-key-fixture' * 2

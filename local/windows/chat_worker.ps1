@@ -1,7 +1,7 @@
 ﻿# Chat mode: the Claude chat acts as the AI. No API key. Keep this window open.
 $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
-$Root = $PSScriptRoot
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path  # project folder (this script lives in local\windows)
 $RT   = Join-Path $Root '_runtime'
 $py   = Join-Path $RT 'venv\Scripts\python.exe'
 if (-not (Test-Path $py)) { Write-Host 'Setup has not finished. Run 1_setup.bat first.'; exit 1 }

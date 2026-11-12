@@ -99,7 +99,7 @@ Pythonは3.10〜3.12を対象としています。初回はPythonパッケージ
 
 - [公開ソース](https://github.com/eldeducation/crv-pdf-prototype)
 - [13題材・22種類の見本](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/)
-- [Opus比較用の元PDF](https://github.com/eldeducation/crv-pdf-prototype/blob/main/OPUS-REFERENCES.md)
+- [Opus比較用の元PDF](https://github.com/eldeducation/crv-pdf-prototype/blob/main/docs/references/OPUS-REFERENCES.md)
 
 外部依存はインストール時に取得し、それぞれのライセンスが適用されます。CRVはMIT、FFmpeg等は各配布元の条件を確認してください。第三者依存や動画そのものは同梱していません。
 

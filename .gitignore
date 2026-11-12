@@ -14,3 +14,14 @@ home_fetch.local.json
 api_key.local.dpapi
 *.local.dpapi
 dist/
+
+# Created on each Windows PC by local/windows scripts and chat mode (never commit)
+_runtime/
+_backup/
+chat-jobs/
+downloads/
+完成PDF/
+成果物/
+prompts/
+CHAT-HANDOFF.md
+LOCAL-SETUP.md

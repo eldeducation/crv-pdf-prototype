@@ -6,7 +6,7 @@ from pathlib import Path
 from document_design import style_css
 from presentation_quality import THEMES, theme_css
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 KIT_CLASSES_EXPECTED = KIT_CLASSES = ['cover', 'kicker', 'cover-media', 'shot', 'tldr', 'keypoints', 'chapter', 'chevrons',
                'quote-xl', 'bigstat', 'point', 'versus', 'qa', 'lede', 'tiles', 'wrapup']
 

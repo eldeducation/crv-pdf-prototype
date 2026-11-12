@@ -4,7 +4,7 @@
 param([string]$Url)
 $ErrorActionPreference = 'Continue'
 try { [Console]::OutputEncoding = [Text.Encoding]::UTF8 } catch {}
-$Root = $PSScriptRoot
+$Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path  # project folder (this script lives in local\windows)
 $RT   = Join-Path $Root '_runtime'
 $py   = Join-Path $RT 'venv\Scripts\python.exe'
 $ffbin = Join-Path $RT 'ffmpeg\bin'

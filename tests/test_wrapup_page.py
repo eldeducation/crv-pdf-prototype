@@ -7,7 +7,7 @@ import pipeline
 from markdown_export import document_markdown
 from render_test_support import require_renderer
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 WRAPUP = ('<div class="wrapup"><p class="label">まとめ</p><h2>Gitは手元のセーブ、GitHubは共有の場</h2><ol>'
           '<li>Gitは手元の編集履歴を残すセーブ機能。<span data-source-unit="u01"></span></li>'

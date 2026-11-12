@@ -12,7 +12,7 @@ from PIL import Image
 
 import pipeline
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 
 ARROW_DIAGRAM = (
     '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" width="200" height="60">'
