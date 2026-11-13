@@ -2,7 +2,7 @@
 
 動画を、作業するとき・共有するとき・学ぶときに使える資料へ。YouTube・Xの公開動画リンクや動画ファイルから、内容と用途に合わせて写真・説明・図表を組み合わせたPDFを作る試作品です。
 
-**2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・30種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
+**2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・31種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
 
 ## 作業手順書の改善とWindowsでの使い方（2026-11-12）
 
@@ -31,6 +31,10 @@
 ### Sol API版の完成確認（2026-11-11）
 
 [Git入門：GPT-6.1 Sol・high版のPDF](docs/examples/2026-11-11/git-intro-sol/document.pdf)が7ページで完成しました。本文・写真の内容照合と最終承認が通り、全ページを画像化して確認しています。累計API費用は **$1.7571325（上限$3.85、23応答）**。以前の停止・再提出・中断した再分析の費用も含みます。完了済みの内容案は紙面との対応を検証して再利用し、再開時に自動で解析を繰り返さないようにしました。[条件・確認範囲](docs/examples/2026-11-11/git-intro-sol/README.md)。以前のOpus版との同条件比較ではありません。
+
+### X対談：同じ入力でOpusとSolを比較（2026-11-11）
+
+[Sol版PDF（8ページ）](docs/examples/2026-11-11/sam-altman-sol/document.pdf)を作成しました。[Opus版（12ページ）](docs/examples/2026-11-10/sam-altman-opus/document.pdf)と同じ保存済みプログラム、同じ初期の編集入力・内容案、セミナー要約・詳しく・日本語・highで比較しています。Solは **$1.0264（10応答、上限$3.85）**、Opusは$6.3289。両方とも最終の内容照合・承認が完了しています。共通の内容案を使う編集品質の比較であり、動画理解力や現行プログラムの比較ではありません。[比較結果と条件の違い](docs/examples/2026-11-11/sam-altman-sol/README.md)。
 
 ## 今日の変更・成果物・次にやること（2026-11-10）
 
@@ -170,7 +174,7 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 
 ## これまで作成した資料一覧
 
-**15題材・30種類（要確認版・未検証のローカル作例を含む）。** 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
+**15題材・31種類（要確認版・未検証のローカル作例を含む）。** 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
 
 | 題材・入力動画 | 作成済みPDF（ページ数） | 位置づけ・確認点 |
 | --- | --- | --- |
@@ -199,6 +203,7 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 | [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API初版・9ページ](docs/examples/2026-11-10/complaints-opus-original/document.pdf) | 11月10日完成。Opus 5.5・高、約$4.14。内容・紙面を確認。 |
 | [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API構成改善版・13ページ](docs/examples/2026-11-10/complaints-opus-improved/document.pdf) | 問題・解答を別ページにし、架空の応用練習と実務の記入欄を追加。約$2.60。内容案を再利用。 |
 | [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Opus API版・12ページ](docs/examples/2026-11-10/sam-altman-opus/document.pdf) | 約$6.33。主張・回想・条件・不確実性を区別。本文・写真の説明・紙面を確認。 |
+| [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Sol API比較版・8ページ](docs/examples/2026-11-11/sam-altman-sol/document.pdf) | 当時の同じプログラム・初期入力・共通内容案、high。約$1.03。内容照合・全ページ確認済み。[比較条件と所見](docs/examples/2026-11-11/sam-altman-sol/README.md)。 |
 | [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Opus API版・要確認・12ページ](docs/examples/2026-11-10/git-intro-needs-review/document.pdf) | 約$7.01。費用上限の見込みにより内容確認で停止。後続の検査改善前の実行。 |
 | [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Sol API版・7ページ](docs/examples/2026-11-11/git-intro-sol/document.pdf) | GPT-6.1 Sol・high、累計約$1.76 / 上限$3.85。内容照合・最終承認・全ページの紙面確認済み。[生成条件](docs/examples/2026-11-11/git-intro-sol/README.md)。 |
 | [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document.pdf) | Opus 5.5・high、サブスク利用・AI APIなし（ユーザー申告）。紙面確認のみ。元動画との独立照合・再現試験は未実施。[条件・確認範囲](docs/examples/2026-11-11/bowline-claude-local/README.md)。 |
