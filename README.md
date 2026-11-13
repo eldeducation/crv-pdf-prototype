@@ -2,7 +2,7 @@
 
 動画を、作業するとき・共有するとき・学ぶときに使える資料へ。YouTube・Xの公開動画リンクや動画ファイルから、内容と用途に合わせて写真・説明・図表を組み合わせたPDFを作る試作品です。
 
-**2026年11月11日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、これまで作成した15題材・31種類のPDF（要確認版・未検証のローカル作例を含む）も閲覧できます。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
+**2026年11月13日更新。** 各自のPCで自分のAIと使う配布版と、導入からPDF保存までの手順を掲載しています。4用途の見本と、確認できた16題材・33版を一覧化しています。公開PDFは31版で、別PCに保存されている最新2版は「PDF未収録」として作成記録を載せています。11月10日・11日の追加PDFはGitHub、従来の見本は紹介ページから開けます。
 
 ## 作業手順書の改善とWindowsでの使い方（2026-11-12）
 
@@ -174,10 +174,21 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 
 ## これまで作成した資料一覧
 
-**15題材・31種類（要確認版・未検証のローカル作例を含む）。** 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
+**16題材・33版の作成記録：公開PDF31版／別PC保管でPDF未収録2版。** 最新の作成記録を上に掲載しています。未収録の2版は変更記録による完成報告で、PDF実体や生成条件の確認はまだ行っていません。 同じファイルの別名コピーはまとめ、内容・デザインが異なる版は残しています。以下は作成済み資料の記録で、すべてを正解・監修済みと評価した一覧ではありません。ソフトウェアのテスト用PDF、未完成の一時ファイル、別掲の過去の比較用PDFは含めていません。
 
 | 題材・入力動画 | 作成済みPDF（ページ数） | 位置づけ・確認点 |
 | --- | --- | --- |
+| AirTagの電池交換（2026-11-12） | [チャットモード版・3ページ・PDF未収録](docs/examples/2026-11-12/airtag-chat/README.md) | 別PCに保存。変更記録では完成・APIなしと報告。PDFを受け取ってから公開リンクと生成条件を追加。 |
+| もやい結び（2026-11-12） | [新チャットモード版・6ページ・PDF未収録](docs/examples/2026-11-12/bowline-chat/README.md) | 別PCに保存。以前の7ページ版とは別の作成記録。PDFを受け取ってから公開リンクと生成条件を追加。 |
+| [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Sol API比較版・8ページ](docs/examples/2026-11-11/sam-altman-sol/document.pdf) | 当時の同じプログラム・初期入力・共通内容案、high。約$1.03。内容照合・全ページ確認済み。[比較条件と所見](docs/examples/2026-11-11/sam-altman-sol/README.md)。 |
+| [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Sol API版・7ページ](docs/examples/2026-11-11/git-intro-sol/document.pdf) | GPT-6.1 Sol・high、累計約$1.76 / 上限$3.85。内容照合・最終承認・全ページの紙面確認済み。[生成条件](docs/examples/2026-11-11/git-intro-sol/README.md)。 |
+| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [更新後のハイライト修正版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document-color-fixed.pdf) | 既存PDFの強調背景だけを単色へ修正。本文・写真・配置は維持。AI再生成なし、追加API費用$0。[修正記録](docs/examples/2026-11-11/bowline-claude-local/repair-info.json)。 |
+| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [アプリ更新後Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document-updated.pdf) | GitHub変更をローカルへ反映、Opus 5.5・high（ユーザー申告）。表紙・末尾の構成が変更。[更新前後の比較と未確認条件](docs/examples/2026-11-11/bowline-claude-local/README.md#アプリ更新前後の比較同日追加)。 |
+| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document.pdf) | Opus 5.5・high、サブスク利用・AI APIなし（ユーザー申告）。紙面確認のみ。元動画との独立照合・再現試験は未実施。[条件・確認範囲](docs/examples/2026-11-11/bowline-claude-local/README.md)。 |
+| [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API初版・9ページ](docs/examples/2026-11-10/complaints-opus-original/document.pdf) | 11月10日完成。Opus 5.5・高、約$4.14。内容・紙面を確認。 |
+| [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API構成改善版・13ページ](docs/examples/2026-11-10/complaints-opus-improved/document.pdf) | 問題・解答を別ページにし、架空の応用練習と実務の記入欄を追加。約$2.60。内容案を再利用。 |
+| [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Opus API版・12ページ](docs/examples/2026-11-10/sam-altman-opus/document.pdf) | 約$6.33。主張・回想・条件・不確実性を区別。本文・写真の説明・紙面を確認。 |
+| [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Opus API版・要確認・12ページ](docs/examples/2026-11-10/git-intro-needs-review/document.pdf) | 約$7.01。費用上限の見込みにより内容確認で停止。後続の検査改善前の実行。 |
 | [金魚の折り紙](https://www.youtube.com/watch?v=N1P4VpXhrfo) | [初期API版・7ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/goldfish-initial.pdf) | 初期のOpenRouter実行記録あり。動作説明の誤りを指摘された過去版。 |
 | [金魚の折り紙](https://www.youtube.com/watch?v=N1P4VpXhrfo) | [初期改善版・要確認・10ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/goldfish-early-review.pdf) | 旧パイプラインの検証版。実行記録はneeds_review。 |
 | [金魚の折り紙](https://www.youtube.com/watch?v=N1P4VpXhrfo) | [APIなし改善版・10ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/goldfish-manual.pdf) | 以後の準備写真・切断ガイド追加版と比較する過去版。 |
@@ -200,15 +211,18 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 | [セミナー活用集客](https://www.youtube.com/watch?v=tRjStkeCaXs) | [デザイン改善版・7ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/peatix-design-improved.pdf) | 3版のうち後の改善版。講演の数値・集計差などの留保を明記。 |
 | [MacBook Pro A1708 バッテリー交換](https://www.youtube.com/watch?v=5Gn5aZbzpdU) | [作業ガイド・要確認・11ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/macbook.pdf) | 現在の作業手順書の代表例。加熱・溶剤・接着・小部品の復旧条件が不足しneeds_review。 |
 | [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [X動画からの対談要約・9ページ](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/sam-altman-x.pdf) | X直接取込、ローカル音声認識、公式版との照合。対象はXの抜粋範囲。 |
-| [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API初版・9ページ](docs/examples/2026-11-10/complaints-opus-original/document.pdf) | 11月10日完成。Opus 5.5・高、約$4.14。内容・紙面を確認。 |
-| [クレーム対応](https://www.youtube.com/watch?v=Q2w4-mluYo0) | [Opus API構成改善版・13ページ](docs/examples/2026-11-10/complaints-opus-improved/document.pdf) | 問題・解答を別ページにし、架空の応用練習と実務の記入欄を追加。約$2.60。内容案を再利用。 |
-| [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Opus API版・12ページ](docs/examples/2026-11-10/sam-altman-opus/document.pdf) | 約$6.33。主張・回想・条件・不確実性を区別。本文・写真の説明・紙面を確認。 |
-| [AIの進化と起業の機会](https://x.com/ai_explorer25/status/2113976731854131272/video/1) | [Sol API比較版・8ページ](docs/examples/2026-11-11/sam-altman-sol/document.pdf) | 当時の同じプログラム・初期入力・共通内容案、high。約$1.03。内容照合・全ページ確認済み。[比較条件と所見](docs/examples/2026-11-11/sam-altman-sol/README.md)。 |
-| [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Opus API版・要確認・12ページ](docs/examples/2026-11-10/git-intro-needs-review/document.pdf) | 約$7.01。費用上限の見込みにより内容確認で停止。後続の検査改善前の実行。 |
-| [Git入門](https://www.youtube.com/watch?v=BNHrLHl1DKQ) | [Sol API版・7ページ](docs/examples/2026-11-11/git-intro-sol/document.pdf) | GPT-6.1 Sol・high、累計約$1.76 / 上限$3.85。内容照合・最終承認・全ページの紙面確認済み。[生成条件](docs/examples/2026-11-11/git-intro-sol/README.md)。 |
-| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document.pdf) | Opus 5.5・high、サブスク利用・AI APIなし（ユーザー申告）。紙面確認のみ。元動画との独立照合・再現試験は未実施。[条件・確認範囲](docs/examples/2026-11-11/bowline-claude-local/README.md)。 |
-| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [アプリ更新後Claudeローカル版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document-updated.pdf) | GitHub変更をローカルへ反映、Opus 5.5・high（ユーザー申告）。表紙・末尾の構成が変更。[更新前後の比較と未確認条件](docs/examples/2026-11-11/bowline-claude-local/README.md#アプリ更新前後の比較同日追加)。 |
-| [もやい結び](https://www.youtube.com/watch?v=P7HgKszcrF4) | [更新後のハイライト修正版・7ページ](docs/examples/2026-11-11/bowline-claude-local/document-color-fixed.pdf) | 既存PDFの強調背景だけを単色へ修正。本文・写真・配置は維持。AI再生成なし、追加API費用$0。[修正記録](docs/examples/2026-11-11/bowline-claude-local/repair-info.json)。 |
+
+
+比較参考として受け取った既存PDFも、次の別枠から開けます（上の33版には含めません）。
+
+| 比較参考資料 | 公開PDF |
+| --- | --- |
+| セミナー活用集客・Opus参考版 | [元のPDF](docs/references/reference-opus-seminar.pdf) |
+| 金魚の折り紙・Opus＋crv参考版 | [元のPDF](docs/references/reference-opus-goldfish-crv.pdf) |
+| 金魚の折り紙・Opus＋watch参考版 | [元のPDF](docs/references/reference-opus-goldfish-watch.pdf) |
+| 金魚の折り紙・Opus＋video-vision参考版 | [元のPDF](docs/references/reference-opus-goldfish-video-vision.pdf) |
+
+モデル名などはユーザー申告による比較資料です。[作成経路と扱い](docs/references/OPUS-REFERENCES.md)を参照してください。
 
 ピアノでは、音やタイミングを含む動画を静止画の手順書にする限界が見られました。動画に合わせて資料化の方法を選ぶ必要があり、発表ではこの点に短く触れます。
 
@@ -218,7 +232,7 @@ MacBookの見本には、映像だけでは確定できない加熱・溶剤の�
 
 一覧には旧版のAPI実行例も含みます。初期の金魚2版にはOpenRouterの実行記録があり、後のAPIなし版と区別しています。画面のモデル選択欄にOpusと表示されていても、手動モードの資料をOpusのAPI生成結果とは扱いません。
 
-各例の出典と作成経路は使用例ページと[代表例の記録](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/examples/provenance.json)、全PDFのページ数・ハッシュは[資料一覧の記録](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/manifest.json)を参照してください。照合は主に同じチャットでの自己点検で、独立した品質保証ではありません。映像・写真・講演内容の権利は各権利者に帰属します。
+各例の出典と作成経路は使用例ページと[代表例の記録](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/examples/provenance.json)、紹介ページに掲載した分のページ数・ハッシュは[資料一覧の記録](https://crv-pdf-video-showcase.eldesign-8040.chatgpt.site/catalog/manifest.json)を参照してください。GitHubに後から追加した資料は、各資料フォルダーの生成条件・ファイルハッシュを参照してください。照合は主に同じチャットでの自己点検で、独立した品質保証ではありません。映像・写真・講演内容の権利は各権利者に帰属します。
 
 ## API接続後のモデル選択（2026-10-30）
 

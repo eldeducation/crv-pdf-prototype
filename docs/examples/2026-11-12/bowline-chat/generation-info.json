@@ -1,0 +1,16 @@
+{
+  "title": "もやい結び",
+  "reported_creation_date": "2026-11-12",
+  "reported_pages": 6,
+  "evidence": "docs/updates/2026-11-12.md",
+  "execution_mode_reported": "chat_mode_no_paid_ai_api",
+  "status": "reported_created_pdf_not_received",
+  "pdf_published": false,
+  "pdf_sha256": null,
+  "model": null,
+  "effort": null,
+  "source": null,
+  "actual_api_cost_usd": null,
+  "cost_note": "No paid AI API reported; original run not available for inspection",
+  "storage_note": "User confirmed PDF is on another PC and unavailable now"
+}
