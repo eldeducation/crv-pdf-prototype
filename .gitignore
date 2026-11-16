@@ -25,3 +25,6 @@ downloads/
 prompts/
 CHAT-HANDOFF.md
 LOCAL-SETUP.md
+
+# Company document styles read from users' own PDFs (local data)
+house_styles/

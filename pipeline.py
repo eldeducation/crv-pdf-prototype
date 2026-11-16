@@ -29,6 +29,7 @@ from usage_guard import GuardedClient, BudgetStop
 from checkpoints import Checkpoint, signature
 from job_progress import Progress, stop_code, DEFAULT_MAX_API_CALLS
 from document_options import build_prompt, validate_options, normalize_modes, validate_notes
+from house_style import palette_css as house_palette_css
 from document_design import (select_design, editorial_brief, style_css, materialize_visuals, VISUAL_SCHEMA,
                              split_kit_rules, kit_lookalikes)
 from editorial_quality import (DESIGN_PLAN_SCHEMA, DESIGN_REVIEW_SCHEMA,
@@ -100,6 +101,7 @@ class Config:
     progress: object = None
     model_options: dict | None = None
     frame_width: int = field(default_factory=lambda: int(os.getenv('VIDEO_PDF_FRAME_WIDTH', '1280')))
+    house_style: dict | None = None     # house_style.summary() of a company document to follow
 
     def __post_init__(self):
         if type(self.frame_width) is not int or self.frame_width not in (640, 1280):
@@ -640,7 +642,9 @@ def document_html(doc, evidence, units=None, language='auto', visual_requirement
             raise PrototypeError(f"{unit['id']}: この操作をsource_unitsでページに対応付け、その区間の根拠画像を{required}時刻以上掲載してください。")
     try:
         validate_step_bindings(pages, units or [], evidence.records)
-        palette = theme_css(doc.get('theme', 'green'))
+        house = (doc.get('presentation') or {}).get('house_style')
+        # A company's own palette, when chosen, replaces the editor's theme.
+        palette = house_palette_css(house) if house else theme_css(doc.get('theme', 'green'))
     except ValueError as error:
         raise PrototypeError(str(error)) from None
     # Defaults provide a starting point. Safe, authored CSS has the final say so
@@ -823,6 +827,14 @@ _REVISE['training_plan'] = TRAINING_PLAN_SCHEMA
 WRAPUP_CLASS = re.compile(r'class\s*=\s*["\'][^"\']*(?<![\w-])wrapup(?![\w-])')
 
 
+def select_presentation(plan, config):
+    """The design selection, plus the company style the user chose (if any)."""
+    selection = select_design(plan, config.purpose, config.design, config.visual_density, config.presentation_modes)
+    if config.house_style:
+        selection['house_style'] = config.house_style
+    return selection
+
+
 def wrapup_problem(doc):
     """Every document ends with a summary (.wrapup) of 3-5 points on its last page."""
     pages = doc.get('pages') or []
@@ -964,6 +976,7 @@ def resume_fingerprint():
                       'design_code': (ROOT / 'document_design.py').read_text(encoding='utf-8'),
                       'editorial_quality': (ROOT / 'editorial_quality.py').read_text(encoding='utf-8'),
                       'training_quality': (ROOT / 'training_quality.py').read_text(encoding='utf-8'),
+                      'house_style': (ROOT / 'house_style.py').read_text(encoding='utf-8'),
                       'document_options': (ROOT / 'document_options.py').read_text(encoding='utf-8')})
 
 
@@ -992,7 +1005,7 @@ class Pipeline:
         e = self.evidence
         if self.quality.plan:
             return [{"type": "text", "text": "依頼者の希望:\n" + prompt +
-                     '\n構成とデザインの選択:\n' + json.dumps(editorial_brief(self.presentation or select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)), ensure_ascii=False) +
+                     '\n構成とデザインの選択:\n' + json.dumps(editorial_brief(self.presentation or select_presentation(self.quality.plan, self.config)), ensure_ascii=False) +
                      "\n映像から整理した内容案（最終確認はまだ）。動作・向き・条件を保ち、自由な紙面に編集する:\n" +
                      json.dumps(self.quality.plan, ensure_ascii=False) + '\n' +
                      submission_checklist(self.quality.plan, self.config.max_rounds,
@@ -1018,7 +1031,7 @@ class Pipeline:
             self.config.progress.start('document', restart=True)
         # Keep the raw submission so revise_pages can replace single pages of it.
         self.draft = copy.deepcopy(doc)
-        presentation = self.presentation or select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
+        presentation = self.presentation or select_presentation(self.quality.plan, self.config)
         doc, markup = build_document(doc, self.quality.plan, presentation, self.evidence, self.config.output_language)
         self.revisions += 1
         self.approved = False
@@ -1096,7 +1109,7 @@ class Pipeline:
             raise PrototypeError(str(error), code=getattr(error, 'code', None)) from None
         if self.config.progress:
             self.config.progress.complete('analyze')
-        self.presentation = select_design(self.quality.plan, self.config.purpose, self.config.design, self.config.visual_density, self.config.presentation_modes)
+        self.presentation = select_presentation(self.quality.plan, self.config)
         write_json(self.evidence.out / 'presentation.json', self.presentation)
         system = editor_system(editor_prompt_path().read_text(encoding="utf-8"), self.config.purpose)
         messages = [{"role": "user", "content": self.initial_content(prompt)}]
@@ -1408,6 +1421,8 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
         prior_usage = read_json(folder / 'usage.json') if (folder / 'usage.json').is_file() else {}
         inherit_resume_budget(config, previous, prior_usage)
         config.external_research = bool(previous.get('external_research', True))
+        # Resuming keeps the company style the run started with.
+        config.house_style = read_json(folder / 'house-style.json') if (folder / 'house-style.json').is_file() else None
         if bool(previous.get('manual_mode')) != manual_mode:
             raise PrototypeError('途中再開ではAPI生成とAPIなしのテストを切り替えられません。')
         if previous.get('resume_fingerprint') and previous['resume_fingerprint'] != resume_fingerprint():
@@ -1436,8 +1451,12 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
               'design': config.design, 'visual_density': config.visual_density, 'restyle_from': config.restyle_from,
               'presentation_modes': list(config.presentation_modes), 'presentation_notes': config.presentation_notes,
               'external_research': config.external_research,
+              'house_style': ({'id': config.house_style.get('id'), 'name': config.house_style.get('name')}
+                              if config.house_style else None),
               'resume_fingerprint': resume_fingerprint()}
     write_json(folder / "run.json", report)
+    if config.house_style:
+        write_json(folder / 'house-style.json', config.house_style)
     pipeline = None
     try:
         progress.start('prepare')

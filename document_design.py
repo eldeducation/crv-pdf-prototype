@@ -71,6 +71,9 @@ def editorial_brief(selection):
         brief['style_guidance'] += ('研修では要点を伝える見出しと関係・判断の図解を主役にできる。'
                                    '表紙を写真と3つのカードで固定せず、学習目標・全体像を優先する。'
                                    '確認問題のページで.qaの問題・解答横並びを使わない。')
+    if selection.get('house_style'):
+        from house_style import guidance
+        brief['house_style_guidance'] = guidance(selection['house_style'])
     return brief
 
 

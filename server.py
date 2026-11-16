@@ -17,6 +17,8 @@ from manual_client import ManualClient, MAX_RESPONSE_BYTES
 from restyle import restyle_source
 from model_catalog import fetch_models, key_status, CatalogError
 import key_store
+import video_qa
+import house_style
 from video_upload import UploadReceiver, LOCAL_MAX_BYTES, SHARED_MAX_BYTES, SESSION_MAX_BYTES
 from app_version import version_info
 
@@ -85,6 +87,13 @@ UPLOADS = {}
 UPLOAD_RECEIVER = UploadReceiver(ROOT / 'uploads', UPLOADS)
 MANUAL_CLIENT = None
 CATALOG_LOCK = threading.Lock()
+QA_LOCK = threading.Lock()
+
+
+def local_features():
+    """Questions about a document and the house style are offered on the local server only
+    (a shared/cloud session has no place to keep them between visits)."""
+    return ROOT.parent.name != 'share-sessions'
 
 
 def public_status():
@@ -107,7 +116,7 @@ def public_status():
                 except (OSError, ValueError, KeyError):
                     pass
         return {"configured": bool(STATE["api_key"]), "job": job, "csrf_token": CSRF_TOKEN,
-                'version': APP_VERSION,
+                'version': APP_VERSION, 'local_features': local_features(),
                 'key_saved': bool(STATE.get('key_saved')), 'key_store_available': key_store.available(ROOT),
                 "key_revision": STATE["key_revision"], "quality_pipeline": "quality-first-v3",
                 "default_model": os.getenv("VIDEO_PDF_MODEL", "anthropic/claude-opus-5.5" if provider_for(STATE["api_key"]) == "openrouter" else "claude-opus-5-5"),
@@ -238,6 +247,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(200, public_status())
         if route == 'restyle-sources':
             return self.send(200, {'sources': restyle_sources()})
+        if route == 'house-styles' and local_features():
+            return self.send(200, {'styles': house_style.list_styles(ROOT)})
+        if re.fullmatch(r'house-styles/[a-f0-9]{12}/preview\.png', route) and local_features():
+            try:
+                return self.send(200, house_style.preview_path(ROOT, route.split('/')[1]).read_bytes(), 'image/png')
+            except (ValueError, OSError):
+                return self.send(404, {'error': 'Image not found.'})
+        if re.fullmatch(r'qa/\d{8}-\d{6}-[a-f0-9]{6}', route) and local_features():
+            try:
+                return self.send(200, video_qa.list_answers(ROOT, route[3:]))
+            except ValueError as error:
+                return self.send(404, {'error': str(error)})
         if re.fullmatch(r'manual/request/[a-f0-9]{24}\.zip', route):
             with LOCK:
                 client = MANUAL_CLIENT if STATE['job'] and STATE['job'].get('manual_mode') and STATE['job']['status'] == 'running' else None
@@ -279,7 +300,8 @@ class Handler(BaseHTTPRequestHandler):
                 media = {'.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.mkv': 'video/x-matroska'}[video.suffix.lower()]
                 return self.send(206, chunk, media, {'Accept-Ranges': 'bytes', 'Content-Range': f'bytes {start}-{end}/{size}'})
             target = (ROOT / "runs" / route[6:]).resolve()
-            allowed = {"document.pdf": "application/pdf", "document.md": "text/markdown; charset=utf-8", "run.json": "application/json",
+            allowed = {"document.pdf": "application/pdf", "document-qa.pdf": "application/pdf",
+                       "document.md": "text/markdown; charset=utf-8", "run.json": "application/json",
                        "review-notes.txt": "text/plain; charset=utf-8", "usage.json": "application/json"}
             if re.fullmatch(r'assets/[A-Za-z0-9_.-]+\.(?:jpg|jpeg|png)', match[2]):
                 if not target.is_relative_to(folder / 'assets') or not target.is_file():
@@ -304,6 +326,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(403, {'error': 'Session verification failed. Reload the page.'})
         try:
             length = int(self.headers.get("Content-Length", 0))
+            if route == 'house-style' and local_features():
+                # A company PDF to copy the look from: read here, only the derived style is kept.
+                if not 0 < length <= house_style.MAX_PDF_BYTES:
+                    raise PrototypeError('PDFは30MB以内にしてください。')
+                data = self.rfile.read(length)
+                name = urllib.parse.unquote(self.headers.get('X-File-Name', ''))[:200]
+                name = re.sub(r'\.pdf$', '', name, flags=re.I)
+                profile, preview = house_style.extract(data, name)
+                return self.send(200, house_style.summary(house_style.save(ROOT, profile, preview)))
             if route == "upload":
                 shared = ROOT.parent.name == 'share-sessions'
                 result = UPLOAD_RECEIVER.receive(
@@ -349,6 +380,45 @@ class Handler(BaseHTTPRequestHandler):
                     return self.send(200, result)
                 except CatalogError as error:
                     return self.send(error.status, {'error': 'キーの利用状況を取得できませんでした。', 'catalog_error': error.code})
+            if route == 'house-style/delete' and local_features():
+                house_style.delete(ROOT, body.get('id'))
+                return self.send(200, {'styles': house_style.list_styles(ROOT)})
+            if route in ('ask', 'qa-add'):
+                # Questions about a finished document (local server only; one at a time).
+                if not local_features():
+                    return self.send(404, {'error': '操作が見つかりません'})
+                if not QA_LOCK.acquire(blocking=False):
+                    return self.send(409, {'error': '前の質問の処理が終わってから、もう一度試してください。'})
+                try:
+                    if route == 'qa-add':
+                        return self.send(200, video_qa.set_added(ROOT, body.get('folder'), body.get('answer_id'),
+                                                                 body.get('add') is not False))
+                    with LOCK:
+                        expire_key()
+                        key = STATE['api_key']
+                        if STATE['job'] and STATE['job']['status'] == 'running':
+                            raise PrototypeError('生成が終わってから質問してください。')
+                        if not key:
+                            raise PrototypeError('最初にAI接続を設定してください。')
+                        validated_provider(key)
+                        STATE['key_used_at'] = time.monotonic()
+                        model_id = str(body.get('model') or '').strip()
+                        if not model_id:
+                            raise PrototypeError('使用するモデルを選んでください。')
+                        options = next((m for m in (STATE.get('catalog') or {}).get('models', []) if m['id'] == model_id), None)
+                        if options and options['compatibility'] == 'unsupported':
+                            raise PrototypeError('選択したモデルは、この機能の要件を満たしていません。')
+                    # A short answer does not need deep reasoning: the lowest effort the model offers.
+                    efforts = (options or {}).get('efforts')
+                    effort = 'low' if not efforts or 'low' in efforts else 'medium' if 'medium' in efforts else 'auto'
+                    try:
+                        answer = video_qa.ask(ROOT, body.get('folder'), body.get('question'), api_key=key,
+                                              config=video_qa.qa_config(model_id, effort, options))
+                    except RuntimeError as error:      # provider, budget and network errors
+                        return self.send(502, {'error': redact(error, key)[:600]})
+                    return self.send(200, answer)
+                finally:
+                    QA_LOCK.release()
             if route == 'disconnect':
                 with LOCK:
                     if STATE['job'] and STATE['job']['status'] == 'running':
@@ -460,7 +530,10 @@ class Handler(BaseHTTPRequestHandler):
                                     detail_level=body.get('detail_level', 'standard'), output_language=body.get('output_language', 'auto'),
                                     design=body.get('design', 'editorial'), visual_density=body.get('visual_density', 'auto'),
                                     presentation_modes=body.get('presentation_modes', []), presentation_notes=body.get('presentation_notes', ''),
-                                    restyle_from=restyle_from)
+                                    restyle_from=restyle_from,
+                                    # A resumed run keeps its own saved style (pipeline.run reads it).
+                                    house_style=(house_style.summary(house_style.load(ROOT, body['house_style']))
+                                                 if body.get('house_style') and not resume_folder and local_features() else None))
                     CANCEL.clear()
                     key = '' if manual_mode else STATE['api_key']
                     if not manual_mode:

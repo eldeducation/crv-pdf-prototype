@@ -203,6 +203,8 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 #connectionPanel #catalogStatus{min-height:1.5em}
 #connectionPanel #catalogNote{opacity:.85;line-height:1.7;margin-bottom:0}
 #connectionPanel #modelChoice{max-width:100%;text-overflow:ellipsis}
+.qa-card{border-top:1px solid #dce4dd;margin-top:18px;padding-top:16px}.qa-card h3{margin:0 0 8px;font-size:17px}.qa-answer{font-weight:bold;margin:0 0 8px}.qa-answer.unanswered{color:#704900}.qa-card ul{margin:6px 0 10px;padding-left:22px}#askAnswers>a.download{margin:12px 0 4px}#askPanel textarea{min-height:80px}
+.house-style-preview{display:flex;gap:16px;align-items:flex-start;margin:6px 0 10px}.house-style-preview img{width:120px;height:auto;border:1px solid #c9d3ce;flex:none}.house-style-preview .small{margin:4px 0}.swatches{display:flex;gap:6px;margin-bottom:6px}.swatches span{display:inline-block;width:26px;height:26px;border:1px solid #0003}#houseStylePanel{margin-top:6px}@media(max-width:650px){.house-style-preview{flex-direction:column}}
 </style>
 <main>
 <div class="language-tools" style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:18px"><label for="language" style="margin:0">Language / 言語</label><select id="language" style="width:auto"><option value="ja">日本語</option><option value="en">English</option></select></div>
@@ -255,10 +257,10 @@ button.secondary,.download.outline{background:#c3d9e7;color:#294b69;box-shadow:i
 <button type="button" class="mode-button glass-lilac" data-mode="photos" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>写真多め</strong><small>実際の場面を見やすく</small></span></button>
 <button type="button" class="mode-button glass-amber" data-mode="comparison" aria-pressed="false"><span class="mode-icon" aria-hidden="true"></span><span class="mode-check" aria-hidden="true"></span><span class="mode-copy"><strong>比較で整理</strong><small>違いや選択肢を並べて理解</small></span></button>
 </div><p class="small mode-summary" id="modeSummary" role="status" aria-live="polite"></p>
-<label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><details id="advancedCost"><summary>詳細設定（費用の上限）</summary><label for="budget">費用の上限（米ドル・任意）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" placeholder="自動"><p class="small">通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。</p></details></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。</p></section>
+<div id="houseStylePanel" hidden><label for="houseStyle">自社の資料の型（任意）</label><select id="houseStyle"></select><p class="small" id="houseStyleInfo"></p><div id="houseStylePreview" class="house-style-preview"></div><button id="houseStyleDelete" class="secondary" hidden>選んだ型を削除</button><details id="houseStyleAdd"><summary>PDFから型を登録する</summary><p class="small">普段使っている社内資料のPDFを選ぶと、配色・見出しの大きさ・よく使う見出しラベルと記号を、このPCで読み取ります（AIは使いません）。PDFそのものは保存せず、読み取った型と小さな見本画像だけを保存します。</p><input type="file" id="houseStyleFile" accept=".pdf,application/pdf"><button id="houseStyleUpload" class="secondary" style="margin-top:10px">この資料の型を登録</button><p id="houseStyleStatus" class="small" role="status"></p></details></div><label for="outputLanguage">PDFの出力言語</label><select id="outputLanguage"><option value="ja">日本語</option><option value="en">English</option></select><label for="prompt">追加の希望（任意）</label><textarea id="prompt" maxlength="3000" placeholder="例：新入社員向けに。重要な判断を大きく示し、青系でまとめて。" aria-describedby="notesHelp"></textarea><p class="small" id="notesHelp">対象読者、色、強調したい内容など。空欄でも作成できます。</p><div id="apiOptions"><details id="advancedCost"><summary>詳細設定（費用の上限）</summary><label for="budget">費用の上限（米ドル・任意）</label><input id="budget" type="number" min="0.1" max="20" step="0.1" placeholder="自動"><p class="small">通常は空欄（自動）のままで使えます。動画の準備が終わると費用の目安を計算し、その約1.3倍を上限として自動で設定します。目安が高いときは、AIを使う前に確認します。</p></details></div><button id="generate" style="margin-top:24px">PDFを生成する</button><p class="small">一覧で全体を把握 → 必要な場面を詳しく確認 → 資料作成 → 本文と映像を照合。内容の再作成は1回までです（紙面のはみ出しの修正は別に3回まで）。途中再開では完了した段階を再利用します。費用は再開前からの累計です。</p></section>
 <section class="panel" id="statusPanel" aria-live="polite"><h2>生成状況</h2><p id="message">動画とAI接続を設定すると生成できます。</p><a id="manualJump" class="download" href="#manualPanel" hidden>次の操作へ</a><p id="stageSummary" class="small"></p><ol id="stageList" class="stage-list" aria-live="polite"></ol><p id="lastUpdate" class="small" aria-live="off"></p><div id="stopNotice" class="stop-notice" hidden><strong id="stopTitle"></strong><p id="stopAction"></p><details><summary>詳しい停止理由</summary><pre id="stopDetails"></pre></details></div><button id="resume" class="secondary hidden">途中から再開する</button><p id="resumeConnectionHelp" class="small" role="status"></p><button id="stop" class="secondary hidden">追加処理を止める</button><div id="bar" class="progress"></div><p class="small" id="usage"></p><p id="presentationSummary" class="small"></p><div id="results"></div><div id="restylePanel" hidden><h3>内容を保って仕上がりを変更</h3><p class="small">上のアレンジと追加の希望を使って、新しいPDFを作ります。</p><label for="restyleSource">作り直す元の資料</label><select id="restyleSource"></select><p class="small" id="restyleHelp"></p><button id="restyle" class="secondary">この設定で作り直す</button></div></section>
 <section class="panel" id="manualPanel" hidden><h2>APIなしテスト：回答の取り込み</h2><p id="manualSequence" class="small"></p><a id="manualPacket" class="download" download="manual-request.zip">1. 指示・画像をまとめて保存</a><h3>2. チャットで回答を作る</h3><p class="small">保存したZIPを展開し、README.txtの案内に従ってください。このチャットで作った回答JSONを読み込むと、検査して次の依頼へ進みます。</p><label for="manualAnswer">3. 回答JSONを選ぶ</label><input id="manualAnswer" type="file" accept=".json,application/json"><button id="manualSubmit" style="margin-top:16px">回答を読み込んで続ける</button><p id="manualError" class="error" role="alert"></p></section>
-<section class="panel" id="referencePanel" hidden><h2>内容の根拠を確認</h2><p class="small">各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。</p><p class="small">動画の解析内容です。PDF本文の表現と異なる場合があります。</p><p id="referenceSummary"></p><div id="referenceGaps"></div><video id="sourcePlayer" controls preload="metadata" playsinline hidden style="width:100%;max-height:480px;margin:14px 0"></video><div id="referenceList"></div></section><footer>ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。</footer>
+<section class="panel" id="referencePanel" hidden><h2>内容の根拠を確認</h2><p class="small">各説明と元動画の時刻・画像を確認できます。照合済みの表示はAIによる確認結果です。</p><p class="small">動画の解析内容です。PDF本文の表現と異なる場合があります。</p><p id="referenceSummary"></p><div id="referenceGaps"></div><video id="sourcePlayer" controls preload="metadata" playsinline hidden style="width:100%;max-height:480px;margin:14px 0"></video><div id="referenceList"></div></section><section class="panel" id="askPanel" hidden><h2>動画に質問する</h2><p class="small">完成した資料の動画に質問できます。答えは保存済みの内容案と文字起こしから作り、根拠の時刻と画像を示します。1回の質問はAI処理1～2回（上限$0.60）です。</p><label for="askQuestion">質問</label><textarea id="askQuestion" maxlength="500" placeholder="例：conflictが起きたら、具体的にどうすると言っていた？"></textarea><button id="askButton" style="margin-top:12px">質問する</button><p id="askStatus" class="small" role="status"></p><p class="small">資料に追加した回答は、元のPDFとは別の「回答入りPDF」の最後に1ページずつ入ります。</p><div id="askAnswers"></div></section><footer>ローカル検証用の試作品です。Web公開・利用者管理・ブラウザ上での編集は次の段階です。</footer>
 <p id="appVersion" class="small" aria-label="Application version"></p></main>
 <script>
 // Embedded in index.html so the existing local server can serve the updated UI.
@@ -431,7 +433,17 @@ Object.assign(translations,{
  '対象読者、色、強調したい内容など。空欄でも作成できます。':'Tell us about your audience, colors or key points. You can leave this blank.',
  '内容を保って仕上がりを変更':'Adjust the presentation, keep the content',
  '上のアレンジと追加の希望を使って、新しいPDFを作ります。':'Create a new PDF using the preferences and notes above.',
- 'この設定で作り直す':'Recreate with these preferences'
+ 'この設定で作り直す':'Recreate with these preferences',
+ '動画に質問する':'Ask the video',
+ '完成した資料の動画に質問できます。答えは保存済みの内容案と文字起こしから作り、根拠の時刻と画像を示します。1回の質問はAI処理1～2回（上限$0.60）です。':'Ask a question about this document\'s video. Answers are built from the saved content plan and transcript, with source times and images. Each question uses one or two AI calls (limit $0.60).',
+ '質問':'Question',
+ '質問する':'Ask',
+ '自社の資料の型（任意）':'Your company\'s document style (optional)',
+ 'PDFから型を登録する':'Add a style from a PDF',
+ '普段使っている社内資料のPDFを選ぶと、配色・見出しの大きさ・よく使う見出しラベルと記号を、このPCで読み取ります（AIは使いません）。PDFそのものは保存せず、読み取った型と小さな見本画像だけを保存します。':'Choose a PDF of a document your company already uses. Its colours, heading size and common labels and marks are read on this PC (no AI). The PDF itself is not kept; only the derived style and a small preview are saved.',
+ 'この資料の型を登録':'Save this document\'s style',
+ '選んだ型を削除':'Delete the selected style',
+ '資料に追加した回答は、元のPDFとは別の「回答入りPDF」の最後に1ページずつ入ります。':'Answers you add are appended as separate pages to a copy of the PDF ("PDF with answers"); the original PDF is not changed.'
 });
 const connectionJa='OpenRouterまたはAnthropicのAPIキーをこのPC内の画面で入力します。キーは保存せず、起動中だけ保持します。動画から抽出した画像・文字起こしは、生成時に選択したAPIサービスへ送信されます。OpenRouter利用時は同社を経由してモデル提供元に送信されます。API利用料金が発生します。';
 translations[connectionJa]='Enter your OpenRouter or Anthropic API key. It stays in server memory and is not saved to disk. Extracted images and transcripts are sent to the selected API provider. OpenRouter requests pass through OpenRouter to the model provider. API charges apply.';
@@ -653,7 +665,62 @@ $('refreshModels').addEventListener('click',()=>void loadModels(true));
 $('purpose').onchange=paintPurposeHelp;
 const modeNames={clean:['すっきり','Clean and simple'],diagrams:['図解多め','More diagrams'],photos:['写真多め','More photos'],comparison:['比較で整理','Side-by-side comparisons']};
 function selectedModes(){return [...document.querySelectorAll('#presentationModes [data-mode][aria-pressed="true"]')].map(button=>button.dataset.mode);}
-function arrangementPayload(){return {design:'editorial',visual_density:'auto',presentation_modes:selectedModes(),presentation_notes:$('prompt').value.trim()};}
+function arrangementPayload(){return {design:'editorial',visual_density:'auto',presentation_modes:selectedModes(),presentation_notes:$('prompt').value.trim(),house_style:($('houseStylePanel').hidden?'':$('houseStyle').value)||null};}
+// A company's own PDF read on this PC (no AI): its colours and heading habits are reused.
+let houseStyles=[],houseStylesLoaded=false,houseStyleBusy=false;
+async function loadHouseStyles(select){
+ try{const r=await fetch('house-styles');const d=await r.json();if(!r.ok)throw Error(d.error);houseStyles=d.styles||[];}
+ catch(e){houseStyles=[];}
+ paintHouseStyles(select);
+}
+function paintHouseStyles(select){
+ const box=$('houseStyle'),current=select??box.value;
+ box.replaceChildren(new Option(tr('使わない（内容に合わせて配色）','None (colours chosen for the content)'),''));
+ for(const style of houseStyles)box.appendChild(new Option(style.name,style.id));
+ box.value=houseStyles.some(s=>s.id===current)?current:'';
+ const style=houseStyles.find(s=>s.id===box.value);
+ $('houseStyleDelete').hidden=!style;
+ const preview=$('houseStylePreview');preview.replaceChildren();
+ $('houseStyleInfo').textContent=style?tr('配色・見出しの書き方をこの型に合わせます。内容は動画だけから作ります。','Colours and heading habits follow this style. Content still comes only from the video.'):'';
+ if(!style)return;
+ const image=document.createElement('img');image.src='house-styles/'+style.id+'/preview.png';image.alt=style.name;image.loading='lazy';
+ const details=document.createElement('div');
+ const swatches=document.createElement('div');swatches.className='swatches';
+ for(const [role,label] of [['heading','見出し'],['strong','強調'],['soft','背景'],['mark','マーカー']]){
+  const chip=document.createElement('span');chip.style.background=style.palette[role];chip.title=tr(label)+' '+style.palette[role];swatches.appendChild(chip);
+ }
+ details.appendChild(swatches);
+ const lines=[];
+ if(style.heading_examples?.length)lines.push(tr('見出しの例：','Heading examples: ')+style.heading_examples.slice(0,3).map(t=>'「'+t+'」').join(' '));
+ if(style.labels?.length)lines.push(tr('よく使うラベル：','Common labels: ')+style.labels.join('、'));
+ if(style.bullets?.length)lines.push(tr('記号：','Marks: ')+style.bullets.join(' '));
+ if(style.heading_ratio)lines.push(tr('見出しの大きさ：本文の約','Headings: about ')+style.heading_ratio+tr('倍','× body text'));
+ for(const line of lines){const p=document.createElement('p');p.className='small';p.textContent=line;details.appendChild(p);}
+ preview.append(image,details);
+}
+$('houseStyle').onchange=()=>paintHouseStyles();
+$('houseStyleUpload').onclick=async()=>{
+ const file=$('houseStyleFile').files[0];
+ if(houseStyleBusy)return;
+ if(!file){$('houseStyleStatus').textContent=tr('PDFファイルを選んでください。','Choose a PDF file.');return;}
+ if(file.size>30*1024*1024){$('houseStyleStatus').textContent=tr('PDFは30MB以内にしてください。','The PDF must be 30 MB or smaller.');return;}
+ houseStyleBusy=true;$('houseStyleUpload').disabled=true;$('houseStyleStatus').textContent=tr('PDFから型を読み取っています','Reading the style from the PDF');
+ try{
+  if(!lastStatus)await refresh();
+  const r=await fetch('house-style',{method:'POST',headers:{'Content-Type':'application/pdf','X-CSRF-Token':lastStatus?.csrf_token||'','X-File-Name':encodeURIComponent(file.name)},body:file});
+  const d=await r.json();if(!r.ok)throw Error(d.error||'操作に失敗しました');
+  $('houseStyleFile').value='';$('houseStyleStatus').textContent=tr('型を登録しました。','The style was saved.');
+  $('houseStyleAdd').open=false;await loadHouseStyles(d.id);
+ }catch(e){$('houseStyleStatus').textContent=e.message;}
+ finally{houseStyleBusy=false;$('houseStyleUpload').disabled=false;}
+};
+$('houseStyleDelete').onclick=async()=>{
+ const id=$('houseStyle').value;if(!id||houseStyleBusy)return;
+ houseStyleBusy=true;
+ try{const d=await api('house-style/delete',{id});houseStyles=d.styles||[];paintHouseStyles('');}
+ catch(e){$('houseStyleStatus').textContent=e.message;}
+ finally{houseStyleBusy=false;}
+};
 function paintModeSummary(){
  const modes=selectedModes();
  $('modeSummary').textContent=modes.length?tr('選択中：','Selected: ')+modes.map(mode=>pair(modeNames[mode])).join(' · '):tr('おまかせ：動画の内容に合わせて構成します。','Automatic: the structure adapts to your video.');
@@ -842,6 +909,8 @@ function paintStatus(d){
  $('presentationSummary').textContent='';
  if(catalogRevision!==d.key_revision||configured&&!d.configured)resetCatalogue(d.key_revision);
  configured=d.configured;
+ $('houseStylePanel').hidden=!d.local_features;
+ if(d.local_features&&!houseStylesLoaded){houseStylesLoaded=true;loadHouseStyles();}
  if($('appVersion'))$('appVersion').textContent=tr('バージョン：','Version: ')+(d.version?.label||tr('取得できません','unavailable'));
  paintResumeAvailability();
  if(d.job?.manual_mode&&d.job?.status==='running')$('executionMode').value='manual';
@@ -870,8 +939,9 @@ function paintStatus(d){
  paintRestyleSources();
  if(submitting){paintSubmission();return;}
  const j=d.job;lastJob=j;
- if(!j){$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;if(clientError)message(clientError.message,true);return;}
+ if(!j){paintAsk(null);$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;if(clientError)message(clientError.message,true);return;}
  if(clientError&&(j.status==='running'||j.folder!==clientError.folder))clientError=null;
+ paintAsk(j);
  if(j.references_available)loadReferences(j);
  else{$('referencePanel').hidden=true;referenceData=null;referenceKey=null;referenceFolder=null;}
  $('resume').className=((j.status==='failed'||j.status==='needs_review')&&(j.progress?j.progress.resume.available:j.report?.quality_pipeline==='quality-first-v3'))?'secondary':'secondary hidden';
@@ -894,6 +964,7 @@ function paintStatus(d){
   const names={procedure:['作業手順書','Procedure guide'],seminar:['セミナー要約','Seminar summary'],training:['研修資料','Training material'],mixed:['解説と実演を組み合わせ','Explanation and demonstration'],visual:['図解多め','Visual emphasis'],editorial:['デザイン重視','Design emphasis'],plain:['すっきり','Clean and simple']};
   $('presentationSummary').textContent=tr('構成：','Structure: ')+pair(names[presentation.purpose])+' / '+tr('デザイン：','Design: ')+pair(names[presentation.design])+(presentation.requested_design==='auto'?tr('（おまかせ）',' (automatic)'):'');
   if(presentation.presentation_modes?.length)$('presentationSummary').textContent+=' / '+presentation.presentation_modes.map(mode=>pair(modeNames[mode])).filter(Boolean).join(' · ');
+  if(j.report.house_style?.name)$('presentationSummary').textContent+=' / '+tr('社内資料の型：','Company style: ')+j.report.house_style.name;
  }
  paintRestyleSources();
  const files=[['document.pdf',j.status==='needs_review'?'PDFを保存（要確認）':'PDFを保存'],['document.md','編集用Markdown'],['run.json','生成記録']];
@@ -1038,6 +1109,79 @@ async function loadReferences(job){
  finally{if(referencePending===key)referencePending=null;}
 }
 $('sourcePlayer').onerror=()=>{$('referenceSummary').textContent=tr('ブラウザで再生できない形式です。表示された出典時刻を元動画で確認してください。');};
+// Questions about a finished document: answers point at saved sections (times and images
+// come from the server), and can be appended as pages to a separate copy of the PDF.
+let askFolder=null,askData=null,askBusy=false;
+function askAvailable(job){return Boolean(lastStatus?.local_features&&job&&['complete','needs_review'].includes(job.status)&&job.references_available&&!job.manual_mode);}
+async function loadAnswers(folder){
+ try{const r=await fetch('qa/'+encodeURIComponent(folder));const d=await r.json();if(!r.ok)throw Error(d.error);
+  if(askFolder!==folder)return;askData=d;renderAnswers();}
+ catch(e){if(askFolder===folder){askData={answers:[]};renderAnswers();}}
+}
+function paintAsk(job){
+ const show=askAvailable(job);$('askPanel').hidden=!show;
+ if(!show){askFolder=null;askData=null;return;}
+ if(askFolder!==job.folder){askFolder=job.folder;askData=null;$('askAnswers').replaceChildren();$('askStatus').textContent='';loadAnswers(job.folder);}
+ $('askButton').disabled=askBusy||busy||!configured;
+}
+function renderAnswers(){
+ const box=$('askAnswers');box.replaceChildren();
+ if(!askData)return;
+ if(askData.document){
+  const a=document.createElement('a');a.className='download';a.href='files/'+encodeURIComponent(askFolder)+'/'+askData.document;a.download='document-qa.pdf';
+  a.textContent=tr('回答入りPDFを保存','Save the PDF with answers');box.appendChild(a);
+ }
+ for(const item of [...askData.answers].reverse()){
+  const card=document.createElement('article');card.className='qa-card';
+  const q=document.createElement('h3');q.textContent=item.question;card.appendChild(q);
+  const answer=document.createElement('p');answer.className=item.answered?'qa-answer':'qa-answer unanswered';
+  answer.textContent=(item.answered?'':tr('動画では確認できませんでした：','Not covered in the video: '))+item.answer;card.appendChild(answer);
+  if(item.points.length){
+   const list=document.createElement('ul');
+   for(const point of item.points){
+    const li=document.createElement('li');li.append(point.text+' ');
+    const time=document.createElement(point.video_url?'a':'span');time.className='source-link';time.textContent='['+point.label+']';
+    if(point.video_url){time.href=point.video_url;time.target='_blank';time.rel='noopener noreferrer';}
+    li.appendChild(time);list.appendChild(li);
+   }
+   card.appendChild(list);
+  }
+  if(item.frames.length){
+   const images=document.createElement('div');images.className='reference-images';
+   for(const frame of item.frames){
+    const figure=document.createElement('figure');const image=document.createElement('img');
+    image.src='files/'+encodeURIComponent(askFolder)+'/'+frame.file;image.loading='lazy';image.alt=item.question+' '+frame.label;
+    const caption=document.createElement('figcaption');caption.textContent=frame.label;figure.append(image,caption);images.appendChild(figure);
+   }
+   card.appendChild(images);
+  }
+  const meta=document.createElement('p');meta.className='small';
+  meta.textContent=tr('AIの回答（元動画との照合なし）','AI answer (not checked against the video)')+(item.cost_usd!=null?' · $'+Number(item.cost_usd).toFixed(3):'')+(item.model?' · '+item.model:'');
+  card.appendChild(meta);
+  if(item.answered){
+   const button=document.createElement('button');button.className='secondary';button.disabled=askBusy;
+   button.textContent=item.added?tr('資料から外す','Remove from the PDF'):tr('資料に追加','Add to the PDF');
+   button.onclick=()=>toggleAnswer(item);card.appendChild(button);
+  }
+  box.appendChild(card);
+ }
+}
+async function toggleAnswer(item){
+ if(askBusy||!askFolder)return;askBusy=true;renderAnswers();
+ $('askStatus').textContent=tr('回答入りPDFを作成しています','Creating the PDF with answers');
+ try{await api('qa-add',{folder:askFolder,answer_id:item.id,add:!item.added});$('askStatus').textContent=tr('回答入りPDFを更新しました。','The PDF with answers was updated.');}
+ catch(e){$('askStatus').textContent=e.message;}
+ finally{askBusy=false;await loadAnswers(askFolder);paintAsk(lastJob);}
+}
+$('askButton').onclick=async()=>{
+ const question=$('askQuestion').value.trim();
+ if(askBusy||!askFolder)return;
+ if(question.length<3){$('askStatus').textContent=tr('質問を入力してください。','Enter a question.');return;}
+ askBusy=true;$('askButton').disabled=true;$('askStatus').textContent=tr('動画の内容から答えを探しています','Looking for the answer in the video');
+ try{await api('ask',{folder:askFolder,question,model:$('model').value.trim()});$('askQuestion').value='';$('askStatus').textContent='';}
+ catch(e){$('askStatus').textContent=e.message;}
+ finally{askBusy=false;await loadAnswers(askFolder);paintAsk(lastJob);}
+};
 async function refresh(){
  try{
   const r=await fetch('status');const d=await r.json();if(!r.ok)throw Error(d.error);

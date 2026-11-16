@@ -19,7 +19,8 @@ for extra frames, then the review - about a minute apart, each resending ~65k to
 """
 import copy
 
-TTL_BY_PHASE = {'document_edit': '1h', 'content_plan': '5m', 'content_review': '5m'}
+# video_qa: follow-up questions about the same document resend the same plan and transcript.
+TTL_BY_PHASE = {'document_edit': '1h', 'content_plan': '5m', 'content_review': '5m', 'video_qa': '5m'}
 
 # Cache read price relative to base input, by model (Claude docs, 2026-10); others 0.1.
 READ_MULTIPLIER = {'claude-fable-5-1': 0.025, 'claude-mythos-5-1': 0.025, 'claude-opus-5-5': 0.05}

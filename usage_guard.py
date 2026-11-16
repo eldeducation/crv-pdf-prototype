@@ -132,14 +132,15 @@ class GuardedClient:
             raise BudgetStop('前回の料金が未確定のため、追加の課金処理を停止しました。', code='billing_pending')
         names = {t['name'] for t in tools}
         phase = ('content_plan' if 'submit_content_plan' in names else
-                 'content_review' if 'submit_content_review' in names else 'document_edit')
+                 'content_review' if 'submit_content_review' in names else
+                 'video_qa' if 'answer_video_question' in names else 'document_edit')
         # Reasoning and structured arguments share the provider's output cap.
         # 8192 truncated real plans even with modest visible explanations.
         # 32768 truncated an editorial document (18k reasoning + 23k chars of pages);
         # apply_model_options still clamps this to the selected model's own limit.
         # Local change: 24,576 truncated xhigh content plans twice in real runs (2026-11-05).
         cap = min(self.config.max_tokens, {'content_plan': 49152,
-                  'content_review': 16384, 'document_edit': 65536}[phase])
+                  'content_review': 16384, 'video_qa': 16384, 'document_edit': 65536}[phase])
         estimated = input_estimate(messages, tools, system)
         # input_tokens is the uncached remainder; cached reads/writes are prompt tokens too.
         used_tokens = sum(sum(c.get('usage', {}).get(k, 0) or 0 for k in (
