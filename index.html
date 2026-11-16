@@ -691,7 +691,10 @@ function paintHouseStyles(select){
  }
  details.appendChild(swatches);
  const lines=[];
- if(style.heading_examples?.length)lines.push(tr('見出しの例：','Heading examples: ')+style.heading_examples.slice(0,3).map(t=>'「'+t+'」').join(' '));
+ if(style.heading_examples?.length){
+  const short=style.heading_examples.filter(t=>t.length<=20);
+  lines.push(tr('見出しの例：','Heading examples: ')+(short.length?short:style.heading_examples).slice(0,3).map(t=>'「'+t+'」').join(' '));
+ }
  if(style.labels?.length)lines.push(tr('よく使うラベル：','Common labels: ')+style.labels.join('、'));
  if(style.bullets?.length)lines.push(tr('記号：','Marks: ')+style.bullets.join(' '));
  if(style.heading_ratio)lines.push(tr('見出しの大きさ：本文の約','Headings: about ')+style.heading_ratio+tr('倍','× body text'));
