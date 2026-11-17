@@ -196,6 +196,11 @@ class BackendTests(unittest.TestCase):
         self.assertNotIn(job, self.ledger)
         self.process.spawn.assert_not_called()
 
+    def test_result_is_saved_before_the_job_reads_complete(self):
+        source = (ROOT / 'cloud' / 'modal_backend.py').read_text(encoding='utf-8')
+        body = source[source.index("partial.replace(folder / 'result.zip')"):source.index('except Exception as error:')]
+        self.assertLess(body.index('volume.commit()'), body.index("status='complete'"))
+
     def test_stt_model_cannot_silently_switch_to_another_engine(self):
         job, body = self.new_job()
         body['options'].update(no_transcribe=False, stt_model='openai/whisper-1')

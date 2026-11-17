@@ -179,10 +179,12 @@ def process(job):
                     if path.is_file() and path.suffix.lower() not in ('.mp4', '.mov', '.mkv', '.webm', '.m4v', '.wav', '.mp3', '.pt'):
                         bundle.write(path, path.relative_to(temporary).as_posix())
             partial.replace(folder / 'result.zip')
+            # Save the result before saying "complete": Render downloads as soon as it
+            # sees that status, and an uncommitted file is not visible to the API yet.
+            volume.commit()
             record.update(status='complete', phase='complete', duration=duration,
                           worker_seconds=report['worker_seconds'], frame_count=report.get('frame_count'))
             ledger[job] = record
-            volume.commit()
     except Exception as error:
         message = str(error) if isinstance(error, ValueError) else '抽出処理が停止しました。追加の実行は自動で行っていません。'
         record.update(status='failed', message=message[:300])
