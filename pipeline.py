@@ -76,6 +76,7 @@ class Config:
     max_layout_retries: int = 3
     max_tokens: int = 65536
     no_transcribe: bool = False
+    cloud_transcribe: bool = False  # speech-to-text through OpenRouter (cloud_transcribe.py) instead of local Whisper
     external_research: bool = True
     quality_rounds: int = 2
     quality_attempts: int = 2
@@ -111,6 +112,8 @@ class Config:
         self.presentation_notes = validate_notes(self.presentation_notes)
         if type(self.external_research) is not bool:
             raise ValueError('外部検索の設定は有効・無効で指定してください。')
+        if type(self.cloud_transcribe) is not bool:
+            raise ValueError('文字起こしの方法は有効・無効で指定してください。')
         if self.budget_usd is not None and (not math.isfinite(self.budget_usd) or not 0.1 <= self.budget_usd <= 20):
             raise ValueError("費用の上限は0.10～20ドルで指定するか、空欄（自動）にしてください。")
 
@@ -1233,6 +1236,7 @@ PREPARE_STEPS = {
     'captions': '動画の準備 4/4：動画の字幕を確認しています',
     'transcribe': '動画の準備 4/4：音声を文字に起こしています（CPUの少ない環境では動画の長さ以上かかることがあります）',
 }
+CLOUD_TRANSCRIBE_STEP = '動画の準備 4/4：音声をOpenRouterで文字に起こしています'
 
 
 def minutes_label(seconds):
@@ -1247,14 +1251,22 @@ def prepare_timeout_message(step):
             '短い動画で試すか、処理能力の高い実行環境をご検討ください。')
 
 
-def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT):
+def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT, secret=None):
     """command_run for the CRV worker, but stdout is read as it arrives so the
     screen can show which preparation step is running. Same timeout and the
     same error text on failure; a timeout gets its own stop reason."""
     import threading
     process = subprocess.Popen([str(x) for x in args], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                encoding='utf-8', errors='replace', env=child_environment(env),
+                               stdin=subprocess.PIPE if secret else subprocess.DEVNULL,
                                start_new_session=os.name != 'nt')
+    if secret:
+        try:
+            process.stdin.write(secret + '\n')
+        except OSError:
+            pass                      # the worker already stopped; its own error is reported below
+        finally:
+            process.stdin.close()
     stderr = []
     reader = threading.Thread(target=lambda: stderr.extend(process.stderr), daemon=True)
     reader.start()
@@ -1281,6 +1293,8 @@ def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT):
                 if len(parts) >= 2 and parts[1] in PREPARE_STEPS and parts[1] != step:
                     step = parts[1]
                     text = PREPARE_STEPS[step]
+                    if step == 'transcribe' and secret:
+                        text = CLOUD_TRANSCRIBE_STEP
                     if step == 'frames' and len(parts) == 3 and parts[2].isdigit() and int(parts[2]):
                         text = text + f'（動画の長さ {minutes_label(parts[2])}）'
                     notify(text)
@@ -1300,7 +1314,7 @@ def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT):
     return out
 
 
-def extract(source, folder, config, notify=print):
+def extract(source, folder, config, notify=print, api_key=''):
     for tool in ("crv", "ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             raise PrototypeError(f"{tool} が見つかりません。依存ツールを準備してください。")
@@ -1330,12 +1344,22 @@ def extract(source, folder, config, notify=print):
                        '--socket-timeout', '20', '--retries', '1', '--extractor-retries', '1',
                        '--match-filter', 'duration <= 1800 & !is_live'):
             args.append('--yt-dlp-arg=' + option)
+    secret = None
     if config.no_transcribe:
         args.append("--no-transcribe")
+    elif config.cloud_transcribe:
+        if provider_for(api_key) != 'openrouter':
+            raise PrototypeError('OpenRouterでの文字起こしには、OpenRouterのAPIキーが必要です。')
+        import cloud_transcribe
+        # The key goes to this worker on stdin only (not argv, environment or log).
+        env[cloud_transcribe.FLAG_ENV] = '1'
+        env[cloud_transcribe.MODEL_ENV] = cloud_transcribe.model_from_env()
+        secret = api_key
+        notify(f"文字起こしはOpenRouter（{env[cloud_transcribe.MODEL_ENV]}）で行います。動画に字幕があれば字幕を使います")
     notify("動画の画像と文字起こしを準備しています")
     notify(f"動画準備の画像横幅：{config.frame_width}px（最大{config.max_frames}枚）")
     try:
-        run_preparation(args, env=env, log=folder.parent / "extraction.log", notify=notify)
+        run_preparation(args, env=env, log=folder.parent / "extraction.log", notify=notify, secret=secret)
     except PrototypeError as error:
         # Keep diagnostics in the private extraction log, not a guessing-based
         # message about credentials or an invitation to copy browser cookies.
@@ -1451,6 +1475,7 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
               'design': config.design, 'visual_density': config.visual_density, 'restyle_from': config.restyle_from,
               'presentation_modes': list(config.presentation_modes), 'presentation_notes': config.presentation_notes,
               'external_research': config.external_research,
+              'cloud_transcribe': config.cloud_transcribe,
               'house_style': ({'id': config.house_style.get('id'), 'name': config.house_style.get('name')}
                               if config.house_style else None),
               'resume_fingerprint': resume_fingerprint()}
@@ -1481,7 +1506,11 @@ def run(source, *, evidence_dir=None, prompt=DEFAULT_PROMPT, config=None, api_ke
             notify("前回取得した動画と画像を再利用しています")
             report["reused_from"] = reused.name
         elif not evidence_dir:
-            extract(source, evidence, config, notify)
+            extract(source, evidence, config, notify, api_key)
+            if config.cloud_transcribe and not config.no_transcribe:
+                from cloud_transcribe import summary as transcription_summary
+                report['transcription'] = transcription_summary(evidence) or {'provider': 'video_subtitles'}
+                write_json(folder / 'run.json', report)
         prepared = Evidence(evidence, folder)
         if design_source:
             prepared.reuse_details(design_source)

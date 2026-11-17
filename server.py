@@ -524,6 +524,7 @@ class Handler(BaseHTTPRequestHandler):
                     config = Config(model=model_id, effort=effort, model_options=None if manual_mode else options,
                                     no_transcribe=bool(body.get("no_transcribe")),
                                     external_research=body.get('external_research', True),
+                                    cloud_transcribe=body.get('cloud_transcribe', False) is True,
                                     budget_usd=requested_budget(body.get('budget_usd')), cancel_event=CANCEL,
                                     confirm_estimate=body.get('confirm_estimate') is True,
                                     resume=bool(resume_folder), purpose=body.get('purpose', 'auto'),

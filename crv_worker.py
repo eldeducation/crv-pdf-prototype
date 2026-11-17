@@ -38,7 +38,13 @@ def announce(core, name, step):
 
 if __name__ == '__main__':
     import claude_real_video.core as core
+    import cloud_transcribe
+    # Before anything else runs: takes the key out of the environment (yt-dlp and
+    # ffmpeg are started from here) and, when given, swaps Whisper for OpenRouter.
+    cloud_patches = cloud_transcribe.install(core)
     with ExitStack() as stack:
+        for cloud_patch in cloud_patches:
+            stack.enter_context(cloud_patch)
         if len(sys.argv) > 1 and is_youtube(sys.argv[1]):
             stack.enter_context(youtube_context())
         # After youtube_context, so the YouTube importer is the wrapped fetch.

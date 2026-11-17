@@ -49,6 +49,8 @@ const translations={
  'Xの動画を取得できませんでした。投稿の公開状態・動画番号・取得制限を確認してください。ログインが必要な投稿には対応していません。動画ファイルのアップロードも利用できます。':'Could not import the X video. Check post visibility, the video number, and download restrictions. Login-required posts are not supported. You can also upload the video file.',
  '動画ファイルを選んだ場合は、ファイルを優先します。':'If a file is selected, it takes priority over the link.',
  '解説音声がない動画（文字起こしを省略）':'No spoken explanation (skip transcription)',
+ 'このPCのWhisperではなく、OpenRouterで文字起こしする':'Transcribe with OpenRouter instead of Whisper on this PC',
+ '字幕のない動画だけ、音声（映像は送らない）をOpenRouterと文字起こし会社に送ります。OpenRouterのキーで使えます。費用は12分で約0.5セント。':'Only for videos without subtitles: the audio (not the picture) is sent to OpenRouter and its transcription provider. Needs an OpenRouter key. About half a cent for 12 minutes.',
  '必要な公開情報をWeb検索で補う':'Supplement missing facts with public web sources',
  '不足する重要情報だけ検索し、外部資料の出典を残します。非公開の内容を含む動画ではオフにしてください。':'Search only for important missing facts and retain source links. Turn this off for videos containing private information.',
  '2. 仕上がりの希望':'2. Describe your document',
@@ -602,7 +604,7 @@ $('generate').onclick=async()=>{
    upload_id=await uploadVideo(file,lastStatus?.csrf_token||'',shared);
   }
   const prompt=defaultPrompts[lang];
-  await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,external_research:$('externalResearch').checked,budget_usd:budgetValue()});
+  await api('start',{execution_mode:$('executionMode').value,upload_id,url:$('url').value,prompt,purpose:$('purpose').value,...arrangementPayload(),detail_level:$('detailLevel').value,output_language:$('outputLanguage').value,model:$('model').value,effort:$('effort').value,no_transcribe:$('silent').checked,cloud_transcribe:$('cloudTranscribe').checked&&!$('silent').checked,external_research:$('externalResearch').checked,budget_usd:budgetValue()});
   submitting=false;
   await refresh();
  }catch(e){submitting=false;busy=false;clientError={message:e.message,folder:lastJob?.folder};$('generate').disabled=false;message(e.message,true);paintProgress({status:'failed',message:e.message,report:{},progress:{available:true,current:'prepare',stages:Object.keys(stageNames).map(id=>({id,state:id==='prepare'?'stopped':'pending'})),completed_count:0,total_stages:5,stop_code:'request',resume:{available:false,reason:'request'}}});}
