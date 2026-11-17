@@ -17,6 +17,17 @@ from modal_contract import (VERSION, MAX_VIDEO_BYTES, MAX_RESULT_BYTES, MAX_UNPA
 ENV_NAMES = ('VIDEO_PDF_MODAL_URL', 'VIDEO_PDF_MODAL_KEY', 'VIDEO_PDF_MODAL_SECRET',
              'VIDEO_PDF_MODAL_PROFILE')
 MARKER = 'modal-extraction.json'
+_CREDENTIALS = {}
+
+
+def take_credentials():
+    """In the app server process: keep the Modal key and secret in memory only, so
+    ffmpeg, CRV and other programs started from this process never inherit them.
+    The gateway does not call this; it passes them on to the session it starts."""
+    for name in ENV_NAMES[1:3]:
+        value = os.environ.pop(name, None)
+        if value is not None:
+            _CREDENTIALS[name] = value
 
 
 class ModalError(Exception):
@@ -41,7 +52,7 @@ def connection():
             url.port not in (None, 443) or url.query or url.fragment or url.path not in ('', '/') or
             not re.fullmatch(r'[a-z0-9-]+(?:\.[a-z0-9-]+)?\.modal\.run', url.hostname)):
         raise ModalError('Modalの接続先設定が不正です。管理者に確認してください。')
-    key, secret = (os.getenv(k, '') for k in ENV_NAMES[1:3])
+    key, secret = (_CREDENTIALS.get(k) or os.getenv(k, '') for k in ENV_NAMES[1:3])
     if not re.fullmatch(r'wk-[A-Za-z0-9]+', key) or not re.fullmatch(r'ws-[A-Za-z0-9]+', secret):
         raise ModalError('Modalの接続情報が設定されていません。管理者に確認してください。')
     return url.hostname, {'Modal-Key': key, 'Modal-Secret': secret}

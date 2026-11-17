@@ -15,6 +15,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from security import child_environment
+
 ENDPOINT = 'https://openrouter.ai/api/v1/audio/transcriptions'
 DEFAULT_MODEL = 'openai/whisper-large-v3'
 # Models that return segment times (verbose_json). Times are needed to match speech to frames.
@@ -38,7 +40,7 @@ def model_from_env():
 
 
 def _ffmpeg(args):
-    result = subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', *args],
+    result = subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', *args], env=child_environment(),
                             capture_output=True, text=True, encoding='utf-8', errors='replace')
     if result.returncode != 0:
         raise TranscribeError('音声の取り出しに失敗しました。')
@@ -46,7 +48,7 @@ def _ffmpeg(args):
 
 def _duration(path):
     result = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(path)],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, env=child_environment())
     try:
         return float(result.stdout.strip())
     except ValueError:

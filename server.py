@@ -586,6 +586,9 @@ class LocalServer(ThreadingHTTPServer):
 
 def main():
     global TOKEN
+    # Modal credentials move into memory before any job can start ffmpeg/CRV children.
+    import modal_bridge
+    modal_bridge.take_credentials()
     port = 0
     if "--reuse-address" in sys.argv:
         record = ROOT / "server.local.json"

@@ -30,6 +30,21 @@ class BridgeTests(unittest.TestCase):
         self.assertNotIn('VIDEO_PDF_MODAL_SECRET', child_environment(session))
         self.assertNotIn('VIDEO_PDF_MODAL_KEY', child_environment(session))
 
+    def test_server_keeps_modal_credentials_out_of_its_environment(self):
+        env = {'VIDEO_PDF_MODAL_URL': 'https://example.us-east.modal.run', 'VIDEO_PDF_MODAL_KEY': 'wk-test',
+               'VIDEO_PDF_MODAL_SECRET': 'ws-test'}
+        with patch.dict(os.environ, env), patch.dict(bridge._CREDENTIALS, {}, clear=True):
+            bridge.take_credentials()
+            self.assertNotIn('VIDEO_PDF_MODAL_KEY', os.environ)
+            self.assertNotIn('VIDEO_PDF_MODAL_SECRET', os.environ)
+            self.assertEqual(bridge.connection()[1], {'Modal-Key': 'wk-test', 'Modal-Secret': 'ws-test'})
+        server = (ROOT / 'server.py').read_text(encoding='utf-8')
+        self.assertLess(server.index('modal_bridge.take_credentials()'), server.index('LocalServer(('))
+        self.assertNotIn('take_credentials', (ROOT / 'share_gateway.py').read_text(encoding='utf-8'))
+        self.assertNotIn('take_credentials', (ROOT / 'cloud_entry.py').read_text(encoding='utf-8'))
+        source = (ROOT / 'cloud_transcribe.py').read_text(encoding='utf-8')
+        self.assertEqual(source.count('env=child_environment()'), 2)
+
     def test_https_target_cannot_redirect_secrets_to_arbitrary_hosts(self):
         values = {'VIDEO_PDF_MODAL_KEY': 'wk-test', 'VIDEO_PDF_MODAL_SECRET': 'ws-test'}
         for url in ('http://example.modal.run', 'https://example.com', 'https://example.modal.run@evil.com',
