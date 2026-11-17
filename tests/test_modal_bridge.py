@@ -187,7 +187,8 @@ class BackendTests(unittest.TestCase):
         self.process.spawn.assert_not_called()
 
     def test_monthly_quota_is_enforced_before_upload(self):
-        for n in range(3):
+        from modal_contract import PREPARE_JOBS_PER_MONTH
+        for n in range(PREPARE_JOBS_PER_MONTH):
             job, body = self.new_job(('video-' + str(n)).encode())
             self.assertEqual(self.client.post('/jobs', json=body).status_code, 200)
         job, body = self.new_job(b'fourth')

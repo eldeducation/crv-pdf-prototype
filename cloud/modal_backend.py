@@ -45,7 +45,9 @@ def reserve(kind, job):
     raise ValueError('無料検証の月間処理枠に達しました。画質を下げずに停止しました。管理者に確認してください。')
 
 
-@app.function(image=image, cpu=(2, 2), memory=(4096, 4096), timeout=900,
+# Whisper base on 2 CPU cores runs at about the video's length: a 30-minute video needs
+# up to ~45 minutes in total, so the limits allow that instead of cutting the transcript.
+@app.function(image=image, cpu=(2, 2), memory=(4096, 4096), timeout=3000,
               max_containers=1, retries=0, volumes={'/data': volume},
               include_source=False, block_network=True)
 def process(job):
@@ -125,7 +127,7 @@ def process(job):
                     env['CRV_PROVIDED_TRANSCRIPT'] = str(provided)
                 with log.open('w', encoding='utf-8') as output:
                     completed = subprocess.run(command, env=env, stdout=output,
-                                               stderr=subprocess.STDOUT, timeout=810)
+                                               stderr=subprocess.STDOUT, timeout=2820)
                 if completed.returncode:
                     raise ValueError('抽出処理が停止しました。画質や画像枚数を下げての再試行はしていません。')
                 frames = sorted((evidence / 'frames').glob('*.jpg'))
@@ -200,7 +202,7 @@ def make_api():
     import uuid
     from fastapi import FastAPI, HTTPException, Request
     from fastapi.responses import FileResponse
-    from modal_contract import (VERSION, MAX_VIDEO_BYTES, MAX_RESULT_BYTES, identity,
+    from modal_contract import (VERSION, MAX_VIDEO_BYTES, MAX_RESULT_BYTES, PREPARE_JOBS_PER_MONTH, identity,
                                 detail_identity, valid_id, validate_options, validate_detail)
 
     web = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -230,7 +232,7 @@ def make_api():
     @web.get('/health')
     def health():
         return {'version': VERSION, 'status': 'ok', 'max_video_bytes': MAX_VIDEO_BYTES,
-                'prepare_jobs_per_month': 3, 'provider_keys_required': False}
+                'prepare_jobs_per_month': PREPARE_JOBS_PER_MONTH, 'provider_keys_required': False}
 
     @web.post('/jobs')
     async def create(request: Request):

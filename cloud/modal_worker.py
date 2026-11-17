@@ -10,6 +10,8 @@ from unittest.mock import patch
 
 from balanced_select import balance_command
 
+WHISPER_THREADS = '2'   # the container has 2 CPU cores
+
 
 def main():
     import claude_real_video.core as core
@@ -41,6 +43,18 @@ def main():
             stack.enter_context(patch.object(core, '_transcribe_impl', transcript))
             if data.get('source_subtitles'):
                 stack.enter_context(patch.object(core, 'existing_subtitles', transcript))
+        else:
+            # Same Whisper model and settings; only the speech step uses both CPU cores.
+            # Frame extraction keeps the single-thread image default it was verified with.
+            original_impl = core._transcribe_impl
+            def two_threads(*args, **kwargs):
+                os.environ['OMP_NUM_THREADS'] = os.environ['MKL_NUM_THREADS'] = WHISPER_THREADS
+                try:
+                    return original_impl(*args, **kwargs)
+                finally:
+                    os.environ['OMP_NUM_THREADS'] = '1'
+                    os.environ.pop('MKL_NUM_THREADS', None)
+            stack.enter_context(patch.object(core, '_transcribe_impl', two_threads))
         cli()
 
 

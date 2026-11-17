@@ -9,7 +9,9 @@ MAX_VIDEO_BYTES = 200 * 1024**2  # same limit as the existing shared Render UI
 MAX_VIDEO_SECONDS = 1800       # same content limit as Evidence
 MAX_RESULT_BYTES = 64 * 1024**2
 MAX_UNPACKED_BYTES = 160 * 1024**2
-PREPARE_JOBS_PER_MONTH = 3
+# Inside Modal's $1/month free credit even if every run is a 30-minute talk
+# (~$0.08 each incl. Whisper on 2 cores) plus all detail frames (~$0.002 each).
+PREPARE_JOBS_PER_MONTH = 8
 DETAIL_JOBS_PER_MONTH = 36
 PROFILES = ('windows-compatible', 'adaptive')
 

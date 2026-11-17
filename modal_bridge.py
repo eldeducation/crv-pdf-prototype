@@ -147,7 +147,7 @@ def unpack(archive, destination):
                 shutil.copyfileobj(source, output, 64 * 1024)
 
 
-def wait_for(job, *, notify, cancel_event=None, timeout=1050):
+def wait_for(job, *, notify, cancel_event=None, timeout=3100):
     deadline = time.monotonic() + timeout
     previous = None
     while time.monotonic() < deadline:
