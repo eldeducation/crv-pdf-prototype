@@ -14,6 +14,7 @@ APP_FILES = (
     'action_grounding.py', 'manual_client.py', 'presentation_quality.py', 'web_research.py',
     'cost_estimate.py', 'markdown_export.py', 'prompt_cache.py', 'key_store.py', 'app_version.py',
     'atomic_io.py', 'video_qa.py', 'house_style.py', 'cloud_transcribe.py',
+    'modal_bridge.py', 'modal_contract.py',
 )
 
 

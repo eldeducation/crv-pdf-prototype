@@ -115,7 +115,8 @@ def _launch_session(restore_identity=None):
     (folder / 'index.html').write_text(page, encoding='utf-8')
     info = {**version_info(ROOT), 'runtime_source_hash': source_hash(folder)}
     (folder / 'build-info.json').write_text(json.dumps(info), encoding='utf-8')
-    env = child_environment()
+    from modal_bridge import session_environment
+    env = session_environment()
     process = subprocess.Popen([sys.executable, '-u', str(folder / 'server.py')],
         cwd=folder, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL, creationflags=getattr(subprocess, 'CREATE_NO_WINDOW', 0))

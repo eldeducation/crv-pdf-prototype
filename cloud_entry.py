@@ -263,6 +263,14 @@ def main():
     record = {'pid': os.getpid(), 'port': server.server_port, 'path': '/' + gateway.TOKEN + '/', 'public_url': origin}
     (gateway.ROOT / 'work/sharing.local.json').write_text(json.dumps(record), encoding='utf-8')
     _diagnostic('server_boot', boot=CloudHandler.boot_marker, pid=os.getpid(), **_sample_resources())
+    def check_modal():
+        import modal_bridge
+        if modal_bridge.enabled():
+            try:
+                _diagnostic('modal_connection', **modal_bridge.health())
+            except Exception:
+                _diagnostic('modal_connection', configured=True, ready=False)
+    threading.Thread(target=check_modal, daemon=True).start()
     threading.Thread(target=_resource_monitor, daemon=True).start()
     threading.Thread(target=gateway.session_expiry_worker, daemon=True).start()
     verify_source = os.environ.pop('VIDEO_PDF_VERIFY_YOUTUBE', '')

@@ -342,8 +342,12 @@ class Evidence:
             name = f"detail_{self.extra_count+1:03}_{os.urandom(3).hex()}.jpg"
             target = self.assets / name
             if self.video:
-                command_run([shutil.which("ffmpeg") or "ffmpeg", "-v", "error", "-ss", str(sec),
-                             "-i", self.video, "-frames:v", "1", "-vf", "scale=1920:-2", "-y", target], timeout=120)
+                import modal_bridge
+                if modal_bridge.remote_evidence(self.folder):
+                    modal_bridge.detail(self.folder, {'kind': 'frame', 'seconds': sec}, target)
+                else:
+                    command_run([shutil.which("ffmpeg") or "ffmpeg", "-v", "error", "-ss", str(sec),
+                                 "-i", self.video, "-frames:v", "1", "-vf", "scale=1920:-2", "-y", target], timeout=120)
             else:
                 raise PrototypeError("追加場面の取得には元動画が必要です。元動画を含む解析フォルダを指定してください。")
             if box:
@@ -400,10 +404,16 @@ class Evidence:
         filtering = (f"select='lt(t,{end+self.video_start:.9f})*"
                      f"(isnan(prev_selected_t)+gte(t-prev_selected_t,{1/fps-1e-7:.9f}))',"
                      f"scale={int(width)}:-2,showinfo")
-        output = command_run([shutil.which("ffmpeg") or "ffmpeg", "-hide_banner", "-loglevel", "info",
-                              "-ss", str(start), "-copyts", "-i", self.video, "-vf", filtering,
-                              "-frames:v", str(count), "-fps_mode", "vfr", "-q:v", "2", "-y", pattern],
-                             timeout=120, include_stderr=True)
+        import modal_bridge
+        if modal_bridge.remote_evidence(self.folder):
+            output = modal_bridge.detail(self.folder, {'kind': 'interval', 'start': start, 'end': end,
+                    'fps': fps, 'width': int(width), 'count': count, 'format': image_format,
+                    'video_start': self.video_start}, self.assets, prefix=prefix)
+        else:
+            output = command_run([shutil.which("ffmpeg") or "ffmpeg", "-hide_banner", "-loglevel", "info",
+                                  "-ss", str(start), "-copyts", "-i", self.video, "-vf", filtering,
+                                  "-frames:v", str(count), "-fps_mode", "vfr", "-q:v", "2", "-y", pattern],
+                                 timeout=120, include_stderr=True)
         decoded = [float(t)-self.video_start for t in re.findall(r"\bn:\s*\d+\s+pts:\s*-?\d+\s+pts_time:([\d.eE+-]+)", output)]
         files = sorted(self.assets.glob(prefix+"*"+suffix))
         if not files or len(decoded) < len(files):
@@ -1315,6 +1325,15 @@ def run_preparation(args, *, env, log, notify, timeout=PREPARE_TIMEOUT, secret=N
 
 
 def extract(source, folder, config, notify=print, api_key=''):
+    import modal_bridge
+    # Uploaded files go to Modal; links keep the existing import path (YouTube/X
+    # downloads are verified separately and are not moved by this connection).
+    if modal_bridge.enabled() and not str(source).startswith(('http://', 'https://')):
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            return modal_bridge.prepare(source, folder, config, notify=notify, api_key=api_key)
+        except modal_bridge.ModalError as error:
+            raise PrototypeError(str(error), code='modal_prepare') from None
     for tool in ("crv", "ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             raise PrototypeError(f"{tool} が見つかりません。依存ツールを準備してください。")
